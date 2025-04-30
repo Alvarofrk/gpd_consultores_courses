@@ -1,0 +1,29 @@
+# Ignorar carpetas de desarrollo y configuraciones locales
+.gcloudignore
+.git/
+.github/
+.idea/
+.vscode/
+__pycache__/
+*.pyc
+*.pyo
+venv/
+node_modules/
+*.log
+*.md
+ # Si no necesitas la base de datos local
+
+# Ignorar archivos de prueba, documentación y otros
+tests/
+docs/
+staticfiles/tests/
+media/tmp/
+*.pyc
+__pycache__
+*.log
+*.sqlite3
+*.git
+*.idea
+*.vscode
+node_modules/
+.env

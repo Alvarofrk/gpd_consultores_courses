@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}{{ course.title }} - {{ current_video.title }} | {% trans 'Sistema de gestión de aprendizaje' %}{% endblock title %}
+
+{% block content %}
+<div class="container my-5">
+    <h2 class="mb-4">{{ current_video.title }}</h2>
+
+    <div class="video-container mb-4">
+        {% if current_video.vimeo_url %}
+            <!-- Mostrar el video de Vimeo -->
+            <iframe src="https://player.vimeo.com/video/{{ current_video.get_vimeo_id }}" width="100%" height="500" frameborder="0" allowfullscreen></iframe>
+        {% elif current_video.video %}
+            <!-- Reproducción del video subido -->
+            {% if current_video.video %}
+                <video controls class="w-100">
+                    <source src="{{ current_video.video.url }}" type="video/mp4">
+                    {% trans "Tu navegador no soporta el elemento de video." %}
+                </video>
+            {% else %}
+                <!-- Mensaje si no hay video disponible -->
+                <p>{% trans 'No hay video disponible para mostrar.' %}</p>
+            {% endif %}
+        {% else %}
+            <!-- Mensaje si no hay video disponible -->
+            <p>{% trans 'No hay video disponible para mostrar.' %}</p>
+        {% endif %}
+    </div>
+
+    <!-- Documento relacionado al video actual -->
+    {% if current_document %}
+    <div class="document-container mb-4">
+        <h5>{% trans "Documentación relacionada:" %}</h5>
+        <a href="{{ current_document.file.url }}" class="btn btn-primary" target="_blank">
+            <i class="fas fa-file-download"></i> {{ current_document.title }}
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Navegación de videos y botón de "Tomar examen" en el último video -->
+    <div class="d-flex justify-content-between mb-4">
+        <div>
+            {% if is_last_video %}
+                <!-- Botón de "Tomar Examen" solo en el último video -->
+                <a class="btn btn-warning" href="{% url 'quiz_index' course.slug %}">
+                    <i class="fas fa-list"></i> {% trans 'Tomar examen' %}
+                </a>
+            {% endif %}
+        </div>
+        <div class="navigation d-flex">
+            {% if previous_video %}
+                <a href="{% url 'course_video_navigation' course.slug previous_video.id %}" class="btn btn-secondary me-2">
+                    <i class="fas fa-arrow-left"></i> {% trans 'Anterior' %}
+                </a>
+            {% else %}
+                <button class="btn btn-secondary me-2" disabled>
+                    <i class="fas fa-arrow-left"></i> {% trans 'Anterior' %}
+                </button>
+            {% endif %}
+
+            {% if next_video %}
+                <a href="{% url 'course_video_navigation' course.slug next_video.id %}" class="btn btn-secondary">
+                    {% trans 'Siguiente' %} <i class="fas fa-arrow-right"></i>
+                </a>
+            {% else %}
+                <button class="btn btn-secondary" disabled>
+                    {% trans 'Siguiente' %} <i class="fas fa-arrow-right"></i>
+                </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock content %}

@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{{ title }} | {% trans 'Sistema de Gestión de Aprendizaje' %}{% endblock title %}
+{% load static %}
+
+{% block content %}
+
+<nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
+        <li class="breadcrumb-item"><a href="{{ course.get_absolute_url }}">{{ course }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{% trans 'Gestionar Calificaciones' %}</li>
+    </ol>
+</nav>
+
+<div class="dropdown">
+    <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        {{ course }}
+    </button>
+    <div class="dropdown-menu">
+        {% for course in courses %}
+            <a class="dropdown-item" href="{% url 'add_score_for' course.id %}" title="{{ course.code }}">{{ course.title }}</a>
+        {% empty %}
+            <p class="dropdown-item">{% trans 'No hay cursos.' %}</p>
+        {% endfor %}
+    </div>
+</div>
+
+<br>
+<h4 class="title-1">{% trans 'Formulario de Resultados de Trabajadores' %} | {{ course|truncatechars:15 }}</h4>
+<p>{{ course.summary }}</p>
+
+{% include 'snippets/messages.html' %}
+
+<form action="" method="POST">
+    {% csrf_token %}
+    <div class="btn-flex">
+        <button title="Guardar Calificaciones" type="submit" class="btn btn-primary">{% trans 'Guardar' %}</button>
+        <a target="_blank" href="{% url 'result_sheet_pdf_view' id=course.id %}">
+            <span data-toggle="tooltip" title="{% trans 'Imprimir Informe de Resultados' %}" class="btn btn-warning">
+                <i class="far fa-file-pdf"></i> {% trans 'Informe de Calificaciones' %}
+            </span>
+        </a>
+    </div>
+
+    <h4 class="mt-3">{{ current_semester }} {% trans 'grupo' %} <i class="text-light px-2 rounded small bg-danger">{{ current_session }}</i></h4>
+    <div class="table-responsive">
+        <table class="table table-light">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>{% trans 'Trabajador' %}</th>
+                    <th>{% trans 'Tarea' %}</th>
+                    <th>{% trans 'Examen Parcial' %}</th>
+                    <th>{% trans 'Cuestionario' %}</th>
+                    <th>{% trans 'Asistencia' %}</th>
+                    <th>{% trans 'Examen Final' %}</th>
+                    <th>{% trans 'Total' %}</th>
+                    <th>{% trans 'Punto' %}</th>
+                    <th>{% trans 'Calificación' %}</th>
+                    <th>{% trans 'Comentario' %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for worker in workers %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td><a href="{{ worker.worker.get_absolute_url }}">{{ worker.worker.username }}</a></td>
+                    <td>
+                        <input id="assignment" type="number" name="{{ worker.id }}" value="{{ worker.assignment }}" width="20px">
+                    </td>
+                    <td>
+                        <input id="mid_exam" type="number" name="{{ worker.id }}" value="{{ worker.mid_exam }}">
+                    </td>
+                    <td>
+                        <input id="quiz" type="number" name="{{ worker.id }}" value="{{ worker.quiz }}">
+                    </td>
+                    <td>
+                        <input id="attendance" type="number" name="{{ worker.id }}" value="{{ worker.attendance }}">
+                    </td>
+                    <td>
+                        <input id="final_exam" type="number" name="{{ worker.id }}" value="{{ worker.final_exam }}">
+                    </td>
+                    <td>{{ worker.total }}</td>
+
+                    <td>{{ worker.point }}</td>
+                    <td class="{% if worker.grade == 'F' %}text-danger{% else %}text-success{% endif %}">{{ worker.grade }}</td>
+                    {% if worker.comment == 'APROBADO' %}
+                    <td class="text-success">&check; {{ worker.comment }}</td>
+                    {% elif worker.comment == 'REPROBADO' %}
+                    <td class="text-danger">&xotime; {{ worker.comment }}</td>
+                    {% else %}<td></td>
+                    {% endif %}
+                </tr>
+
+                {% empty %}
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td>
+                        <span class="text-danger">
+                            {% trans 'No hay trabajadores.' %}
+                        </span>
+                    </td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</form>
+
+{% endblock content %}

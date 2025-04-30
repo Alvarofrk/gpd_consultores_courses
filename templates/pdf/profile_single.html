@@ -1,0 +1,76 @@
+{% block content %}
+{% load i18n %}
+
+{% if user.is_authenticated %}
+<div class="row">
+  <div class="card-header">
+    <table>
+        <tr>
+            <td>
+                <img src="{{ user.picture.path }}" class="user-picture">
+            </td>
+            <td class="info">
+                <p>{{ user.get_full_name|title }}</p>
+                <p><strong>{% trans 'Último inicio de sesión:' %}</strong> {{ user.last_login|date }}</p>
+                <p><strong>{% trans 'Rol:' %}</strong> {{ user.get_user_role }}</p>
+            </td>
+        </tr>
+    </table>
+    <hr>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      {% if user.is_lecturer %}
+      <p class="h5">{% trans 'Mis Cursos' %}</p>
+      {% if courses %}
+      <ul class="list-group">
+        {% for course in courses %}
+        <li class="list-group-item">{{ course }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="text-danger">{% trans '¡No hay cursos asignados!' %}</div>
+      {% endif %}
+      <hr class="my-0">
+      {% endif %}
+
+      <p class="h5">{% trans 'Información Personal' %}</p>
+      <div class="dashboard-description">
+        <p><strong>{% trans 'Nombre:' %}</strong> {{ user.first_name|title }}</p>
+        <p><strong>{% trans 'Apellido:' %}</strong> {{ user.last_name|title }}</p>
+        <p><strong>{% trans 'Número de ID:' %}</strong> {{ user.username }}</p>
+      </div>
+
+      {% if user.is_student %}
+      <hr>
+      <p class="h5">{% trans 'Información del Trabajador' %}</p>
+      <div class="dashboard-description">
+        <p><strong>{% trans 'Grupo:' %}</strong>{% trans 'Grupo' %}</p>
+        <p><strong>{% trans 'Nivel:' %}</strong> {{ level.level }}</p>
+      </div>
+      {% endif %}
+
+      <hr>
+      <p class="h5">{% trans 'Información de Contacto' %}</p>
+      <div class="dashboard-description">
+        <p><strong>{% trans 'Correo Electrónico:' %}</strong> {{ user.email }}</p>
+        <p><strong>{% trans 'Número de Teléfono:' %}</strong> {{ user.phone }}</p>
+        <p><strong>{% trans 'Dirección/ciudad:' %}</strong> {{ user.address }}</p>
+      </div>
+
+      <hr>
+      <p class="h5">{% trans 'Fechas Importantes' %}</p>
+      <div class="dashboard-description">
+        <p><strong>{% trans 'Último inicio de sesión:' %}</strong> {{ user.last_login }}</p>
+        {% if current_semester and current_session %}
+        <p><strong>{% trans 'Año Académico:' %}</strong> {{ current_semester }} {% trans 'Grupo' %} {{ current_session }}</p>
+        {% endif %}
+        <p><strong>{% trans 'Fecha de Registro:' %}</strong> {{ user.date_joined|date }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock content %}

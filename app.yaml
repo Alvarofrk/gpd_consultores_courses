@@ -1,0 +1,14 @@
+runtime: python39
+
+env_variables:
+  DJANGO_SETTINGS_MODULE: "seguridadteckperu.settings"  # Reemplaza con el módulo de configuración correcto
+  CLOUD_SQL_CONNECTION_NAME: "seguridadteckperu:us-central1-a:dbseguridadteckperu"  # Conexión a tu base de datos
+  DB_NAME: "db_seguridadteckperu"  # Nombre de la base de datos
+  DB_USER: "user_teck"  # Usuario de la base de datos
+  DB_PASSWORD: "1798"  # Contraseña de la base de datos
+
+entrypoint: gunicorn -b :8080 seguridadteckperu.wsgi  # Asegúrate de que 'seguridadteckperu' sea el nombre de tu proyecto
+
+automatic_scaling:
+  min_instances: 1
+  max_instances: 10

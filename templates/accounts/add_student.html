@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{{ title }} | {% trans 'Sistema de gestión de aprendizaje' %}{% endblock title %}
+{% load crispy_forms_tags %}
+{% load static %}
+
+{% block content %}
+
+<nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'student_list' %}">{% trans 'Trabajadores' %}</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{% trans 'Agregar' %}</li>
+    </ol>
+</nav>
+
+<h4 class="mb-3 fw-bold"><i class="fas fa-user-tie me-2"></i>{% trans 'Formulario para agregar trabajador' %}</h4>
+
+{% include 'snippets/messages.html' %}
+
+<form action="" method="POST">{% csrf_token %}
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <div class="card">
+                <p class="form-title">{% trans 'Información Personal' %}</p>
+                <div class="card-body">
+                    {{ form.username|as_crispy_field }}
+                    {{ form.first_name|as_crispy_field }}
+                    {{ form.last_name|as_crispy_field }}
+                    {{ form.gender|as_crispy_field }}
+                    {{ form.email|as_crispy_field }}
+                    {{ form.address|as_crispy_field }}
+                    {{ form.phone|as_crispy_field }}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 ms-auto">
+            <div class="card">
+                <p class="form-title">{% trans 'Otros' %}</p>
+                <div class="card-body">
+                    {{ form.program|as_crispy_field }}
+                    {{ form.level|as_crispy_field }}
+                    <!-- Aquí agregamos los nuevos campos -->
+                    {{ form.cargo|as_crispy_field }}  <!-- Campo de Cargo -->
+                    {{ form.empresa|as_crispy_field }}  <!-- Campo de Empresa -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <input class="btn btn-primary" type="submit" value="{% trans 'Guardar' %}">
+</form>
+
+{% endblock content %}

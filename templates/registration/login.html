@@ -1,0 +1,361 @@
+{% extends 'registration/registration_base.html' %}
+{% load i18n %}
+{% load static %}
+{% block title %}{% trans 'TECK - Inicio de sesión' %}{% endblock title %}
+{% load crispy_forms_tags %}
+{% block content %}
+
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #333;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    background-color: #033b80;
+  }
+
+  .login-container {
+    width: 40%;
+    min-width: 500px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    z-index: 2;
+    position: relative;
+  }
+
+  .login-content {
+    width: 100%;
+    max-width: 480px;
+    text-align: center;
+  }
+
+  .welcome-text {
+    color: white;
+    font-size: 1.8rem;
+    margin-bottom: 2.5rem;
+    font-weight: 600;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+
+  .logos-container {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    margin-top: 2.5rem;
+    padding: 1.5rem 0;
+    background-color: rgba(255,255,255,0.1);
+    border-radius: 10px;
+  }
+
+  .logo-img {
+    height: 70px;
+    max-width: 130px;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+    opacity: 0.9;
+    transition: all 0.3s ease;
+  }
+
+  .logo-img:hover {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+
+  .video-container {
+    width: 60%;
+    background-color: #000;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .youtube-video {
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+    object-fit: cover;
+  }
+
+  .video-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(4, 32, 66, 0.3);
+    z-index: 1;
+  }
+
+  .card {
+    background-color: white;
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    overflow: hidden;
+    transition: transform 0.3s ease;
+  }
+
+  .card:hover {
+    transform: translateY(-5px);
+  }
+
+  .card-header {
+    background: linear-gradient(135deg, #033b80, #042042);
+    color: white;
+    text-align: center;
+    padding: 2rem;
+    border-bottom: none;
+    font-size: 1.8rem;
+  }
+
+  .card-body {
+    padding: 2.5rem;
+  }
+
+  .form-group {
+    margin-bottom: 2rem;
+    position: relative;
+  }
+
+  label {
+    color: #042042;
+    font-weight: 600;
+    margin-bottom: 0.8rem;
+    display: flex;
+    align-items: center;
+    font-size: 1.1rem;
+  }
+
+  label i {
+    margin-right: 10px;
+    width: 20px;
+    text-align: center;
+  }
+
+  .form-control {
+    background-color: #f8f9fa;
+    border: 2px solid #e1e5ee;
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    font-size: 1.1rem;
+    transition: all 0.3s;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+    height: auto;
+    width: 100%;
+  }
+
+  .form-control:focus {
+    border-color: #033b80;
+    box-shadow: 0 0 0 0.2rem rgba(3, 59, 128, 0.25);
+    background-color: #fff;
+  }
+
+  .btn-login {
+    background: linear-gradient(135deg, #033b80, #042042);
+    border: none;
+    border-radius: 10px;
+    padding: 1rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    width: 100%;
+    transition: all 0.3s;
+    box-shadow: 0 5px 15px rgba(3, 59, 128, 0.3);
+    margin-top: 1rem;
+    color: white;
+  }
+
+  .btn-login:hover {
+    background: linear-gradient(135deg, #042042, #033b80);
+    box-shadow: 0 8px 20px rgba(3, 59, 128, 0.4);
+    transform: translateY(-2px);
+  }
+
+  .btn-login:active {
+    transform: translateY(0);
+  }
+
+  .login-bottom {
+    text-align: center;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e1e5ee;
+    font-size: 1.1rem;
+  }
+
+  .link {
+    color: #033b80;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s;
+  }
+
+  .link:hover {
+    color: #042042;
+    text-decoration: underline;
+  }
+
+  .text-danger {
+    color: #e63946;
+    font-size: 1rem;
+    display: block;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    font-weight: 500;
+  }
+
+  @media (max-width: 1200px) {
+    .login-container {
+      width: 50%;
+      min-width: 450px;
+    }
+    .video-container {
+      width: 50%;
+    }
+  }
+
+  @media (max-width: 992px) {
+    body {
+      flex-direction: column;
+    }
+    
+    .login-container, .video-container {
+      width: 100%;
+      min-width: auto;
+    }
+    
+    .video-container {
+      height: 300px;
+      order: 1;
+    }
+    
+    .login-container {
+      order: 2;
+      padding: 2rem 1.5rem;
+    }
+    
+    .card {
+      max-width: 100%;
+    }
+    
+    .welcome-text {
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .logos-container {
+      margin-top: 1.5rem;
+    }
+  }
+
+  @media (max-width: 576px) {
+    .card-body {
+      padding: 1.5rem;
+    }
+    
+    .card-header {
+      padding: 1.5rem;
+      font-size: 1.5rem;
+    }
+    
+    .logo-img {
+      height: 50px;
+      max-width: 100px;
+    }
+  }
+</style>
+
+<div class="login-container">
+  <div class="login-content">
+    <div class="welcome-text">
+      Bienvenido a la plataforma de GPD
+    </div>
+    
+    <div class="card">
+      <div class="card-header">
+        <i class="fas fa-lock me-2"></i>{% trans 'Ingresar' %}
+      </div>
+      <div class="card-body">
+        <form action="" method="POST" id="login-form">{% csrf_token %}
+          <div class="form-group mb-4">
+            <label for="username_id">
+              <i class="fas fa-id-card"></i>{% trans 'ID' %}
+            </label>
+            <input type="text" name="username" id="username_id" class="form-control" placeholder="{% trans 'Ingresa tu ID' %}" required>
+            <div id="message-wrapper"></div>
+          </div>
+          
+          <div class="form-group mb-4">
+            <label for="password_id">
+              <i class="fas fa-lock"></i>{% trans 'Contraseña' %}
+            </label>
+            <input type="password" name="password" id="password_id" class="form-control" placeholder="{% trans 'Ingresa tu contraseña' %}" required>
+          </div>
+          
+          {% if form.errors %}
+            <span class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>{% trans 'ID o Contraseña incorrectos' %}</span>
+          {% endif %}
+          
+          <div class="form-group mb-3">
+            <button type="submit" class="btn btn-login" id="login-btn">
+              <i class="fas fa-sign-in-alt me-2"></i>{% trans 'INICIAR SESIÓN' %}
+            </button>
+          </div>
+        </form>
+        
+        <div class="login-bottom">
+          <a href="{% url 'password_reset' %}" class="link"><i class="fas fa-question-circle me-2"></i>{% trans '¿Olvidaste tu contraseña?' %}</a>
+        </div>
+      </div>
+    </div>
+    
+    <div class="logos-container">
+      <img src="{% static 'img/gpd.jpg' %}" alt="GPD" class="logo-img" style="filter: none; opacity: 1;">
+      <img src="{% static 'img/ccia.png' %}" alt="CCIA" class="logo-img">
+      <img src="{% static 'img/iso.png' %}" alt="ISO" class="logo-img">
+    </div>
+  </div>
+</div>
+
+<div class="video-container">
+  <iframe 
+    class="youtube-video"
+    src="https://www.youtube.com/embed/LXb3EKWsInQ?autoplay=1&mute=1&loop=1&playlist=LXb3EKWsInQ&controls=0&modestbranding=1&rel=0&enablejsapi=1" 
+    frameborder="0" 
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+    allowfullscreen>
+  </iframe>
+  <div class="video-overlay"></div>
+</div>
+
+{% endblock content %}
+
+{% block js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  $(document).ready(function() {
+    // Detección del estado del video
+    var iframe = document.querySelector('.youtube-video');
+    iframe.onload = function() {
+      console.log('Video de YouTube cargado correctamente');
+    };
+    
+    // Manejo del formulario
+    $('#login-form').submit(function(e) {
+      $('#login-btn').addClass('disabled');
+      $('#login-btn').html(`<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> {% trans 'Iniciando sesión...' %}`);
+    });
+
+    // Removemos la validación de username ya que es un login, no registro
+    $("#username_id").on("input", function() {
+      $('#message-wrapper').html(''); // Limpiamos cualquier mensaje previo
+    });
+  });
+</script>
+{% endblock js %}

@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}
+{% trans "Resultado de" %} {{ sitting.quiz.title }} {% trans "para" %} {{ sitting.user }} | {% trans 'Sistema de gestión de aprendizaje' %}
+{% endblock %}
+
+{% block content %}
+
+<nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+	<ol class="breadcrumb">
+		<li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
+		<li class="breadcrumb-item"><a href="{% url 'quiz_marking' %}">{% trans 'Exámenes Completados' %}</a></li>
+		<li class="breadcrumb-item active" aria-current="page">{% trans 'Calificación' %}</li>
+	</ol>
+</nav>
+
+<div class="row col-12 justify-content-between">
+	<div class="header-title-md">{% trans "Título del cuestionario" %}: {{ sitting.quiz.title }}</div>
+	<em class="info-text title-danger">{% trans "Categoría" %}: {{ sitting.quiz.category }}</em>
+</div>
+
+<p>{{ sitting.quiz.description }}</p>
+<hr>
+<p><b>{% trans "Usuario" %}:</b> {{ sitting.user }}</p>
+<p><b>{% trans "Completado" %}:</b> {{ sitting.end|date }}</p>
+<p><b>{% trans "Puntuación" %}:</b> {{ sitting.get_percent_correct }}%</p>
+
+<table class="table table-bordered table-striped">
+
+  <thead>
+	<tr>
+	  <th>{% trans "Pregunta" %}</th>
+	  <th>{% trans "Respuesta del usuario" %}</th>
+	  <th></th>
+	  <th></th>
+	</tr>
+  </thead>
+
+  <tbody>
+{% for question in questions %}
+
+	<tr>
+      <td>
+        {{ question.content }}
+        {% if question.figure %}
+        <div style="max-width: 100px;"><img src="{{ question.figure.url }}" alt="{{ question.figure }}" width="100px"/></div>
+        {% endif %}
+      </td>
+	  <td>{{ question }}</td>
+	  <td>
+		{% if question.id in sitting.get_incorrect_questions %}
+		  <p>{% trans "Incorrecto" %}</p>
+		{% else %}
+		  <p>{% trans "Correcto" %}</p>
+		{% endif %}
+	  </td>
+	  <td>
+		<form action="" method="POST">{% csrf_token %}
+		  <input type="hidden" name="qid" value="{{ question.id }}">
+		  <button type="submit" class="btn btn-sm btn-secondary">{% trans "Alternar si es correcto" %}</button>
+		</form>
+	  </td>
+	</tr>
+
+{% endfor %}
+
+  </tbody>
+
+</table>
+{% endblock %}

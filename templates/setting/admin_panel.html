@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{{ title }} | {% trans 'Sistema de gestión de aprendizaje' %}{% endblock title %}
+{% load crispy_forms_tags %}
+{% load static %}
+
+{% block content %}
+
+<nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{% trans 'Panel de Administración' %}</li>
+    </ol>
+</nav>  
+
+<div class="title-1"><i class="fas fa-user-tie"></i>{% trans 'Panel de Administración' %}</div>
+<br>
+<br>
+
+{% include 'snippets/messages.html' %}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="border-bottom">
+                {% trans 'Administrar' %}<a class="link" href="{% url 'lecturer_list' %}"> {% trans 'Instructores' %} &raquo;</a>
+                <p class="text-muted">CRUD (Crear, Recuperar, Actualizar y Eliminar) instructores</p>
+            </div>
+
+            <div class="border-bottom mt-3">
+                {% trans 'Administrar' %}<a class="link" href="{% url 'student_list' %}"> {% trans 'Trabajadores' %} &raquo;</a>
+                <p class="text-muted">CRUD (Crear, Recuperar, Actualizar y Eliminar) {% trans 'trabajadores' %}</p>
+            </div>
+
+            <div class="border-bottom mt-3">
+                {% trans 'Administrar' %}<a class="link" href="{% url 'session_list' %}"> {% trans 'Sesiones' %} &raquo;</a>
+                <p class="text-muted">CRUD (Crear, Recuperar, Actualizar y Eliminar) {% trans 'sesiones' %}</p>
+            </div>
+
+            <div class="mt-3">
+                {% trans 'Administrar' %}<a class="link" href="{% url 'semester_list' %}"> {% trans 'Grupos' %} &raquo;</a>
+                <p class="text-muted">CRUD (Crear, Recuperar, Actualizar y Eliminar) {% trans 'grupos' %}</p>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="border-bottom">
+                {% trans 'Agregar Curso' %} &amp; {% trans 'Eliminar' %}
+                <label class="switch switch-text switch-success switch-pill" style="float: right;">
+                <input type="checkbox" class="switch-input" checked="true">
+                <span data-on="{% trans 'On' %}" data-off="{% trans 'Off' %}" class="switch-label"></span>
+                <span class="switch-handle"></span>
+                </label>
+                <p class="text-muted">{% trans 'Cambiar' %} 
+                    <i class="info-text py-0 px-2 bg-success text-light">ON</i> o <i class="info-text py-0 px-2 bg-danger text-light">OFF</i>
+                </p>
+            </div>
+
+            <div class="border-bottom mt-3">
+                {% trans 'Administrar' %}<a class="link" href="{% url 'programs' %}"> {% trans 'Programas' %} &amp; {% trans 'Cursos' %} &raquo;</a>
+                <p class="text-muted">CRUD (Crear, Recuperar, Actualizar y Eliminar) {% trans 'programas' %}</p>
+            </div>
+
+            <div class="border-bottom mt-3">
+                {% trans 'Administrar' %}<a class="link" href="{% url 'course_allocation_view' %}"> {% trans 'Asignaciones de Cursos' %} &raquo;</a>
+                <p class="text-muted">CRUD (Crear, Recuperar, Actualizar y Eliminar) {% trans 'asignaciones de cursos' %}</p>
+            </div>
+
+            <div class="mt-3">
+                {% trans 'Administrar' %}<a class="link" href="{% url 'home' %}"> {% trans 'Comunicados' %} </a>
+                <p class="text-muted">CRUD (Crear, Recuperar, Actualizar y Eliminar) {% trans 'Noticias' %} &amp; {% trans 'Eventos' %}</p>
+ </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

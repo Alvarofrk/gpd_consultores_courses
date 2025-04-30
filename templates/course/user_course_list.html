@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %} {% trans 'Mis Cursos' %} | {% trans 'Sistema de gestión de aprendizaje' %}{% endblock title %}
+{% load static %}
+
+{% block content %}
+
+<nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{% trans 'Mis Cursos' %}</li>
+    </ol>
+</nav>
+
+{% if request.user.is_student %}
+    <div class="title-1">{{ student.program.title }}</div>
+    {% if student.program.summary %}
+        <p>{{ student.program.summary }}</p>
+    {% endif %}
+{% endif %}
+
+{% if request.user.is_lecturer %}
+    <div class="title-1">{% trans 'Mis Cursos' %}</div>
+{% endif %}
+
+{% include 'snippets/messages.html' %}
+
+{% if request.user.is_student %}
+<div class="table-responsive p-3 mt-3">
+    <div class="table-shadow">
+        <table class="table table-light">
+            <thead>
+                <tr>
+                    <th> {% trans 'Nombre del Curso' %} </th>
+                    <th> {% trans 'Código del Curso' %} </th>
+                    <th> {% trans 'Progreso del Curso' %} </th>
+                    <th> {% trans 'Estatus de registro' %} </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for course in taken_courses %}
+                <tr>
+                    <td>
+                        <span class="course-link" 
+                              data-url="{{ course.get_absolute_url }}"
+                              style="cursor: pointer; transition: color 0.3s ease;" 
+                              onmouseover="this.style.color='orange'" 
+                              onmouseout="this.style.color=''" 
+                              onclick="window.location.href='{{ course.get_absolute_url }}'">
+                            {{ course.course.title }}
+                        </span>
+                    </td>
+                    <td>{{ course.course.code }}</td>
+                    <td>
+                        {% if course.course.is_active %}
+                            {% trans 'En curso' %}
+                        {% else %}
+                            {% trans 'En curso' %}
+                        {% endif %}
+                    </td>
+                    <td class="success">
+                        <i class="fas fa-check-circle"></i> {% trans 'Activo' %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+ 
+{% if request.user.is_student %}
+    <a href="{% url 'download_courses_pdf' %}" class="btn btn-primary">
+        Descargar Consolidado
+    </a>
+{% endif %}
+{% if request.user.is_lecturer %}
+    <div class="table-responsive p-3">
+        <h6 class="fw-bold text-primary"><u>{% trans 'Cursos Disponibles:' %}</u></h6>
+        <div class="table-shadow">
+            <table class="table table-light">
+                <thead>
+                    <tr>
+                        
+                        <th> {% trans 'Nombre del Curso' %} </th>
+                        <th> {% trans 'Código del Curso' %} </th>
+                        <!-- <th> {% trans 'Créditos' %} </th>
+                        <th> {% trans 'Año' %} </th>
+                        <th> {% trans 'Grupo' %} </th> -->
+                        <th> {% trans 'Grupo Actual' %} </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for course in courses %}
+                    <tr>
+                        
+                        <td><a href="{{ course.get_absolute_url }}">
+                            {{ course.title }}</a></td>
+                        <td>{{ course.code }}</td>
+                        <!-- <td>{{ course.credit }}</td>
+                        <td>{{ course.year }}</td>
+                        <td>{{ course.semester }}</td> -->
+                        <th>
+                            {% if course.is_current_semester == False %}
+                            <i class="fas fa-times-circle fa-1-5x danger"></i>
+                            {% else %}
+                            <i class="fas fa-check-circle"></i>
+                            {% endif %}
+                        </th>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endif %}
+
+{% if courses.paginator.page_range|length > 1 %}
+<div class="content-center">
+    <div class="pagination">
+        <a href="?page=1">&laquo;</a>
+        {% for i in courses.paginator.page_range %}
+            {% if i == courses.number %}
+                <a class="pagination-active" href="?page={{ i }}"><b>{{ i }}</b></a>
+            {% else %}
+                <a href="?page={{ i }}">{{ i }}</a>
+            {% endif %}
+        {% endfor %}
+        <a href="?page={{ courses.paginator.num_pages }}">&raquo;</a>
+    </div>
+</div>
+{% endif %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Añadir el evento click a todos los elementos con la clase 'course-link'
+        const courseLinks = document.querySelectorAll('.course-link');
+        
+        courseLinks.forEach(function(link) {
+            link.style.cursor = 'pointer';  // Cambiar el cursor a puntero (mano)
+
+            // Añadir el evento de clic para redirigir al curso
+            link.addEventListener('click', function() {
+                const url = link.getAttribute('data-url');
+                window.location.href = url;
+            });
+        });
+    });
+</script>
+
+{% endblock content %}

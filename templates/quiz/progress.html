@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %} {% trans "Página de Progreso" %} | {% trans 'Sistema de gestión de aprendizaje' %} {% endblock %}
+{% block description %} {% trans "Página de Progreso del Usuario" %} {% endblock %}
+
+{% block content %}
+
+<nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{% trans 'Página de Progreso' %}</li>
+    </ol>
+</nav>
+
+<p class="title-1"><i class="fas fa-record-vinyl"></i>{% trans 'Evaluaciones' %}</p>
+
+  {% if cat_scores %}
+
+  <div class="header-title text-center">{% trans "Puntuaciones por Categoría de Pregunta" %}</div>
+  <div class="title-line"></div>
+
+  <table class="table table-bordered table-striped">
+
+	<thead>
+	  <tr>
+		<th>{% trans "Categoría" %}</th>
+		<th>{% trans "Respondidas Correctamente" %}</th>
+		<th>{% trans "Incorrectas" %}</th>
+		<th>%</th>
+	  </tr>
+	</thead>
+
+	<tbody>
+
+	  {% for cat, value in cat_scores.items %}
+	  <tr>
+		<td>{{ cat }}</td>
+		<td>{{ value.0 }}</td>
+		<td>{{ value.1 }}</td>
+		<td>{{ value.2 }}</td>
+	  </tr>
+
+	  {% endfor %}
+
+	</tbody>
+
+  </table>
+
+  {% endif %}
+
+  {% if exams %}
+
+  <!-- <div class="header-title-xl">{% trans "Exámenes Anteriores" %}</div> -->
+  <p class="lead fw-bold">
+	{% if request.user.is_superuser %}
+	{% trans "Resultados de los exámenes de los trabajadores" %}
+	{% else %}
+	{% trans "A continuación se muestran los resultados de los cursos finalizados" %}
+	{% endif %}
+  </p>
+  <!-- <div class="text-light bg-secondary mb-2 p-1">{% trans  'Total de exámenes completados:' %} {{ exams_counter }}</div> -->
+ 
+  <div class="mb-3">
+    <a href="{% url 'descargar_certificados' %}" class="btn" style="background-color: #BA6022; color: white; border-color: #BA6022;">
+        {% trans "Descargar Consolidado" %}
+    </a>
+</div>
+ 
+<div class="table-responsive">
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>{% trans "Curso" %}</th>
+                <th>{% trans "Puntuación Obtenida" %}</th>
+                <th>{% trans "Puntuación Máxima" %}</th>
+                <th>{% trans 'Porcentaje' %}</th>
+                <th>{% trans 'Estado de Registro' %}</th>
+                <th>{% trans "Fecha de Aprobación" %}</th>
+                <th>{% trans 'Certificados' %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% regroup exams by quiz.title as exams_by_course %}
+            
+            {% for course in exams_by_course %}
+                {% with course.list|dictsortreversed:"get_percent_correct"|first as exam %}
+                    <tr>
+                        <td>{{ exam.quiz.title }}</td>
+                        <td>{{ exam.current_score|add:exam.current_score }}</td>
+                        <td>{{ exam.get_max_score|add:exam.get_max_score }}</td>
+                        <td>{{ exam.get_percent_correct }}%</td>
+                        <td>
+                            <span style="color: green;">Curso completado</span>
+                        </td>
+                        <td>
+                            {% if exam.fecha_aprobacion %}
+                                {{ exam.fecha_aprobacion|date:"d/m/Y" }}
+                            {% else %}
+                                {% trans "No disponible" %}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'generar_certificado' exam.id %}" class="btn" style="background-color: #007bff; color: white; border-color: #007bff; padding: 5px 10px; text-decoration: none;">
+                                {% trans "Descargar Certificado" %}
+                            </a>
+                            {% if exam.quiz.course.code == "0001" %}
+                                <button onclick="document.getElementById('anexoModal{{ exam.id }}').style.display='block'" class="btn" style="background-color: #28a745; color: white; border-color: #28a745; padding: 5px 10px;">
+                                    {% trans "Descargar Anexo" %}
+                                </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endwith %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal para el formulario de anexo -->
+<!-- Agregar un contenedor específico para el formulario -->
+<div class="bootstrap-container">
+    {% for course in exams_by_course %}
+        {% with course.list|dictsortreversed:"get_percent_correct"|first as exam %}
+            {% if exam.quiz.course.code == "0001" %}
+                <div id="anexoModal{{ exam.id }}" class="modal" style="display:none;">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">{% trans "Descargar Anexo" %}</h5>
+                                <button type="button" class="close" onclick="document.getElementById('anexoModal{{ exam.id }}').style.display='none'">
+                                    <span>&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <form method="POST" action="{% url 'anexo_form' sitting_id=exam.id %}" onsubmit="document.getElementById('anexoModal{{ exam.id }}').style.display='none';">
+                                    {% csrf_token %}
+                                    <div class="form-group">
+                                        <label for="fecha_ingreso">{% trans "Fecha de Ingreso" %}:</label>
+                                        <input type="date" name="fecha_ingreso" class="form-control" required>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="ocupacion">{% trans "Ocupación" %}:</label>
+                                        <input type="text" name="ocupacion" class="form-control" required>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="area_trabajo">{% trans "Área de Trabajo" %}:</label>
+                                        <input type="text" name="area_trabajo" class="form-control" required>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="empresa">{% trans "E.C.M./CONEXAS " %}:</label>
+                                        <input type="text" name="empresa" class="form-control" required>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="distrito">{% trans "Distrito" %}:</label>
+                                        <input type="text" name="distrito" class="form-control" required>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="provincia">{% trans "Provincia" %}:</label>
+                                        <input type="text" name="provincia" class="form-control" required>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary">{% trans "Generar Anexo" %}</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% endwith %}
+    {% endfor %}
+</div>
+
+<!-- Agregar estilos de Bootstrap solo al contenedor -->
+<style>
+    .bootstrap-container {
+        font-family: Arial, sans-serif;
+    }
+
+    .bootstrap-container .modal-content {
+        background-color: #f9f9f9;
+        border: 1px solid #ccc;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .bootstrap-container .modal-header {
+        background-color: #337ab7;
+        color: #fff;
+        padding: 10px;
+        border-bottom: 1px solid #ccc;
+    }
+
+    .bootstrap-container .modal-body {
+        padding: 20px;
+    }
+
+    .bootstrap-container .form-control {
+        width: 100%;
+        height: 40px;
+        padding: 10px;
+        margin-bottom: 20px;
+        border: 1px solid #ccc;
+    }
+
+    .bootstrap-container .btn-primary {
+        background-color: #337ab7;
+        color: #fff;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+</style>
+
+<script>
+    // Cerrar el modal si se hace clic fuera de él
+    window.onclick = function(event) {
+        var modals = document.querySelectorAll('[id^="anexoModal"]');
+        modals.forEach(function(modal) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        });
+    }
+</script>
+
+  {% endif %}
+  {% if not cat_scores and not exams %}
+  <h4 class="text-center mt-5 py-5 text-muted">
+	  <i class="fa-regular fa-folder-open me-2"></i>{% trans 'Los registros de progreso aparecerán aquí' %}
+  </h4>
+  {% endif %}
+  
+{% endblock %}
