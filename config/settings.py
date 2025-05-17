@@ -122,23 +122,23 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
-    }
-}
+#DATABASES = {
+#    "default": {
+#        "ENGINE": "django.db.backends.sqlite3",
+#        "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
+#    }
+#}
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': config('DATABASE_ENGINE', default='django.db.backends.postgresql'),
-#         'NAME': config('DATABASE_NAME', default='bmnxcmrxhbgcmqejhdds'),
-#         'USER': config('DATABASE_USER', default='u9hbl1aiepvdngghmkle'),
-#         'PASSWORD': config('DATABASE_PASSWORD', default='c4KaMcZ1BwiDVuX4jiOV7lNwDrd7ip'),
-#         'HOST': config('DATABASE_HOST', default='bmnxcmrxhbgcmqejhdds-postgresql.services.clever-cloud.com'),
-#         'PORT': config('DATABASE_PORT', default='50013', cast=int),
-#     }
-# }
+DATABASES = {
+    'default': {
+        'ENGINE': config('DATABASE_ENGINE', default='django.db.backends.postgresql'),
+        'NAME': config('DATABASE_NAME', default='bmnxcmrxhbgcmqejhdds'),
+        'USER': config('DATABASE_USER', default='u9hbl1aiepvdngghmkle'),
+        'PASSWORD': config('DATABASE_PASSWORD', default='c4KaMcZ1BwiDVuX4jiOV7lNwDrd7ip'),
+        'HOST': config('DATABASE_HOST', default='bmnxcmrxhbgcmqejhdds-postgresql.services.clever-cloud.com'),
+        'PORT': config('DATABASE_PORT', default='50013', cast=int),
+     }
+}
 
 # DATABASES = {
 #     'default': {
