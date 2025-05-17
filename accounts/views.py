@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.forms import PasswordChangeForm
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -9,6 +9,12 @@ from django.utils.decorators import method_decorator
 from django.views.generic import CreateView
 from django_filters.views import FilterView
 from xhtml2pdf import pisa
+from reportlab.lib.pagesizes import landscape, letter
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from datetime import datetime
+from io import BytesIO
 
 from accounts.decorators import admin_required
 from accounts.filters import LecturerFilter, StudentFilter
@@ -22,7 +28,7 @@ from accounts.forms import (
 from accounts.models import Parent, Student, User
 from core.models import Semester, Session
 from course.models import Course
-from result.models import TakenCourse
+from result.models import TakenCourse, Result
 
 # ########################################################
 # Utility Functions
@@ -95,15 +101,13 @@ def profile(request):
     if request.user.is_student:
         student = get_object_or_404(Student, student__pk=request.user.id)
         parent = Parent.objects.filter(student=student).first()
-        courses = TakenCourse.objects.filter(
-            student__student__id=request.user.id, course__level=student.level
-        )
+        # Solo mostrar los cursos asignados al estudiante
+        courses = student.courses.all()
         context.update(
             {
                 "parent": parent,
                 "courses": courses,
                 "student": student,
-
             }
         )
         return render(request, "accounts/profile.html", context)
@@ -266,17 +270,85 @@ class LecturerFilterView(FilterView):
 
 @login_required
 @admin_required
-def render_lecturer_pdf_list(request):
+def lecturer_list_pdf(request):
     lecturers = User.objects.filter(is_lecturer=True)
-    template_path = "pdf/lecturer_list.html"
-    context = {"lecturers": lecturers}
-    response = HttpResponse(content_type="application/pdf")
-    response["Content-Disposition"] = 'filename="lecturers_list.pdf"'
-    template = get_template(template_path)
-    html = template.render(context)
-    pisa_status = pisa.CreatePDF(html, dest=response)
-    if pisa_status.err:
-        return HttpResponse(f"We had some errors <pre>{html}</pre>")
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="lista_instructores.pdf"'
+    
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    elements = []
+    
+    # Estilos
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        spaceAfter=30,
+        textColor=colors.HexColor('#1a237e'),
+        alignment=1
+    )
+    
+    # Título
+    title = Paragraph("LISTA DE INSTRUCTORES", title_style)
+    elements.append(title)
+    
+    # Información del sistema
+    system_info = Paragraph(
+        f"Generado el: {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+        styles['Normal']
+    )
+    elements.append(system_info)
+    elements.append(Spacer(1, 20))
+    
+    # Tabla de instructores
+    data = [['ID', 'Nombre Completo', 'Correo Electrónico', 'Teléfono', 'Dirección']]
+    
+    for lecturer in lecturers:
+        data.append([
+            str(lecturer.id),
+            lecturer.get_full_name,
+            lecturer.email or '-',
+            lecturer.phone or '-',
+            lecturer.address or '-'
+        ])
+    
+    # Estilo de la tabla
+    table_style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a237e')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('TOPPADDING', (0, 0), (-1, 0), 12),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 10),
+        ('TOPPADDING', (0, 1), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 8),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f5f5f5')])
+    ])
+    
+    # Crear tabla con anchos de columna personalizados
+    table = Table(data, colWidths=[50, 150, 150, 100, 150])
+    table.setStyle(table_style)
+    elements.append(table)
+    
+    # Pie de página
+    elements.append(Spacer(1, 30))
+    footer = Paragraph(
+        "Este documento fue generado automáticamente por el sistema de gestión de aprendizaje",
+        styles['Normal']
+    )
+    elements.append(footer)
+    
+    doc.build(elements)
+    pdf = buffer.getvalue()
+    buffer.close()
+    response.write(pdf)
+    
     return response
 
 
@@ -354,15 +426,98 @@ class StudentListView(FilterView):
 @admin_required
 def render_student_pdf_list(request):
     students = Student.objects.all()
-    template_path = "pdf/student_list.html"
-    context = {"students": students}
-    response = HttpResponse(content_type="application/pdf")
-    response["Content-Disposition"] = 'filename="students_list.pdf"'
-    template = get_template(template_path)
-    html = template.render(context)
-    pisa_status = pisa.CreatePDF(html, dest=response)
-    if pisa_status.err:
-        return HttpResponse(f"We had some errors <pre>{html}</pre>")
+    
+    # Crear el PDF
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'filename="lista_participantes.pdf"'
+    
+    # Crear el documento PDF
+    doc = SimpleDocTemplate(response, pagesize=landscape(letter))
+    elements = []
+    
+    # Estilos
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        spaceAfter=30,
+        textColor=colors.HexColor('#1a237e'),  # Azul marino
+        alignment=1  # Centrado
+    )
+    
+    subtitle_style = ParagraphStyle(
+        'CustomSubtitle',
+        parent=styles['Heading2'],
+        fontSize=16,
+        spaceAfter=20,
+        textColor=colors.HexColor('#1a237e'),
+        alignment=1
+    )
+    
+    # Título del documento
+    elements.append(Paragraph("LISTA DE PARTICIPANTES", title_style))
+    
+    # Información de generación
+    elements.append(Paragraph(f"Fecha de generación: {datetime.now().strftime('%d/%m/%Y %H:%M')}", styles['Normal']))
+    elements.append(Spacer(1, 30))
+    
+    # Tabla de participantes
+    data = [['DNI', 'Nombre Completo', 'Correo Electrónico', 'Empresa', 'Cargo']]
+    
+    for student in students:
+        data.append([
+            student.student.username,
+            student.student.get_full_name,
+            student.student.email,
+            student.empresa or '-',
+            student.cargo or '-'
+        ])
+    
+    # Crear la tabla
+    table = Table(data)
+    
+    # Estilo de la tabla
+    table.setStyle(TableStyle([
+        # Estilo del encabezado
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a237e')),  # Azul marino
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('TOPPADDING', (0, 0), (-1, 0), 12),
+        
+        # Estilo de las filas
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 10),
+        ('TOPPADDING', (0, 1), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 8),
+        
+        # Bordes y rejilla
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('LINEBELOW', (0, 0), (-1, 0), 2, colors.black),
+        
+        # Colores alternados para las filas
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f5f5f5')])
+    ]))
+    
+    elements.append(table)
+    
+    # Pie de página
+    elements.append(Spacer(1, 30))
+    footer_style = ParagraphStyle(
+        'Footer',
+        parent=styles['Normal'],
+        fontSize=8,
+        textColor=colors.gray,
+        alignment=1
+    )
+    elements.append(Paragraph("Documento generado automáticamente por el sistema de gestión de aprendizaje", footer_style))
+    
+    # Construir el PDF
+    doc.build(elements)
+    
     return response
 
 
@@ -412,3 +567,78 @@ class ParentAdd(CreateView):
     def form_valid(self, form):
         messages.success(self.request, "Parent added successfully.")
         return super().form_valid(form)
+
+
+@login_required
+@admin_required
+def manage_student_courses(request, student_id):
+    student = get_object_or_404(Student, id=student_id)
+    
+    if request.method == 'POST':
+        try:
+            # Obtener los IDs de los cursos seleccionados
+            course_ids = request.POST.getlist('courses')
+            
+            # Obtener los cursos actuales y los nuevos seleccionados
+            current_courses = set(student.courses.all())
+            new_courses = set(Course.objects.filter(id__in=course_ids))
+            
+            # Cursos a agregar (nuevos - actuales)
+            courses_to_add = new_courses - current_courses
+            # Cursos a remover (actuales - nuevos)
+            courses_to_remove = current_courses - new_courses
+            
+            # Actualizar los cursos del estudiante
+            student.courses.clear()
+            if course_ids:
+                student.courses.add(*new_courses)
+            
+            # Actualizar el estado de los cursos en TakenCourse
+            TakenCourse.objects.filter(
+                student=student,
+                course__in=courses_to_remove
+            ).delete()
+            
+            # Agregar nuevos cursos
+            for course in courses_to_add:
+                TakenCourse.objects.get_or_create(
+                    student=student,
+                    course=course,
+                    defaults={
+                        'grade': None,
+                        'comment': 'Curso asignado por administrador'
+                    }
+                )
+            
+            # Eliminar registros de progreso y calificaciones de cursos removidos
+            Result.objects.filter(
+                student=student,
+                level=student.level
+            ).delete()
+            
+            messages.success(request, 'Los cursos han sido actualizados exitosamente')
+            return redirect('student_list')
+        except Exception as e:
+            messages.error(request, f'Error al actualizar los cursos: {str(e)}')
+            return redirect('manage_student_courses', student_id=student_id)
+    
+    # Obtener todos los cursos disponibles
+    all_courses = Course.objects.filter(is_active=True).order_by('title')
+    
+    # Si el estudiante tiene un programa asignado, incluir los cursos del programa
+    if student.program:
+        program_courses = Course.objects.filter(
+            program=student.program,
+            is_active=True
+        ).order_by('title')
+        all_courses = all_courses | program_courses
+    
+    # Obtener los cursos actuales del estudiante
+    current_courses = student.courses.all()
+    
+    context = {
+        'student': student,
+        'all_courses': all_courses.distinct(),
+        'current_courses': current_courses,
+    }
+    return render(request, 'accounts/manage_student_courses.html', context)

@@ -14,6 +14,13 @@ from .views import (
     semester_update_view,
     semester_delete_view,
     dashboard_view,
+    cotizaciones_list_view,
+    cotizacion_add_view,
+    cotizacion_detail_view,
+    cotizacion_update_view,
+    cotizacion_delete_view,
+    cotizacion_change_status_view,
+    cotizacion_download_pdf,
 )
 
 
@@ -32,4 +39,13 @@ urlpatterns = [
     path("semester/<int:pk>/edit/", semester_update_view, name="edit_semester"),
     path("semester/<int:pk>/delete/", semester_delete_view, name="delete_semester"),
     path("dashboard/", dashboard_view, name="dashboard"),
+    
+    # Cotizaciones URLs
+    path("cotizaciones/", cotizaciones_list_view, name="cotizaciones_list"),
+    path("cotizaciones/add/", cotizacion_add_view, name="cotizacion_add"),
+    path("cotizaciones/<int:pk>/", cotizacion_detail_view, name="cotizacion_detail"),
+    path("cotizaciones/<int:pk>/update/", cotizacion_update_view, name="cotizacion_update"),
+    path("cotizaciones/<int:pk>/delete/", cotizacion_delete_view, name="cotizacion_delete"),
+    path("cotizaciones/<int:pk>/change-status/", cotizacion_change_status_view, name="cotizacion_change_status"),
+    path("cotizaciones/<int:pk>/download-pdf/", cotizacion_download_pdf, name="cotizacion_download_pdf"),
 ]

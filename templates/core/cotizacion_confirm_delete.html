@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans 'Eliminar Cotización' %} | {% trans 'Sistema de gestión de aprendizaje' %}{% endblock title %}
+
+{% block content %}
+
+<nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'cotizaciones_list' %}">{% trans 'Cotizaciones' %}</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{% trans 'Eliminar Cotización' %}</li>
+    </ol>
+</nav>
+
+<div class="card">
+    <div class="card-body">
+        <h4 class="card-title">{% trans '¿Estás seguro de que deseas eliminar esta cotización?' %}</h4>
+        
+        <div class="alert alert-danger">
+            <p><strong>{% trans 'Cliente:' %}</strong> {{ cotizacion.cliente }}</p>
+            <p><strong>{% trans 'Fecha:' %}</strong> {{ cotizacion.fecha_creacion|date:"d/m/Y" }}</p>
+            <p><strong>{% trans 'Monto Total:' %}</strong> S/ {{ cotizacion.monto_total|floatformat:2 }}</p>
+        </div>
+        
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">
+                <i class="fas fa-trash-alt"></i> {% trans 'Sí, eliminar' %}
+            </button>
+            <a href="{% url 'cotizaciones_list' %}" class="btn btn-secondary">
+                <i class="fas fa-times"></i> {% trans 'Cancelar' %}
+            </a>
+        </form>
+    </div>
+</div>
+
+{% endblock content %} 

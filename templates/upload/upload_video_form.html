@@ -1,41 +1,69 @@
 {% extends 'base.html' %}
 {% load i18n %}
-{% block title %}{{ title }} | {% trans 'Sistema de gestión de aprendizaje' %}{% endblock title %}
-{% load crispy_forms_tags %}
+{% load static %}
+
+{% block title %}{% trans 'Subir Video' %}{% endblock title %}
 
 {% block content %}
+<div class="container my-5">
+    <h2 class="mb-4">{% trans 'Subir Video' %}</h2>
 
-<nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
-        <li class="breadcrumb-item"><a href="{% url 'programs' %}">{% trans 'Programas' %}</a></li>
-        <li class="breadcrumb-item"><a href="{% url 'program_detail' course.program.id %}">{{ course.program }}</a></li>
-        <li class="breadcrumb-item"><a href="{% url 'course_detail' course.slug %}">{{ course }}</a></li>
-        <li class="breadcrumb-item active" aria-current="page">{% trans 'Agregar Video' %}</li>
-    </ol>
-</nav>
-    
-<p class="title-1">{% trans 'Agregar Video para' %} {{ course|truncatechars:25 }}</p>
-<div class="title-line"></div><br>
+    <div class="card">
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label for="{{ form.title.id_for_label }}" class="form-label">{% trans 'Título' %}</label>
+                    {{ form.title }}
+                    {% if form.title.errors %}
+                        <div class="alert alert-danger">{{ form.title.errors }}</div>
+                    {% endif %}
+                </div>
 
-{% include 'snippets/messages.html' %}
+                <div class="mb-3">
+                    <label for="{{ form.vimeo_url.id_for_label }}" class="form-label">{% trans 'URL de Vimeo' %}</label>
+                    {{ form.vimeo_url }}
+                    <div class="form-text">{% trans 'Ejemplo: https://vimeo.com/123456789' %}</div>
+                    {% if form.vimeo_url.errors %}
+                        <div class="alert alert-danger">{{ form.vimeo_url.errors }}</div>
+                    {% endif %}
+                </div>
 
-<div class="row">
-    <div class="col-md-8 mx-auto">
-        <div class="card">
-            <p class="form-title">{% trans 'Formulario para agregar video de Vimeo' %}</p>
-            <div class="card-body">
-                <form action="" method="POST">{% csrf_token %}
-                    {{ form|crispy }}
-                    
-                    <div class="form-group">
-                        <button class="btn btn-primary" type="submit">{% trans 'Agregar Video' %}</button>
-                        <a class="btn btn-danger" href="{% url 'course_detail' course.slug %}" style="float: right;">{% trans 'Cancelar' %}</a>
-                    </div>
-                </form>
-            </div>
+                <div class="mb-3">
+                    <label for="{{ form.youtube_url.id_for_label }}" class="form-label">{% trans 'URL de YouTube' %}</label>
+                    {{ form.youtube_url }}
+                    <div class="form-text">{% trans 'Ejemplo: https://www.youtube.com/watch?v=VIDEO_ID o https://youtu.be/VIDEO_ID' %}</div>
+                    {% if form.youtube_url.errors %}
+                        <div class="alert alert-danger">{{ form.youtube_url.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label for="{{ form.order.id_for_label }}" class="form-label">{% trans 'Orden de visualización' %}</label>
+                    {{ form.order }}
+                    <div class="form-text">{% trans 'Los videos se mostrarán en orden ascendente según este número' %}</div>
+                    {% if form.order.errors %}
+                        <div class="alert alert-danger">{{ form.order.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label for="{{ form.summary.id_for_label }}" class="form-label">{% trans 'Resumen' %}</label>
+                    {{ form.summary }}
+                    {% if form.summary.errors %}
+                        <div class="alert alert-danger">{{ form.summary.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> {% trans 'Por favor, proporcione una URL de Vimeo O una URL de YouTube, no ambas.' %}
+                </div>
+
+                <button type="submit" class="btn btn-primary">{% trans 'Subir Video' %}</button>
+                <a href="{% url 'course_detail' course.slug %}" class="btn btn-secondary">{% trans 'Cancelar' %}</a>
+            </form>
         </div>
     </div>
 </div>
-
 {% endblock content %}

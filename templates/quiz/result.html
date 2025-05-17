@@ -98,7 +98,7 @@
 
     <div class="score-wrapper mx-auto">
       <div class="score-wrapper-text">{{ percent }}%</div>
-      <div class="score-wrapper-bar {% if percent >= 60 %} bg-success {% elif percent >= 50 %} bg-warning {% else %} bg-danger {% endif %}" 
+      <div class="score-wrapper-bar {% if percent >= 80 %} bg-success {% elif percent >= 60 %} bg-warning {% else %} bg-danger {% endif %}" 
         style="height: {{ percent }}%;" ></div>
     </div><br>
 
@@ -115,6 +115,14 @@
       </li>
     </ul>
 
+    {% if percent < 80 %}
+    <div class="text-center mt-4">
+      <a href="{% url 'quiz_take' course.id quiz.slug %}" class="btn btn-primary">
+        <i class="fas fa-redo"></i> {% trans "Reintentar examen" %}
+      </a>
+    </div>
+    {% endif %}
+
   </div>
 
   {% endif %}
@@ -124,7 +132,7 @@
   {% if possible %}
 
   <p class="lead">
-	{% trans "Tu puntuación de sesión es" %} {{ session }} {% trans "de un posible" %} {{ possible }}
+	{% trans "Tu puntuación de sesión es" %} {{ session }} {% trans "de un posible" }} {{ possible }}
   </p>
 
   <hr>

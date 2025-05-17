@@ -5,8 +5,12 @@ from django.core.paginator import Paginator
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.decorators import method_decorator
-from django.views.generic import CreateView
+from django.views.generic import CreateView, View
 from django_filters.views import FilterView
+from django.contrib.admin.views.decorators import staff_member_required
+from django.utils.translation import gettext_lazy as _
+from django.http import HttpResponse, FileResponse, Http404
+import os
 
 from accounts.decorators import lecturer_required, student_required
 from accounts.models import Student
@@ -21,15 +25,15 @@ from course.forms import (
     UploadFormVideo,
 )
 from course.models import (
+    Program,
     Course,
     CourseAllocation,
-    Program,
     Upload,
     UploadVideo,
+    VideoCompletion,
 )
 from result.models import TakenCourse
 
-from django.http import HttpResponse
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.units import inch 
 from reportlab.pdfgen import canvas
@@ -167,7 +171,7 @@ def course_single(request, slug):
 @login_required
 def course_video_navigation(request, slug, video_id=None):
     course = get_object_or_404(Course, slug=slug)
-    videos = UploadVideo.objects.filter(course=course).order_by("timestamp")
+    videos = UploadVideo.objects.filter(course=course).order_by("order", "timestamp")
     documents = Upload.objects.filter(course=course).order_by("upload_time")
 
     # Encuentra el video actual o selecciona el primero si no hay un video_id
@@ -187,6 +191,30 @@ def course_video_navigation(request, slug, video_id=None):
     # Obtener el documento correspondiente al video actual, si existe
     current_document = documents[current_index] if current_index < len(documents) else None
 
+    # Verificar si el video actual está completado
+    is_completed = current_video.is_completed_by(request.user) if current_video else False
+
+    # Obtener la lista de videos completados por el usuario
+    completed_videos = [video for video in videos if video.is_completed_by(request.user)]
+
+    # Verificar si se puede avanzar al siguiente video
+    can_proceed = is_completed or current_index == 0 or request.user.is_staff or request.user.is_lecturer
+
+    # Si el usuario no es staff ni instructor, verificar si puede acceder a este video
+    if not request.user.is_staff and not request.user.is_lecturer:
+        # Si no es el primer video, verificar si el anterior está completado
+        if current_index > 0:
+            previous_video = videos[current_index - 1]
+            if not previous_video.is_completed_by(request.user):
+                return redirect('course_video_navigation', slug=slug, video_id=previous_video.id)
+
+    # Manejar la marca de completado
+    if request.method == 'POST' and 'mark_completed' in request.POST:
+        if not is_completed:
+            VideoCompletion.objects.create(user=request.user, video=current_video)
+            is_completed = True
+        return redirect('course_video_navigation', slug=slug, video_id=current_video.id)
+
     return render(
         request,
         "course/video_navigation.html",
@@ -196,7 +224,12 @@ def course_video_navigation(request, slug, video_id=None):
             "previous_video": previous_video,
             "next_video": next_video,
             "is_last_video": is_last_video,
-            "current_document": current_document,  # Documento relacionado con el video
+            "current_document": current_document,
+            "is_completed": is_completed,
+            "can_proceed": can_proceed,
+            "videos": videos,
+            "completed_videos": completed_videos,
+            "current_user": request.user,
         },
     )
 
@@ -674,3 +707,45 @@ def user_course_list(request):
 
     # For other users
     return render(request, "course/user_course_list.html")
+
+@login_required
+@staff_member_required
+def update_video_order(request, video_id):
+    if request.method == 'POST':
+        video = get_object_or_404(UploadVideo, id=video_id)
+        try:
+            new_order = int(request.POST.get('order', 0))
+            video.order = new_order
+            video.save()
+            messages.success(request, _('Orden del video actualizado correctamente.'))
+        except (ValueError, TypeError):
+            messages.error(request, _('El orden debe ser un número válido.'))
+    
+    # Redirigir de vuelta a la página de navegación de videos
+    return redirect('course_video_navigation', slug=video.course.slug, video_id=video_id)
+
+@method_decorator(login_required, name='dispatch')
+class PDFViewerView(View):
+    def get(self, request, document_id):
+        document = get_object_or_404(Upload, id=document_id)
+        file_path = os.path.join(settings.MEDIA_ROOT, str(document.file))
+        
+        if not os.path.exists(file_path):
+            raise Http404("El archivo no existe")
+            
+        response = FileResponse(open(file_path, 'rb'), content_type='application/pdf')
+        response['Content-Disposition'] = 'inline; filename="{}"'.format(os.path.basename(file_path))
+        return response
+
+@method_decorator(login_required, name='dispatch')
+class PDFDownloadView(View):
+    def get(self, request, document_id):
+        document = get_object_or_404(Upload, id=document_id)
+        file_path = os.path.join(settings.MEDIA_ROOT, str(document.file))
+        
+        if not os.path.exists(file_path):
+            raise Http404("El archivo no existe")
+            
+        response = FileResponse(open(file_path, 'rb'), content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="{}"'.format(os.path.basename(file_path))
+        return response

@@ -51,8 +51,20 @@
     <!-- Scripts personalizados -->
     <script type="text/javascript" src="{% static 'js/main.js' %}"></script>
     
-    {% block js %}
-    {% endblock js %}
+    <script>
+    var langSelect = document.getElementById("lang-select");
+    if (langSelect) {
+        langSelect.addEventListener("change", function() {
+            console.log("Changed!");
+            document.getElementById("lang-form").submit();
+        });
+    }
+    </script>
+    
+    {# Bloque para scripts globales o reutilizables #}
+    {% block js %}{% endblock js %}
+    {# Bloque para scripts específicos de cada template (por ejemplo, cotización) #}
+    {% block extra_js %}{% endblock %}
 </body>
 
 </html>

@@ -158,8 +158,7 @@ class Student(models.Model):
     program = models.ForeignKey(Program, on_delete=models.CASCADE, null=True)
     cargo = models.CharField(max_length=100, blank=True, null=True)  # Campo cargo
     empresa = models.CharField(max_length=100, blank=True, null=True)  # Campo empresa
-
-
+    courses = models.ManyToManyField('course.Course', related_name='enrolled_students', blank=True)
 
     objects = StudentManager()
 

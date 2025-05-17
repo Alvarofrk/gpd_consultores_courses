@@ -9,12 +9,12 @@
 <nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
     <ol class="breadcrumb">
       <li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
-      <li class="breadcrumb-item"><a href="{% url 'student_list' %}">{% trans 'Trabajadores' %}</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'student_list' %}">{% trans 'Participantes' %}</a></li>
       <li class="breadcrumb-item active" aria-current="page">{% trans 'Agregar' %}</li>
     </ol>
 </nav>
 
-<h4 class="mb-3 fw-bold"><i class="fas fa-user-tie me-2"></i>{% trans 'Formulario para agregar trabajador' %}</h4>
+<h4 class="mb-3 fw-bold"><i class="fas fa-user-tie me-2"></i>{% trans 'Formulario para agregar participante' %}</h4>
 
 {% include 'snippets/messages.html' %}
 
@@ -22,7 +22,9 @@
     <div class="row mb-3">
         <div class="col-md-6">
             <div class="card">
-                <p class="form-title">{% trans 'Información Personal' %}</p>
+                <div class="card-header">
+                    <h3 class="card-title">{% trans 'Añadir Participante' %}</h3>
+                </div>
                 <div class="card-body">
                     {{ form.username|as_crispy_field }}
                     {{ form.first_name|as_crispy_field }}
@@ -37,7 +39,9 @@
 
         <div class="col-md-6 ms-auto">
             <div class="card">
-                <p class="form-title">{% trans 'Otros' %}</p>
+                <div class="card-header">
+                    <h3 class="card-title">{% trans 'Otros' %}</h3>
+                </div>
                 <div class="card-body">
                     {{ form.program|as_crispy_field }}
                     {{ form.level|as_crispy_field }}

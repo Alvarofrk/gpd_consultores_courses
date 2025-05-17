@@ -212,10 +212,26 @@ class UploadVideo(models.Model):
         max_length=500,
         help_text=_("Ingresa la URL del video de Vimeo"),
         null=True,
-        blank=True,  # Agregamos null=True y blank=True
+        blank=True,
+    )
+    youtube_url = models.URLField(
+        max_length=500,
+        help_text=_("Ingresa la URL de YouTube"),
+        null=True,
+        blank=True,
+    )
+    order = models.PositiveIntegerField(
+        default=0,
+        help_text=_("Orden en que aparecerá el video (0 = primero)"),
     )
     summary = models.TextField(blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
+    completed_by = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        through='VideoCompletion',
+        related_name='completed_videos',
+        blank=True
+    )
 
     # Opcional: Si deseas mantener el campo 'video' para los registros existentes
     video = models.FileField(
@@ -225,8 +241,11 @@ class UploadVideo(models.Model):
             FileExtensionValidator(["mp4", "mkv", "wmv", "3gp", "f4v", "avi", "mp3"])
         ],
         null=True,
-        blank=True,  # Hacemos que el campo sea opcional
+        blank=True,
     )
+
+    class Meta:
+        ordering = ['order', 'timestamp']
 
     def __str__(self):
         return f"{self.title}"
@@ -242,6 +261,22 @@ class UploadVideo(models.Model):
             if match:
                 return match.group(1)
         return None
+
+    def get_youtube_id(self):
+        if self.youtube_url:
+            # Patrones comunes de URLs de YouTube
+            patterns = [
+                r'(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]+)',
+                r'(?:youtube\.com/embed/)([a-zA-Z0-9_-]+)',
+            ]
+            for pattern in patterns:
+                match = re.search(pattern, self.youtube_url)
+                if match:
+                    return match.group(1)
+        return None
+
+    def is_completed_by(self, user):
+        return self.completed_by.filter(id=user.id).exists()
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -281,6 +316,19 @@ def log_uploadvideo_delete(sender, instance, **kwargs):
             f"El video '{instance.title}' del curso '{instance.course}' ha sido eliminado."
         )
     )
+
+
+class VideoCompletion(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    video = models.ForeignKey(UploadVideo, on_delete=models.CASCADE)
+    completed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'video')
+        ordering = ['-completed_at']
+
+    def __str__(self):
+        return f"{self.user.username} completed {self.video.title}"
 
 
 class CourseOffer(models.Model):

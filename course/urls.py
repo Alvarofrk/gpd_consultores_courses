@@ -50,4 +50,9 @@ urlpatterns = [
     path("my_courses/", views.user_course_list, name="user_course_list"),
 
     path("my_courses/pdf/", views.download_courses_pdf, name="download_courses_pdf"),
+
+    path('video/<int:video_id>/update_order/', views.update_video_order, name='update_video_order'),
+
+    path('document/<int:document_id>/view/', views.PDFViewerView.as_view(), name='view_pdf'),
+    path('document/<int:document_id>/download/', views.PDFDownloadView.as_view(), name='download_pdf'),
 ]

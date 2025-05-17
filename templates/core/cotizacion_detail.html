@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans 'Detalles de Cotización' %} | {% trans 'Sistema de gestión de aprendizaje' %}{% endblock title %}
+
+{% block content %}
+
+<nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'cotizaciones_list' %}">{% trans 'Cotizaciones' %}</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{% trans 'Detalles de Cotización' %}</li>
+    </ol>
+</nav>
+
+<div class="manage-wrap">
+    <a class="btn btn-primary" href="{% url 'cotizacion_update' pk=cotizacion.pk %}">
+        <i class="fas fa-edit"></i>{% trans 'Editar' %}
+    </a>
+    <a class="btn btn-info" href="{% url 'cotizacion_download_pdf' pk=cotizacion.pk %}" target="_blank">
+        <i class="fas fa-file-pdf"></i>{% trans 'Descargar PDF' %}
+    </a>
+    <a class="btn btn-danger" href="{% url 'cotizacion_delete' pk=cotizacion.pk %}">
+        <i class="fas fa-trash-alt"></i>{% trans 'Eliminar' %}
+    </a>
+    <a class="btn btn-secondary" href="{% url 'cotizaciones_list' %}">
+        <i class="fas fa-arrow-left"></i>{% trans 'Volver' %}
+    </a>
+</div>
+
+<p class="title-1"><i class="fas fa-file-invoice-dollar"></i>{% trans 'Detalles de Cotización' %}</p>
+
+{% include 'snippets/messages.html' %}
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Información General de la Cotización</h5>
+    </div>
+    <div class="card-body">
+        <div class="row mb-2">
+            <div class="col-md-4">
+                <p><strong>N° Cotización:</strong> {{ cotizacion.cotizacion|default:"-" }}</p>
+                <p><strong>Nombre del Año:</strong> {{ cotizacion.nombre_anio|default:"-" }}</p>
+                <p><strong>Tipo de Cotización:</strong> {{ cotizacion.tipo_cotizacion|default:"-" }}</p>
+            </div>
+            <div class="col-md-4">
+                <p><strong>Fecha de Cotización:</strong> {{ cotizacion.fecha_cotizacion|date:"d/m/Y"|default:"-" }}</p>
+                <p><strong>Validez de Cotización:</strong> {{ cotizacion.validez_cotizacion|date:"d/m/Y"|default:"-" }}</p>
+                <p><strong>Estado:</strong> 
+                    {% if cotizacion.estado == 'pendiente' %}
+                        <span class="badge bg-warning">Pendiente</span>
+                    {% elif cotizacion.estado == 'aceptado' %}
+                        <span class="badge bg-success">Aceptado</span>
+                    {% elif cotizacion.estado == 'rechazado' %}
+                        <span class="badge bg-danger">Rechazado</span>
+                    {% else %}
+                        <span class="badge bg-info">{{ cotizacion.estado }}</span>
+                    {% endif %}
+                </p>
+            </div>
+            <div class="col-md-4">
+                <p><strong>Fecha de Creación:</strong> {{ cotizacion.fecha_creacion|date:"d/m/Y H:i" }}</p>
+                <p><strong>Última Actualización:</strong> {{ cotizacion.fecha_actualizacion|date:"d/m/Y H:i" }}</p>
+            </div>
+        </div>
+        <hr>
+        <div class="row mb-2">
+            <div class="col-md-4">
+                <h6 class="fw-bold">Información del Cliente</h6>
+                <p><strong>Dirigido a:</strong> {{ cotizacion.dirigido_a|default:"-" }}</p>
+                <p><strong>Empresa:</strong> {{ cotizacion.empresa|default:"-" }}</p>
+                <p><strong>RUC:</strong> {{ cotizacion.ruc|default:"-" }}</p>
+            </div>
+            <div class="col-md-4">
+                <h6 class="fw-bold">Información del Servicio</h6>
+                <p><strong>Modalidad:</strong> {{ cotizacion.get_modalidad_display|default:"-" }}</p>
+                <p><strong>Sede de Servicio:</strong> {{ cotizacion.sede_servicio|default:"-" }}</p>
+                <p><strong>Fecha de Servicio:</strong> {{ cotizacion.fecha_servicio|date:"d/m/Y"|default:"-" }}</p>
+            </div>
+            <div class="col-md-4">
+                <h6 class="fw-bold">Detalles Adicionales</h6>
+                <p><strong>Tiempo de Entrega:</strong> {{ cotizacion.tiempo_entrega|default:"-" }}</p>
+                <p><strong>Modalidad de Pago:</strong> {{ cotizacion.get_modalidad_pago_display|default:"-" }}</p>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-12">
+                <h6 class="fw-bold">Descripción del Servicio</h6>
+                <div class="border rounded p-2 bg-light">{{ cotizacion.servicio|linebreaks|default:"-" }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">{% trans 'Items de la Cotización' %}</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>{% trans 'Descripción' %}</th>
+                        <th>{% trans 'Cantidad' %}</th>
+                        <th>{% trans 'Precio Unitario' %}</th>
+                        <th>{% trans 'Subtotal' %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in cotizacion.items.all %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ item.descripcion }}</td>
+                        <td>{{ item.cantidad }}</td>
+                        <td>S/ {{ item.precio_unitario|floatformat:2 }}</td>
+                        <td>S/ {{ item.subtotal|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center">{% trans 'No hay items en esta cotización.' %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="4" class="text-end"><strong>{% trans 'Total:' %}</strong></td>
+                        <td><strong>S/ {{ cotizacion.monto_total|floatformat:2 }}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if request.user.is_superuser %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">{% trans 'Cambiar Estado' %}</h5>
+    </div>
+    <div class="card-body">
+        <form method="post" action="{% url 'cotizacion_change_status' pk=cotizacion.pk %}">
+            {% csrf_token %}
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="estado">{% trans 'Nuevo Estado' %}</label>
+                        <select name="estado" id="estado" class="form-control">
+                            <option value="pendiente" {% if cotizacion.estado == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                            <option value="aceptado" {% if cotizacion.estado == 'aceptado' %}selected{% endif %}>Aceptado</option>
+                            <option value="rechazado" {% if cotizacion.estado == 'rechazado' %}selected{% endif %}>Rechazado</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> {% trans 'Actualizar Estado' %}
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% endblock content %} 

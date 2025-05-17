@@ -1,5 +1,6 @@
 from django import forms
-from .models import NewsAndEvents, Session, Semester, SEMESTER
+from django.forms import inlineformset_factory
+from .models import NewsAndEvents, Session, Semester, SEMESTER, Cotizacion, ItemCotizacion
 
 
 # news and events
@@ -20,59 +21,86 @@ class NewsAndEventsForm(forms.ModelForm):
 
 
 class SessionForm(forms.ModelForm):
-    next_session_begins = forms.DateTimeField(
-        widget=forms.TextInput(
-            attrs={
-                "type": "date",
-            }
-        ),
-        required=True,
-    )
-
     class Meta:
         model = Session
-        fields = ["session", "is_current_session", "next_session_begins"]
+        fields = ("session", "is_current_session")
 
 
 class SemesterForm(forms.ModelForm):
-    semester = forms.CharField(
-        widget=forms.Select(
-            choices=SEMESTER,
-            attrs={
-                "class": "browser-default custom-select",
-            },
-        ),
-        label="semester",
-    )
-    is_current_semester = forms.CharField(
-        widget=forms.Select(
-            choices=((True, "Yes"), (False, "No")),
-            attrs={
-                "class": "browser-default custom-select",
-            },
-        ),
-        label="is current semester ?",
-    )
-    session = forms.ModelChoiceField(
-        queryset=Session.objects.all(),
-        widget=forms.Select(
-            attrs={
-                "class": "browser-default custom-select",
-            }
-        ),
-        required=True,
-    )
-
-    next_semester_begins = forms.DateTimeField(
-        widget=forms.TextInput(
-            attrs={
-                "type": "date",
-                "class": "form-control",
-            }
-        ),
-        required=True,
-    )
-
     class Meta:
         model = Semester
-        fields = ["semester", "is_current_semester", "session", "next_semester_begins"]
+        fields = ("semester", "is_current_semester")
+
+
+class CotizacionForm(forms.ModelForm):
+    class Meta:
+        model = Cotizacion
+        fields = [
+            # Información básica
+            'nombre_anio',
+            'cotizacion',
+            'tipo_cotizacion',
+            'fecha_cotizacion',
+            'validez_cotizacion',
+            'estado',
+            
+            # Información del cliente
+            'dirigido_a',
+            'empresa',
+            'ruc',
+            
+            # Información del servicio
+            'servicio',
+            'modalidad',
+            'sede_servicio',
+            'fecha_servicio',
+            'tiempo_entrega',
+            'modalidad_pago',
+        ]
+        widgets = {
+            'fecha_cotizacion': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'validez_cotizacion': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'fecha_servicio': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'modalidad': forms.Select(attrs={'class': 'form-control'}),
+            'modalidad_pago': forms.Select(attrs={'class': 'form-control'}),
+            'estado': forms.Select(attrs={'class': 'form-control'}),
+            'tipo_cotizacion': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+
+class ItemCotizacionForm(forms.ModelForm):
+    class Meta:
+        model = ItemCotizacion
+        fields = ['curso', 'duracion', 'descripcion', 'cantidad', 'precio_unitario']
+        widgets = {
+            'curso': forms.TextInput(attrs={'class': 'form-control'}),
+            'duracion': forms.TextInput(attrs={'class': 'form-control'}),
+            'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'cantidad': forms.NumberInput(attrs={
+                'class': 'form-control cantidad',
+                'min': '1',
+                'step': '1',
+                'type': 'number'
+            }),
+            'precio_unitario': forms.NumberInput(attrs={
+                'class': 'form-control precio',
+                'min': '0',
+                'step': '0.01',
+                'type': 'number'
+            }),
+        }
+
+
+# Formulario para el conjunto de items
+ItemCotizacionFormSet = inlineformset_factory(
+    Cotizacion,
+    ItemCotizacion,
+    form=ItemCotizacionForm,
+    extra=1,
+    can_delete=True,
+    min_num=1,
+    validate_min=True,
+    max_num=10,
+    validate_max=True,
+    fields=['curso', 'duracion', 'descripcion', 'cantidad', 'precio_unitario']
+)

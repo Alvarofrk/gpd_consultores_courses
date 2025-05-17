@@ -1,7 +1,7 @@
 import os 
 import io
 import locale
-from datetime import datetime
+from datetime import datetime, timedelta
 from PyPDF2 import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import landscape,A4
@@ -17,7 +17,7 @@ from django.utils.decorators import method_decorator
 from babel.dates import format_datetime
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from babel.dates import format_datetime
 from .models import Sitting 
 from reportlab.pdfbase import pdfmetrics
@@ -134,10 +134,6 @@ def generar_certificado(request, sitting_id):
     # Obtener el examen y validar que el usuario tiene permiso
     sitting = get_object_or_404(Sitting, id=sitting_id, user=request.user)
 
-    # Verifica la puntuación antes de continuar
-    # if sitting.get_percent_correct <= 80:
-    #     raise Http404("No se puede generar el certificado, la puntuación es menor al 80%.")
-
     # Datos comunes
     nombre_estudiante = f"{request.user.first_name} {request.user.last_name}"
     puntaje = int(sitting.get_percent_correct / 5)
@@ -146,86 +142,61 @@ def generar_certificado(request, sitting_id):
     nombre_usuario = request.user.username
     certificate_code = sitting.certificate_code
 
+    # Valores por defecto para las posiciones
+    pos_nombre_estudiante = 305
+    pos_puntaje = (479, 198)
+    pos_fecha = (585, 220)
+    pos_nombre_usuario = (485, 273)
+    pos_codigo_certificado = (679, 466)
+
     # Determinar la plantilla de certificado según el código del curso
     if sitting.quiz.course.code == "0001":
         plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_0001.pdf')
-        # Personalización de posiciones para este curso
-        pos_nombre_estudiante = 305
         pos_puntaje = (728, 188)
         pos_fecha = (140, 188)
-        pos_nombre_usuario = (525, 263)
-        pos_codigo_certificado = (679, 466)
     elif sitting.quiz.course.code == "0002":
         plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_0002.pdf')
-        # Personalización de posiciones para este curso
-        pos_nombre_estudiante = 305
         pos_puntaje = (138, 167)
         pos_fecha = (230, 188)
-        pos_nombre_usuario = (525, 263)
-        pos_codigo_certificado = (679, 466)
     elif sitting.quiz.course.code == "0003":
         plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_0003.pdf')
-        # Personalización de posiciones para este curso
-        pos_nombre_estudiante = 305
         pos_puntaje = (738, 188)
         pos_fecha = (110, 188)
-        pos_nombre_usuario = (525, 263)
-        pos_codigo_certificado = (679, 466)
     elif sitting.quiz.course.code == "0004":
         plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_0004.pdf')
-        # Personalización de posiciones para este curso
-        pos_nombre_estudiante = 305
         pos_puntaje = (329, 188)
         pos_fecha = (397, 210)
-        pos_nombre_usuario = (525, 263)
-        pos_codigo_certificado = (679, 466)
     elif sitting.quiz.course.code == "0005":
         plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_0005.pdf')
-        # Personalización de posiciones para este curso
-        pos_nombre_estudiante = 305
         pos_puntaje = (702, 190)
         pos_fecha = (111, 190)
-        pos_nombre_usuario = (525, 263)
-        pos_codigo_certificado = (679, 466)
     elif sitting.quiz.course.code == "0006":
         plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_0006.pdf')
-        # Personalización de posiciones para este curso
-        pos_nombre_estudiante = 305
         pos_puntaje = (463, 184)
         pos_fecha = (561, 206)
-        pos_nombre_usuario = (525, 263)
-        pos_codigo_certificado = (679, 466)
     elif sitting.quiz.course.code == "0007":
         plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_0007.pdf')
-        # Personalización de posiciones para este curso
-        pos_nombre_estudiante = 305
         pos_puntaje = (331, 183)
         pos_fecha = (380, 205)
-        pos_nombre_usuario = (525, 263)
-        pos_codigo_certificado = (679, 466)
     elif sitting.quiz.course.code == "0008":
         plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_0008.pdf')
-        # Personalización de posiciones para este curso
-        pos_nombre_estudiante = 305
         pos_puntaje = (329, 183)
         pos_fecha = (461, 205)
-        pos_nombre_usuario = (525, 263)
-        pos_codigo_certificado = (679, 466)
     elif sitting.quiz.course.code == "0009":
         plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_0009.pdf')
-        # Personalización de posiciones para este curso
-        pos_nombre_estudiante = 305
         pos_puntaje = (465, 184.5)
         pos_fecha = (565, 206)
-        pos_nombre_usuario = (525, 263)
-        pos_codigo_certificado = (679, 466)
-    
     else:
-        plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_default.pdf')
+        # Si no hay un certificado específico, usar el certificado_template.pdf
+        plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_template.pdf')
         pos_nombre_estudiante = 430
-        pos_puntaje = (479, 198)
-        pos_fecha = (585, 220)
-        pos_nombre_usuario = (485, 273)
+
+    # Verificar si el archivo existe
+    if not os.path.exists(plantilla_path):
+        # Si no existe, usar el certificado_template.pdf como respaldo
+        plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_template.pdf')
+        if not os.path.exists(plantilla_path):
+            raise Http404("No se encontró la plantilla del certificado.")
 
     # Crear un buffer de memoria para el contenido que vamos a superponer
     buffer = io.BytesIO()
@@ -401,108 +372,122 @@ def obtener_fecha_aprobacion(exam):
     return f"{dia} de {mes} del {año}"
 
 def descargar_tabla_pdf(request):
-    # Obtener todos los exámenes aprobados por el usuario
-    exams = Sitting.objects.filter(user=request.user, fecha_aprobacion__isnull=False)
+    """Genera un PDF con la tabla de resultados de los exámenes"""
+    if not request.user.is_authenticated:
+        return redirect('login')
 
-    if not exams.exists():
-        return HttpResponse(_("No hay certificados para descargar."), status=404)
-
-    # Crear un buffer de memoria
+    # Obtener los exámenes del usuario y agrupar por curso para obtener la nota más alta
+    exams = Sitting.objects.filter(user=request.user, complete=True).order_by('-end')
+    
+    # Crear el PDF
     buffer = io.BytesIO()
-
-    # Configurar el documento PDF
     doc = SimpleDocTemplate(buffer, pagesize=landscape(A4))
     elements = []
-
-    # Estilos para el PDF
+    
+    # Estilos
     styles = getSampleStyleSheet()
-    title = Paragraph(_("Consolidado de cursos aprobados"), styles['Title'])
-    elements.append(title)
-    elements.append(Spacer(1, 12))
-
-    # Encabezados de la tabla
-    data = [
-        [
-            _("Nombre del curso"),
-            _("Puntuación Obtenida"),
-            _("Puntuación Máxima"),
-            _("Porcentaje"),
-            _("Estado de Registro"),
-            _("Fecha de Aprobación"),
-        ]
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        spaceAfter=30,
+        textColor=colors.HexColor('#1a237e'),  # Azul marino
+        alignment=1  # Centrado
+    )
+    
+    subtitle_style = ParagraphStyle(
+        'CustomSubtitle',
+        parent=styles['Heading2'],
+        fontSize=16,
+        spaceAfter=20,
+        textColor=colors.HexColor('#1a237e'),
+        alignment=1
+    )
+    
+    # Título del documento
+    elements.append(Paragraph("CONSOLIDADO DE CERTIFICADOS", title_style))
+    
+    # Información del usuario
+    user_info = [
+        f"Nombre: {request.user.get_full_name}",
+        f"Usuario: {request.user.username}",
+        f"Fecha de generación: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
     ]
-
-    # Rellenar los datos de la tabla
-    latest_exams = exams.values('quiz').annotate(max_score=Max('current_score'))
-
-    for exam_data in latest_exams:
-        # Obtener el último examen aprobado para ese curso
-        exam = exams.filter(quiz_id=exam_data['quiz'], current_score=exam_data['max_score']) \
-                    .order_by('-fecha_aprobacion').first()  # Si hay varios con la misma puntuación, tomamos el más reciente
-
-        if exam:
-            # Usar la función auxiliar para obtener la fecha de aprobación formateada
-            fecha_aprobacion = obtener_fecha_aprobacion(exam)
-
-            estado_registro = _("Curso completado") if exam.get_percent_correct >= 80 else _("En progreso")
-
+    
+    for info in user_info:
+        elements.append(Paragraph(info, styles['Normal']))
+    
+    elements.append(Spacer(1, 30))
+    
+    # Tabla de resultados - solo mostrar la nota más alta de cada curso
+    data = [['Curso', 'Nota', '%', 'Estado', 'Fecha Aprobación', 'Fecha Caducidad']]
+    
+    # Agrupar exámenes por curso y obtener la nota más alta
+    cursos_dict = {}
+    for exam in exams:
+        curso_id = exam.quiz.course.id
+        if curso_id not in cursos_dict or exam.get_percent_correct > cursos_dict[curso_id].get_percent_correct:
+            cursos_dict[curso_id] = exam
+    
+    # Agregar solo los exámenes con la nota más alta
+    for exam in cursos_dict.values():
+        if exam.get_percent_correct >= 80:  # Solo mostrar si aprobó
             data.append([
-                exam.quiz.title,
-                2 * exam.current_score,
-                2 * exam.get_max_score,
+                exam.quiz.course.title,
+                str(exam.current_score * 2),
                 f"{exam.get_percent_correct}%",
-                estado_registro,
-                fecha_aprobacion
+                "Completado",
+                exam.fecha_aprobacion.strftime('%d/%m/%Y') if exam.fecha_aprobacion else "No disponible",
+                (exam.fecha_aprobacion + timedelta(days=365)).strftime('%d/%m/%Y') if exam.fecha_aprobacion else "No disponible"
             ])
-
-    # Crear la tabla
-    table = Table(data, repeatRows=1)
-
-    # Definir los colores personalizados
-    primary_color = colors.HexColor("#BA6022")  # Color principal
-    white = colors.white
-    black = colors.black
-    light_grey = colors.HexColor("#f2f2f2")    # Para filas alternas o resaltes
-
-    # Estilo de la tabla
-    style = TableStyle([
-        # Estilo del encabezado
-        ('BACKGROUND', (0, 0), (-1, 0), primary_color),
-        ('TEXTCOLOR', (0, 0), (-1, 0), white),
- ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 12),
+    
+    # Estilo de la tabla con más espacio
+    table_style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a237e')),  # Azul marino para el encabezado
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-
-        # Estilo de las filas de datos
-        ('BACKGROUND', (0, 1), (-1, -1), white),
-        ('TEXTCOLOR', (0, 1), (-1, -1), black),
-        ('GRID', (0, 0), (-1, -1), 0.5, black),
-
-        # Agregar alternancia de colores para mejorar la legibilidad
-        ('BACKGROUND', (0, 1), (-1, -1), white),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 10),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#e8eaf6')]),  # Filas alternadas
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 12),  # Más espacio a la izquierda
+        ('RIGHTPADDING', (0, 0), (-1, -1), 12),  # Más espacio a la derecha
+        ('TOPPADDING', (0, 0), (-1, -1), 8),     # Más espacio arriba
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),  # Más espacio abajo
     ])
-
-    # Aplicar estilos condicionales
-    for i, exam in enumerate(exams, start=1):
-        porcentaje = exam.get_percent_correct
-
-        # Resaltar filas con porcentaje >= 80% en color principal con texto blanco
-        if porcentaje >= 80:
-            style.add('BACKGROUND', (0, i), (-1, i), primary_color)
-            style.add('TEXTCOLOR', (0, i), (-1, i), white)
-        # Puedes añadir más condiciones si lo deseas
-    table.setStyle(style)
-
-    # Añadir la tabla al contenido
+    
+    # Crear la tabla con columnas más anchas
+    table = Table(data, colWidths=[200, 80, 60, 100, 120, 120])
+    table.setStyle(table_style)
     elements.append(table)
-
+    
+    # Pie de página
+    elements.append(Spacer(1, 30))
+    footer_style = ParagraphStyle(
+        'Footer',
+        parent=styles['Normal'],
+        fontSize=8,
+        textColor=colors.gray,
+        alignment=1
+    )
+    elements.append(Paragraph("Este documento es generado automáticamente por el sistema de gestión de aprendizaje", footer_style))
+    
     # Construir el PDF
     doc.build(elements)
-
+    
     # Preparar la respuesta
     buffer.seek(0)
-    return FileResponse(buffer, as_attachment=True, filename='consolidado.pdf')
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="consolidado_certificados_{request.user.username}.pdf"'
+    response.write(buffer.getvalue())
+    buffer.close()
+    
+    return response
 
 
 @method_decorator([login_required, lecturer_required], name="dispatch")
@@ -709,12 +694,35 @@ class QuizTake(FormView):
         self.sitting = Sitting.objects.user_sitting(
             request.user, self.quiz, self.course
         )
+        
+        # Si el usuario ya completó el examen, verificar si aprobó
         if not self.sitting:
-            messages.info(
-                request,
-                "Ya has completado este cuestionario. Solo se permite un intento.",
-            )
-            return redirect("quiz_index", slug=self.course.slug)
+            last_sitting = Sitting.objects.filter(
+                user=request.user,
+                quiz=self.quiz,
+                course=self.course,
+                complete=True
+            ).order_by('-end').first()
+            
+            if last_sitting and last_sitting.get_percent_correct >= 80:
+                messages.info(
+                    request,
+                    "Ya has aprobado este cuestionario.",
+                )
+                return redirect("quiz_index", slug=self.course.slug)
+            elif last_sitting:
+                # Si no aprobó, permitir reintentar
+                self.sitting = Sitting.objects.create(
+                    user=request.user,
+                    quiz=self.quiz,
+                    course=self.course
+                )
+            else:
+                messages.info(
+                    request,
+                    "Ya has completado este cuestionario. Solo se permite un intento.",
+                )
+                return redirect("quiz_index", slug=self.course.slug)
 
         # Set self.question and self.progress here
         self.question = self.sitting.get_first_question()
@@ -786,7 +794,7 @@ class QuizTake(FormView):
             "quiz": self.quiz,
             "score": self.sitting.get_current_score,
             "max_score": self.sitting.get_max_score,
-            "percent": self.sitting.get_percent_correct,  # Llama al método con paréntesis
+            "percent": self.sitting.get_percent_correct,
             "sitting": self.sitting,
             "previous": getattr(self, "previous", {}),
         }

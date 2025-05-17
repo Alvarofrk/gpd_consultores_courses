@@ -66,6 +66,7 @@ THIRD_PARTY_APPS = [
     "crispy_forms",
     "crispy_bootstrap5",
     "django_filters",
+    "widget_tweaks",
 ]
 
 # Custom apps
@@ -131,13 +132,14 @@ DATABASES = {
 # DATABASES = {
 #     'default': {
 #         'ENGINE': config('DATABASE_ENGINE', default='django.db.backends.postgresql'),
-#         'NAME': config('DATABASE_NAME', default='seguridadteckdb'),
-#         'USER': config('DATABASE_USER', default='seguridadteckuser'),
-#         'PASSWORD': config('DATABASE_PASSWORD', default='1798'),
-#         'HOST': config('DATABASE_HOST', default='localhost'),
-#         'PORT': config('DATABASE_PORT', default='5432', cast=int),
+#         'NAME': config('DATABASE_NAME', default='bmnxcmrxhbgcmqejhdds'),
+#         'USER': config('DATABASE_USER', default='u9hbl1aiepvdngghmkle'),
+#         'PASSWORD': config('DATABASE_PASSWORD', default='c4KaMcZ1BwiDVuX4jiOV7lNwDrd7ip'),
+#         'HOST': config('DATABASE_HOST', default='bmnxcmrxhbgcmqejhdds-postgresql.services.clever-cloud.com'),
+#         'PORT': config('DATABASE_PORT', default='50013', cast=int),
 #     }
 # }
+
 # DATABASES = {
 #     'default': {
 #         'ENGINE': config('DATABASE_ENGINE'),

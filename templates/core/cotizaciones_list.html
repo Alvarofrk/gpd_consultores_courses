@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}{% trans 'Cotizaciones' %} | {% trans 'Sistema de gestión de aprendizaje' %}{% endblock title %}
+
+{% block content %}
+
+<nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{% trans 'Cotizaciones' %}</li>
+    </ol>
+</nav>
+
+<div class="manage-wrap">
+    <a class="btn btn-primary" href="{% url 'cotizacion_add' %}"><i class="fas fa-plus"></i>{% trans 'Nueva Cotización' %}</a>
+</div>
+
+<p class="title-1"><i class="fas fa-file-invoice-dollar"></i>{% trans 'Cotizaciones' %}</p>
+
+{% include 'snippets/messages.html' %}
+
+<div class="table-responsive table-shadow table-light table-striped m-0 mt-4">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>{% trans 'Cotización' %}</th>
+                <th>{% trans 'Dirigido a' %}</th>
+                <th>{% trans 'Empresa' %}</th>
+                <th>{% trans 'Fecha' %}</th>
+                <th>{% trans 'Estado' %}</th>
+                <th>{% trans 'Monto Total' %}</th>
+                <th>{% trans 'Acciones' %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cotizacion in cotizaciones %}
+            <tr>
+                <td>{{ forloop.counter }}.</td>
+                <td>{{ cotizacion.cotizacion }}</td>
+                <td>{{ cotizacion.dirigido_a }}</td>
+                <td>{{ cotizacion.empresa }}</td>
+                <td>{{ cotizacion.fecha_cotizacion|date:"d/m/Y" }}</td>
+                <td>
+                    <span class="badge {% if cotizacion.estado == 'pendiente' %}bg-warning
+                                      {% elif cotizacion.estado == 'aprobada' %}bg-success
+                                      {% elif cotizacion.estado == 'rechazada' %}bg-danger
+                                      {% else %}bg-info{% endif %}">
+                        {{ cotizacion.get_estado_display }}
+                    </span>
+                </td>
+                <td>S/ {{ cotizacion.monto_total|floatformat:2 }}</td>
+                <td>
+                    <a href="{% url 'cotizacion_detail' pk=cotizacion.pk %}" class="btn btn-info btn-sm">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                    {% if request.user.is_superuser or cotizacion.creado_por == request.user %}
+                    <a href="{% url 'cotizacion_update' pk=cotizacion.pk %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <a href="{% url 'cotizacion_delete' pk=cotizacion.pk %}" class="btn btn-danger btn-sm" onclick="return confirm('¿Está seguro de eliminar esta cotización?')">
+                        <i class="fas fa-trash"></i>
+                    </a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" class="text-center">{% trans 'No hay cotizaciones registradas.' %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock content %}
+
+{% block extra_css %}
+<style>
+    .dropdown-menu {
+        min-width: 200px;
+        padding: 0.5rem 0;
+        margin: 0;
+        background-color: #fff;
+        border: 1px solid rgba(0,0,0,.15);
+        border-radius: 0.25rem;
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,.175);
+        z-index: 1000;
+    }
+    
+    .dropdown-item {
+        padding: 0.5rem 1rem;
+        clear: both;
+        font-weight: 400;
+        color: #212529;
+        text-align: inherit;
+        text-decoration: none;
+        white-space: nowrap;
+        background-color: transparent;
+        border: 0;
+    }
+    
+    .dropdown-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .dropdown-item.text-danger:hover {
+        background-color: #dc3545;
+        color: #fff !important;
+    }
+    
+    .dropdown-divider {
+        height: 0;
+        margin: 0.5rem 0;
+        overflow: hidden;
+        border-top: 1px solid #e9ecef;
+    }
+    
+    .table-responsive {
+        position: relative;
+    }
+    
+    .dropdown {
+        position: relative;
+    }
+
+    .dropdown-submenu {
+        position: relative;
+    }
+
+    .dropdown-submenu .dropdown-menu {
+        top: 0;
+        right: 100%;
+        left: auto;
+        margin-top: -1px;
+        margin-right: 5px;
+        z-index: 1001;
+        min-width: 180px;
+    }
+
+    .dropdown-submenu:hover > .dropdown-menu {
+        display: block;
+        position: absolute;
+    }
+
+    .dropdown-submenu > a:after {
+        display: block;
+        content: " ";
+        float: right;
+        width: 0;
+        height: 0;
+    }
+</style>
+{% endblock %}
+
+{% block js %}
+<script>
+    // Activar submenús en el dropdown
+    document.addEventListener('DOMContentLoaded', function() {
+        const dropdowns = document.querySelectorAll('.dropdown-submenu');
+        
+        dropdowns.forEach(dropdown => {
+            const link = dropdown.querySelector('a');
+            const submenu = dropdown.querySelector('.dropdown-menu');
+            
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                submenu.style.display = submenu.style.display === 'block' ? 'none' : 'block';
+            });
+            
+            // Cerrar submenú al hacer clic fuera
+            document.addEventListener('click', function(e) {
+                if (!dropdown.contains(e.target)) {
+                    submenu.style.display = 'none';
+                }
+            });
+        });
+    });
+</script>
+{% endblock js %} 

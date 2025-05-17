@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Gestionar Cursos - {{ student.student.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-user-graduate"></i>
+                        Gestionar Cursos - {{ student.student.get_full_name }}
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h4>Información del Estudiante</h4>
+                            <table class="table table-bordered">
+                                <tr>
+                                    <th>Nombre:</th>
+                                    <td>{{ student.student.get_full_name }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Programa:</th>
+                                    <td>{{ student.program }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Nivel:</th>
+                                    <td>{{ student.level }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <form method="post" class="mt-4">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-12">
+                                <h4>Seleccionar Cursos</h4>
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i>
+                                    Los cursos deseleccionados serán eliminados del perfil del estudiante.
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 50px;">Seleccionar</th>
+                                                <th>Código</th>
+                                                <th>Curso</th>
+                                                <th>Programa</th>
+                                                <th>Nivel</th>
+                                                <th>Estado</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for course in all_courses %}
+                                            <tr>
+                                                <td>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" 
+                                                               name="courses" value="{{ course.id }}"
+                                                               {% if course in current_courses %}checked{% endif %}>
+                                                    </div>
+                                                </td>
+                                                <td>{{ course.code }}</td>
+                                                <td>{{ course.title }}</td>
+                                                <td>{{ course.program }}</td>
+                                                <td>{{ course.level }}</td>
+                                                <td>
+                                                    {% if course in current_courses %}
+                                                        <span class="badge bg-success">Asignado</span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">No asignado</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-md-12">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Guardar Cambios
+                                </button>
+                                <a href="{% url 'student_list' %}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i> Volver
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

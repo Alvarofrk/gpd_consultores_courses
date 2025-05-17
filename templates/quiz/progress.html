@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load i18n %}
+{% load quiz_tags %}
 
 {% block title %} {% trans "Página de Progreso" %} | {% trans 'Sistema de gestión de aprendizaje' %} {% endblock %}
 {% block description %} {% trans "Página de Progreso del Usuario" %} {% endblock %}
@@ -61,57 +62,82 @@
   </p>
   <!-- <div class="text-light bg-secondary mb-2 p-1">{% trans  'Total de exámenes completados:' %} {{ exams_counter }}</div> -->
  
-  <div class="mb-3">
-    <a href="{% url 'descargar_certificados' %}" class="btn" style="background-color: #BA6022; color: white; border-color: #BA6022;">
-        {% trans "Descargar Consolidado" %}
+  <div class="mb-4">
+    <a href="{% url 'descargar_certificados' %}" class="btn btn-lg" style="background-color: #1a237e; color: white; border: none; padding: 12px 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); transition: all 0.3s ease;">
+        <i class="fas fa-file-pdf me-2"></i>{% trans "Descargar Consolidado" %}
     </a>
-</div>
+  </div>
  
 <div class="table-responsive">
-    <table class="table table-bordered table-striped">
+    <table class="table table-bordered">
         <thead>
             <tr>
+                <th>#</th>
+                {% if request.user.is_student %}
+                <th>{% trans "DNI" %}</th>
+                <th>{% trans "Nombre Completo" %}</th>
+                {% endif %}
                 <th>{% trans "Curso" %}</th>
-                <th>{% trans "Puntuación Obtenida" %}</th>
-                <th>{% trans "Puntuación Máxima" %}</th>
-                <th>{% trans 'Porcentaje' %}</th>
-                <th>{% trans 'Estado de Registro' %}</th>
+                <th>{% trans "Nota" %}</th>
+                <th>{% trans "Porcentaje" %}</th>
+                <th>{% trans "Estado" %}</th>
                 <th>{% trans "Fecha de Aprobación" %}</th>
-                <th>{% trans 'Certificados' %}</th>
+                <th>{% trans "Fecha de Expiración" %}</th>
+                {% if request.user.is_student %}
+                <th>{% trans "Certificado" %}</th>
+                {% endif %}
             </tr>
         </thead>
         <tbody>
-            {% regroup exams by quiz.title as exams_by_course %}
-            
-            {% for course in exams_by_course %}
-                {% with course.list|dictsortreversed:"get_percent_correct"|first as exam %}
-                    <tr>
-                        <td>{{ exam.quiz.title }}</td>
-                        <td>{{ exam.current_score|add:exam.current_score }}</td>
-                        <td>{{ exam.get_max_score|add:exam.get_max_score }}</td>
-                        <td>{{ exam.get_percent_correct }}%</td>
-                        <td>
-                            <span style="color: green;">Curso completado</span>
-                        </td>
-                        <td>
-                            {% if exam.fecha_aprobacion %}
-                                {{ exam.fecha_aprobacion|date:"d/m/Y" }}
-                            {% else %}
-                                {% trans "No disponible" %}
-                            {% endif %}
-                        </td>
-                        <td>
-                            <a href="{% url 'generar_certificado' exam.id %}" class="btn" style="background-color: #007bff; color: white; border-color: #007bff; padding: 5px 10px; text-decoration: none;">
-                                {% trans "Descargar Certificado" %}
-                            </a>
-                            {% if exam.quiz.course.code == "0001" %}
-                                <button onclick="document.getElementById('anexoModal{{ exam.id }}').style.display='block'" class="btn" style="background-color: #28a745; color: white; border-color: #28a745; padding: 5px 10px;">
-                                    {% trans "Descargar Anexo" %}
-                                </button>
-                            {% endif %}
-                        </td>
-                    </tr>
-                {% endwith %}
+            {% for sitting in sitting_list %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                {% if request.user.is_student %}
+                <td>{{ sitting.user.username }}</td>
+                <td>{{ sitting.user.get_full_name }}</td>
+                {% endif %}
+                <td>{{ sitting.quiz.title }}</td>
+                <td>{{ sitting.current_score }}</td>
+                <td>{{ sitting.current_score|multiply:100 }}%</td>
+                <td>
+                    {% if sitting.current_score >= 80 %}
+                    <span class="badge bg-success">{% trans "Aprobado" %}</span>
+                    {% else %}
+                    <span class="badge bg-danger">{% trans "No Aprobado" %}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if sitting.current_score >= 80 %}
+                    {{ sitting.end|date:"d/m/Y" }}
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td>
+                    {% if sitting.current_score >= 80 %}
+                    {{ sitting.end|add_days:365|date:"d/m/Y" }}
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                {% if request.user.is_student %}
+                <td>
+                    {% if sitting.current_score >= 80 %}
+                    <a href="{% url 'generar_certificado' sitting.id %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-download"></i> {% trans "Descargar" %}
+                    </a>
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                {% endif %}
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="{% if request.user.is_student %}10{% else %}8{% endif %}" class="text-center">
+                    {% trans "No hay exámenes completados." %}
+                </td>
+            </tr>
             {% endfor %}
         </tbody>
     </table>

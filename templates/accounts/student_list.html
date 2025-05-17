@@ -7,18 +7,18 @@
 <nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
     <ol class="breadcrumb">
       <li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
-      <li class="breadcrumb-item active" aria-current="page">{% trans 'Trabajadores' %}</li>
+      <li class="breadcrumb-item active" aria-current="page">{% trans 'Participantes' %}</li>
     </ol>
 </nav>
 
 {% if request.user.is_superuser %}
 <div class="manage-wrap">
-    <a class="btn btn-sm btn-primary" href="{% url 'add_student' %}"><i class="fas fa-plus"></i>{% trans 'Añadir Trabajador' %}</a>
-    <a class="btn btn-sm btn-primary" target="_blank" href="{% url 'student_list_pdf' %}"><i class="fas fa-download"></i>{% trans 'Descargar PDF' %}</a> <!--nuevo-->
+    <a class="btn btn-sm btn-primary" href="{% url 'add_student' %}"><i class="fas fa-plus"></i>{% trans 'Añadir Participante' %}</a>
+    <a class="btn btn-sm btn-primary" target="_blank" href="{% url 'student_list_pdf' %}"><i class="fas fa-download"></i>{% trans 'Descargar Lista de Participantes' %}</a>
 </div>
 {% endif %}
 
-<div class="title-1"><i class="fas fa-user-tie"></i>{% trans 'Trabajadores' %}</div>
+<div class="title-1"><i class="fas fa-user-tie"></i>{% trans 'Participantes' %}</div>
 <br>
 <br>
 
@@ -29,11 +29,11 @@
     <table class="table">
         <thead>
             <tr>
-                <th>#</th>
-                <th>{% trans 'ID No.' %}</th>
+                <th>{% trans 'DNI' %}</th>
                 <th>{% trans 'Nombre Completo' %}</th>
                 <th>{% trans 'Correo Electrónico' %}</th>
-                <th>{% trans 'Programa' %}</th>
+                <th>{% trans 'Empresa' %}</th>
+                <th>{% trans 'Cargo' %}</th>
                 {% if request.user.is_superuser %}
                 <th>{% trans 'Acción' %}</th>
                 {% endif %}
@@ -42,11 +42,11 @@
         <tbody>
             {% for student in filter.qs %}
             <tr>
-                <td>{{ forloop.counter }}.</td>
                 <td>{{ student.student.username }}</td>
                 <td><a href="{% url 'profile_single' student.student.id %}">{{ student.student.get_full_name }}</a></td>
                 <td>{{ student.student.email }}</td>
-                <td>{{ student.program }}</td>
+                <td>{{ student.empresa|default:"-" }}</td>
+                <td>{{ student.cargo|default:"-" }}</td>
 
                 {% if request.user.is_superuser %}
                 <td>
@@ -56,10 +56,11 @@
                         </button>
                         <ul class="dropdown-menu">
                           <li><a class="dropdown-item" href="{% url 'student_edit' student.student.pk %}"><i class="unstyled me-2 fas fa-edit"></i>{% trans 'Actualizar' %}</a></li>
+                          <li><a class="dropdown-item" href="{% url 'manage_student_courses' student.id %}"><i class="unstyled me-2 fas fa-book"></i>{% trans 'Gestionar Cursos' %}</a></li>
                           <li><a class="dropdown-item" target="_blank" href="{% url 'profile_single' student.student.id %}?download_pdf=1"><i class="unstyled me-2 fas fa-download"></i>{% trans 'Descargar PDF' %}</a></li>
                           <li><a class="dropdown-item text-danger" href="{% url 'student_delete' student.pk %}"><i class="unstyled me-2 fas fa-trash-alt"></i>{% trans 'Eliminar' %}</a></li>
                         </ul>
-                      </div>
+                    </div>
                 </td>
                 {% endif %}
                 
@@ -67,14 +68,14 @@
                 <tr>
                   <td colspan="6">
                   <span class="text-danger">
-                    {% trans 'No hay Trabajadores.' %}
+                    {% trans 'No hay Participantes.' %}
                     {% if request.user.is_superuser %}
                     <a href="{% url 'add_student' %}">
                     <i class="primary" style="font-size: 22px;">
-                        {% trans 'Añadir Trabajador Ahora.' %}
+                        {% trans 'Añadir Participante Ahora.' %}
                     </i>
-                    {% endif %}
                     </a>
+                    {% endif %}
                   </span>
                 </td>
                 </tr>
