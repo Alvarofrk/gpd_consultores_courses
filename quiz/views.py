@@ -49,6 +49,9 @@ from .models import (
     Quiz,
     Sitting,
 )
+from django.views.decorators.csrf import csrf_exempt
+import qrcode
+from reportlab.lib.utils import ImageReader
 
 
 # ########################################################
@@ -128,9 +131,6 @@ from .models import (
 # views.py
 
 def generar_certificado(request, sitting_id):
-    # Ruta de la plantilla de certificado en la carpeta `static/pdfs`
-    plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_template.pdf')
-
     # Obtener el examen y validar que el usuario tiene permiso
     sitting = get_object_or_404(Sitting, id=sitting_id, user=request.user)
 
@@ -138,65 +138,39 @@ def generar_certificado(request, sitting_id):
     nombre_estudiante = f"{request.user.first_name} {request.user.last_name}"
     puntaje = int(sitting.get_percent_correct / 5)
     fecha_aprobacion_formateada = obtener_fecha_aprobacion(sitting)
-
     nombre_usuario = request.user.username
     certificate_code = sitting.certificate_code
 
-    # Valores por defecto para las posiciones
-    pos_nombre_estudiante = 305
-    pos_puntaje = (479, 198)
-    pos_fecha = (585, 220)
-    pos_nombre_usuario = (485, 273)
-    pos_codigo_certificado = (679, 466)
+    # Diccionario de posiciones por código de curso
+    POSICIONES_CERTIFICADOS = {
+        "C01-IPERC":    {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
+        "C02-PA":       {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
+        "C04-EC":      {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
+        "C05-TC":      {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
+        "C06-BE":      {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
+        "C07-MI":      {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
+        "C07-MPI":     {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
+        "C07-MPII":    {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
+        "C07-MPIII":   {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
+        "C7-MPIII":    {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
+        "C12-HS":      {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
+        "C15-SE":      {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
+        "C16-LI":      {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
+        "C17-SEI":     {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
+        "C19-TED":     {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
+        "C63-UHP":     {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
+        "C70-RTA":     {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
+    }
 
-    # Determinar la plantilla de certificado según el código del curso
-    if sitting.quiz.course.code == "0001":
-        plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_0001.pdf')
-        pos_puntaje = (728, 188)
-        pos_fecha = (140, 188)
-    elif sitting.quiz.course.code == "0002":
-        plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_0002.pdf')
-        pos_puntaje = (138, 167)
-        pos_fecha = (230, 188)
-    elif sitting.quiz.course.code == "0003":
-        plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_0003.pdf')
-        pos_puntaje = (738, 188)
-        pos_fecha = (110, 188)
-    elif sitting.quiz.course.code == "0004":
-        plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_0004.pdf')
-        pos_puntaje = (329, 188)
-        pos_fecha = (397, 210)
-    elif sitting.quiz.course.code == "0005":
-        plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_0005.pdf')
-        pos_puntaje = (702, 190)
-        pos_fecha = (111, 190)
-    elif sitting.quiz.course.code == "0006":
-        plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_0006.pdf')
-        pos_puntaje = (463, 184)
-        pos_fecha = (561, 206)
-    elif sitting.quiz.course.code == "0007":
-        plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_0007.pdf')
-        pos_puntaje = (331, 183)
-        pos_fecha = (380, 205)
-    elif sitting.quiz.course.code == "0008":
-        plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_0008.pdf')
-        pos_puntaje = (329, 183)
-        pos_fecha = (461, 205)
-    elif sitting.quiz.course.code == "0009":
-        plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_0009.pdf')
-        pos_puntaje = (465, 184.5)
-        pos_fecha = (565, 206)
-    else:
-        # Si no hay un certificado específico, usar el certificado_template.pdf
-        plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_template.pdf')
-        pos_nombre_estudiante = 430
-
-    # Verificar si el archivo existe
-    if not os.path.exists(plantilla_path):
-        # Si no existe, usar el certificado_template.pdf como respaldo
-        plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_template.pdf')
-        if not os.path.exists(plantilla_path):
-            raise Http404("No se encontró la plantilla del certificado.")
+    codigo = sitting.quiz.course.code
+    posiciones = POSICIONES_CERTIFICADOS.get(codigo, {
+        "pos_nombre": (305, 305),
+        "pos_puntaje": (479, 198),
+        "pos_fecha": (585, 220),
+        "pos_usuario": (485, 273),
+        "pos_codigo": (679, 466),
+        "pos_qr": (500, 50),
+    })
 
     # Crear un buffer de memoria para el contenido que vamos a superponer
     buffer = io.BytesIO()
@@ -208,27 +182,41 @@ def generar_certificado(request, sitting_id):
     p.setFillColorRGB(0.85, 0.64, 0.13)  # Color dorado (como en tu plantilla original)
     
     # Centrar el nombre del estudiante en el eje X
-    p.drawCentredString(ancho_pagina / 2, pos_nombre_estudiante, nombre_estudiante)
+    p.drawCentredString(posiciones["pos_nombre"][0], posiciones["pos_nombre"][1], nombre_estudiante)
 
     # Puntaje, fecha y nombre de usuario con posiciones fijas en ambos ejes
     p.setFillColorRGB(0.051, 0.231, 0.4)  # Color azul (como en tu plantilla original)
     p.setFont("Helvetica-Bold", 14)
-    p.drawString(pos_puntaje[0], pos_puntaje[1], f"{puntaje}")
+    p.drawString(posiciones["pos_puntaje"][0], posiciones["pos_puntaje"][1], f"{puntaje}")
 
     # Fecha
     p.setFont("Helvetica", 16)
     p.setFillColorRGB(0.051, 0.231, 0.4)  # Color azul (como en tu plantilla original)
-    p.drawString(pos_fecha[0], pos_fecha[1], f"{fecha_aprobacion_formateada}")
+    p.drawString(posiciones["pos_fecha"][0], posiciones["pos_fecha"][1], f"{fecha_aprobacion_formateada}")
 
     # Nombre de usuario
     p.setFont("Helvetica", 16)
     p.setFillColorRGB(0.051, 0.231, 0.4)  # Color azul (como en tu plantilla original)
-    p.drawString(pos_nombre_usuario[0], pos_nombre_usuario[1], f"{nombre_usuario}")
+    p.drawString(posiciones["pos_usuario"][0], posiciones["pos_usuario"][1], f"{nombre_usuario}")
 
     # Código del certificado
     p.setFont("Helvetica-Bold", 16)
     p.setFillColorRGB(0.051, 0.231, 0.4)  # Color azul (como en tu plantilla original)
-    p.drawString(pos_codigo_certificado[0], pos_codigo_certificado[1], f"{certificate_code}")
+    p.drawString(posiciones["pos_codigo"][0], posiciones["pos_codigo"][1], f"{certificate_code}")
+
+    # Generar la URL de verificación con el prefijo correcto
+    url_verificacion = request.build_absolute_uri(
+        f"/quiz/verificar-certificado/{certificate_code}/"
+    )
+    # Generar el QR en memoria
+    qr = qrcode.make(url_verificacion)
+    qr_buffer = io.BytesIO()
+    qr.save(qr_buffer, format='PNG')
+    qr_buffer.seek(0)
+    qr_img = ImageReader(qr_buffer)
+
+    # Por ejemplo, en la esquina inferior derecha
+    p.drawImage(qr_img, posiciones["pos_qr"][0], posiciones["pos_qr"][1], width=90, height=90)
 
     # Finalizar el contenido del buffer
     p.showPage()
@@ -236,12 +224,22 @@ def generar_certificado(request, sitting_id):
     buffer.seek(0)
 
     # Cargar la plantilla del certificado
-    plantilla_pdf = PdfReader(plantilla_path)
-    pagina_plantilla = plantilla_pdf.pages[0]
+    plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', f'{codigo}.pdf')
+    if not os.path.exists(plantilla_path):
+        plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_template.pdf')
+
+    # Verificar si el archivo existe
+    if not os.path.exists(plantilla_path):
+        # Si no existe, usar el certificado_template.pdf como respaldo
+        plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_template.pdf')
+        if not os.path.exists(plantilla_path):
+            raise Http404("No se encontró la plantilla del certificado.")
 
     # Crear un nuevo PDF con la plantilla y el contenido superpuesto
     contenido_pdf = PdfReader(buffer)
     writer = PdfWriter()
+    plantilla_pdf = PdfReader(plantilla_path)
+    pagina_plantilla = plantilla_pdf.pages[0]
     pagina_plantilla.merge_page(contenido_pdf.pages[0])
     writer.add_page(pagina_plantilla)
 
@@ -627,7 +625,8 @@ class QuizUserProgressView(TemplateView):
         progress, _ = Progress.objects.get_or_create(user=self.request.user)
         context["cat_scores"] = progress.list_all_cat_scores
         context["exams"] = progress.show_exams()
-        context["exams_counter"] = context["exams"].count()
+        context["exams_counter"] = len(context["exams"])
+        context["sitting_list"] = context["exams"]  # Asegura que sitting_list esté disponible para el template
         return context
 
 
@@ -697,32 +696,32 @@ class QuizTake(FormView):
         
         # Si el usuario ya completó el examen, verificar si aprobó
         if not self.sitting:
-            last_sitting = Sitting.objects.filter(
+            # Buscar si existe algún registro aprobado
+            approved_sitting = Sitting.objects.filter(
                 user=request.user,
                 quiz=self.quiz,
                 course=self.course,
-                complete=True
-            ).order_by('-end').first()
-            
-            if last_sitting and last_sitting.get_percent_correct >= 80:
+                complete=True,
+                current_score__gte=self.quiz.pass_mark * self.quiz.get_max_score / 100
+            ).first()
+            if approved_sitting:
                 messages.info(
                     request,
                     "Ya has aprobado este cuestionario.",
                 )
                 return redirect("quiz_index", slug=self.course.slug)
-            elif last_sitting:
-                # Si no aprobó, permitir reintentar
+            else:
+                # Eliminar todos los registros previos (aprobados o no)
+                Sitting.objects.filter(
+                    user=request.user,
+                    quiz=self.quiz,
+                    course=self.course
+                ).delete()
                 self.sitting = Sitting.objects.create(
                     user=request.user,
                     quiz=self.quiz,
                     course=self.course
                 )
-            else:
-                messages.info(
-                    request,
-                    "Ya has completado este cuestionario. Solo se permite un intento.",
-                )
-                return redirect("quiz_index", slug=self.course.slug)
 
         # Set self.question and self.progress here
         self.question = self.sitting.get_first_question()
@@ -803,11 +802,18 @@ class QuizTake(FormView):
             results["questions"] = self.sitting.get_questions(with_answers=True)
             results["incorrect_questions"] = self.sitting.get_incorrect_questions
 
-        if (
-            not self.quiz.exam_paper
-            or self.request.user.is_superuser
-            or self.request.user.is_lecturer
-        ):
-            self.sitting.delete()
-
         return render(self.request, self.result_template_name, results)
+
+@csrf_exempt
+def verificar_certificado(request, codigo):
+    sitting = Sitting.objects.filter(certificate_code=codigo, complete=True).first()
+    if not sitting:
+        return render(request, 'quiz/certificado_no_encontrado.html', {'codigo': codigo})
+    return render(request, 'quiz/verificar_certificado.html', {
+        'sitting': sitting,
+        'nombre': f"{sitting.user.first_name} {sitting.user.last_name}",
+        'curso': sitting.course.title,
+        'nota': sitting.get_percent_correct,
+        'fecha': sitting.fecha_aprobacion,
+        'codigo': codigo,
+    })

@@ -180,6 +180,10 @@ def course_video_navigation(request, slug, video_id=None):
     else:
         current_video = videos.first()
 
+    # Si no hay video actual, redirigir al primer video
+    if current_video is None:
+        return redirect('course_video_navigation', slug=slug, video_id=videos.first().id)
+
     # Obtener el índice del video actual y los videos anterior y siguiente
     current_index = list(videos).index(current_video)
     previous_video = videos[current_index - 1] if current_index > 0 else None
@@ -744,7 +748,8 @@ class PDFDownloadView(View):
         file_path = os.path.join(settings.MEDIA_ROOT, str(document.file))
         
         if not os.path.exists(file_path):
-            raise Http404("El archivo no existe")
+            messages.error(request, "El archivo no existe o no está disponible.")
+            return redirect('course_video_navigation', slug=document.course.slug)
             
         response = FileResponse(open(file_path, 'rb'), content_type='application/pdf')
         response['Content-Disposition'] = 'attachment; filename="{}"'.format(os.path.basename(file_path))

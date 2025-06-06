@@ -14,6 +14,7 @@ import os
 from decouple import config
 from django.utils.translation import gettext_lazy as _
 import psycopg2
+import dj_database_url
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -67,6 +68,7 @@ THIRD_PARTY_APPS = [
     "crispy_bootstrap5",
     "django_filters",
     "widget_tweaks",
+    "django_extensions",
 ]
 
 # Custom apps
@@ -122,23 +124,32 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
 
-#DATABASES = {
-#    "default": {
-#        "ENGINE": "django.db.backends.sqlite3",
-#        "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
-#    }
-#}
+if DEBUG:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
+        }
+    }
+else:
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.getenv('DATABASE_URL'),
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
 
-DATABASES = {
-    'default': {
-        'ENGINE': config('DATABASE_ENGINE', default='django.db.backends.postgresql'),
-        'NAME': config('DATABASE_NAME', default='bmnxcmrxhbgcmqejhdds'),
-        'USER': config('DATABASE_USER', default='u9hbl1aiepvdngghmkle'),
-        'PASSWORD': config('DATABASE_PASSWORD', default='c4KaMcZ1BwiDVuX4jiOV7lNwDrd7ip'),
-        'HOST': config('DATABASE_HOST', default='bmnxcmrxhbgcmqejhdds-postgresql.services.clever-cloud.com'),
-        'PORT': config('DATABASE_PORT', default='50013', cast=int),
-     }
-}
+#DATABASES = {
+#    'default': {
+#        'ENGINE': config('DATABASE_ENGINE', default='django.db.backends.postgresql'),
+#        'NAME': config('DATABASE_NAME', default='bmnxcmrxhbgcmqejhdds'),
+#        'USER': config('DATABASE_USER', default='u9hbl1aiepvdngghmkle'),
+#        'PASSWORD': config('DATABASE_PASSWORD', default='c4KaMcZ1BwiDVuX4jiOV7lNwDrd7ip'),
+#        'HOST': config('DATABASE_HOST', default='bmnxcmrxhbgcmqejhdds-postgresql.services.clever-cloud.com'),
+#        'PORT': config('DATABASE_PORT', default='50013', cast=int),
+#     }
+#}
 
 # DATABASES = {
 #     'default': {
@@ -330,3 +341,20 @@ SEMESTER_CHOICES = (
     (SECOND, _("Second")),
     (THIRD, _("Third")),
 )
+
+# Security settings
+if DEBUG:
+    # Configuración para desarrollo
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    SECURE_SSL_REDIRECT = False
+else:
+    # Configuración para producción
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 año
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    ALLOWED_HOSTS = ['.onrender.com', 'localhost', '127.0.0.1']

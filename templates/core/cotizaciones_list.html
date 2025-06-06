@@ -14,7 +14,7 @@
 </nav>
 
 <div class="manage-wrap">
-    <a class="btn btn-primary" href="{% url 'cotizacion_add' %}"><i class="fas fa-plus"></i>{% trans 'Nueva Cotización' %}</a>
+    <a class="btn btn-gpd" href="{% url 'cotizacion_add' %}"><i class="fas fa-plus"></i>{% trans 'Nueva Cotización' %}</a>
 </div>
 
 <p class="title-1"><i class="fas fa-file-invoice-dollar"></i>{% trans 'Cotizaciones' %}</p>
@@ -29,7 +29,8 @@
                 <th>{% trans 'Cotización' %}</th>
                 <th>{% trans 'Dirigido a' %}</th>
                 <th>{% trans 'Empresa' %}</th>
-                <th>{% trans 'Fecha' %}</th>
+                <th>{% trans 'Fecha de Cotización' %}</th>
+                <th>{% trans 'Fecha de Servicio' %}</th>
                 <th>{% trans 'Estado' %}</th>
                 <th>{% trans 'Monto Total' %}</th>
                 <th>{% trans 'Acciones' %}</th>
@@ -43,21 +44,39 @@
                 <td>{{ cotizacion.dirigido_a }}</td>
                 <td>{{ cotizacion.empresa }}</td>
                 <td>{{ cotizacion.fecha_cotizacion|date:"d/m/Y" }}</td>
+                <td>{{ cotizacion.fecha_servicio|date:"d/m/Y" }}</td>
                 <td>
-                    <span class="badge {% if cotizacion.estado == 'pendiente' %}bg-warning
-                                      {% elif cotizacion.estado == 'aprobada' %}bg-success
-                                      {% elif cotizacion.estado == 'rechazada' %}bg-danger
-                                      {% else %}bg-info{% endif %}">
-                        {{ cotizacion.get_estado_display }}
-                    </span>
+                    {% if request.user.is_superuser or cotizacion.creado_por == request.user %}
+                        <form method="post" action="{% url 'cotizacion_change_status' pk=cotizacion.pk %}" style="display:inline;">
+                            {% csrf_token %}
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <select name="estado" class="form-select form-select-sm d-inline w-auto"
+                                    style="min-width:130px; border-radius: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.07); border: 1px solid #e0e0e0; background-color: {% if cotizacion.estado == 'pendiente' %}#fff8cc{% elif cotizacion.estado == 'aprobada' or cotizacion.estado == 'aceptado' %}#d4f5e0{% elif cotizacion.estado == 'rechazado' %}#fad7d7{% else %}#d4eaf7{% endif %}; color: {% if cotizacion.estado == 'pendiente' %}#bfa100{% elif cotizacion.estado == 'aprobada' or cotizacion.estado == 'aceptado' %}#218838{% elif cotizacion.estado == 'rechazado' %}#c82333{% else %}#0c5460{% endif %};">
+                                    {% for value, label in cotizacion.ESTADO_CHOICES %}
+                                        <option value="{{ value }}" {% if cotizacion.estado == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn btn-gpd btn-sm" style="padding: 0.2rem 0.8rem; font-size: 0.8rem;">
+                                    <i class="fas fa-save me-1"></i>Guardar
+                                </button>
+                            </div>
+                        </form>
+                    {% else %}
+                        <span style="display:inline-block; border-radius:1.5rem; padding:0.35em 1.2em; font-weight:500; font-size:0.95em; box-shadow:0 1px 4px rgba(0,0,0,0.07); border:1px solid #e0e0e0; background-color: {% if cotizacion.estado == 'pendiente' %}#fff8cc{% elif cotizacion.estado == 'aprobada' or cotizacion.estado == 'aceptado' %}#d4f5e0{% elif cotizacion.estado == 'rechazado' %}#fad7d7{% else %}#d4eaf7{% endif %}; color: {% if cotizacion.estado == 'pendiente' %}#bfa100{% elif cotizacion.estado == 'aprobada' or cotizacion.estado == 'aceptado' %}#218838{% elif cotizacion.estado == 'rechazado' %}#c82333{% else %}#0c5460{% endif %};">
+                            {{ cotizacion.get_estado_display }}
+                        </span>
+                    {% endif %}
                 </td>
                 <td>S/ {{ cotizacion.monto_total|floatformat:2 }}</td>
                 <td>
                     <a href="{% url 'cotizacion_detail' pk=cotizacion.pk %}" class="btn btn-info btn-sm">
                         <i class="fas fa-eye"></i>
                     </a>
+                    <a href="{% url 'cotizacion_download_pdf' pk=cotizacion.pk %}" class="btn btn-success btn-sm" title="Descargar PDF" target="_blank">
+                        <i class="fas fa-file-pdf"></i>
+                    </a>
                     {% if request.user.is_superuser or cotizacion.creado_por == request.user %}
-                    <a href="{% url 'cotizacion_update' pk=cotizacion.pk %}" class="btn btn-primary btn-sm">
+                    <a href="{% url 'cotizacion_update' pk=cotizacion.pk %}" class="btn btn-gpd btn-sm">
                         <i class="fas fa-edit"></i>
                     </a>
                     <a href="{% url 'cotizacion_delete' pk=cotizacion.pk %}" class="btn btn-danger btn-sm" onclick="return confirm('¿Está seguro de eliminar esta cotización?')">
@@ -68,7 +87,7 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="8" class="text-center">{% trans 'No hay cotizaciones registradas.' %}</td>
+                <td colspan="9" class="text-center">{% trans 'No hay cotizaciones registradas.' %}</td>
             </tr>
             {% endfor %}
         </tbody>

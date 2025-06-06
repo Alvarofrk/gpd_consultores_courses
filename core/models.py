@@ -1,6 +1,8 @@
 from django.db import models
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 
 NEWS = _("News")
@@ -142,6 +144,33 @@ class Cotizacion(models.Model):
     def __str__(self):
         return f"{self.nombre_anio} - {self.empresa}"
 
+    def clean(self):
+        # Validar fechas
+        if self.validez_cotizacion and self.fecha_cotizacion:
+            if self.validez_cotizacion <= self.fecha_cotizacion:
+                raise ValidationError({
+                    'validez_cotizacion': 'La validez debe ser posterior a la fecha de cotización'
+                })
+        
+        if self.fecha_servicio and self.fecha_cotizacion:
+            if self.fecha_servicio <= self.fecha_cotizacion:
+                raise ValidationError({
+                    'fecha_servicio': 'La fecha de servicio debe ser posterior a la fecha de cotización'
+                })
+        
+        # Validar RUC (solo si se proporciona)
+        if self.ruc:
+            if not self.ruc.isdigit() or len(self.ruc) != 11:
+                raise ValidationError({
+                    'ruc': 'El RUC debe contener 11 dígitos numéricos'
+                })
+        
+        # Validar monto total
+        if self.monto_total < 0:
+            raise ValidationError({
+                'monto_total': 'El monto total no puede ser negativo'
+            })
+
     class Meta:
         verbose_name = "Cotización"
         verbose_name_plural = "Cotizaciones"
@@ -159,6 +188,21 @@ class ItemCotizacion(models.Model):
     def __str__(self):
         return f"{self.curso} - {self.cantidad} x {self.precio_unitario}"
     
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        # Validar cantidad
+        if self.cantidad in [None, '']:
+            raise ValidationError({'cantidad': 'La cantidad es obligatoria'})
+        if self.cantidad <= 0:
+            raise ValidationError({'cantidad': 'La cantidad debe ser mayor a 0'})
+        if self.cantidad > 100:
+            raise ValidationError({'cantidad': 'La cantidad no puede ser mayor a 100'})
+        # Validar precio unitario
+        if self.precio_unitario in [None, '']:
+            raise ValidationError({'precio_unitario': 'El precio unitario es obligatorio'})
+        if self.precio_unitario <= 0:
+            raise ValidationError({'precio_unitario': 'El precio unitario debe ser mayor a 0'})
+    
     @property
     def subtotal(self):
         return self.cantidad * self.precio_unitario
@@ -166,3 +210,20 @@ class ItemCotizacion(models.Model):
     class Meta:
         verbose_name = "Item de cotización"
         verbose_name_plural = "Items de cotización"
+
+
+class HistorialEstado(models.Model):
+    cotizacion = models.ForeignKey(Cotizacion, on_delete=models.CASCADE, related_name='historial_estados')
+    estado_anterior = models.CharField(max_length=20)
+    estado_nuevo = models.CharField(max_length=20)
+    usuario = models.ForeignKey('accounts.User', on_delete=models.CASCADE)
+    fecha_cambio = models.DateTimeField(auto_now_add=True)
+    comentario = models.TextField(blank=True, null=True)
+    
+    class Meta:
+        verbose_name = "Historial de Estado"
+        verbose_name_plural = "Historial de Estados"
+        ordering = ['-fecha_cambio']
+    
+    def __str__(self):
+        return f"{self.cotizacion} - {self.estado_anterior} -> {self.estado_nuevo}"

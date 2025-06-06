@@ -1,4 +1,63 @@
-venv/
-db.json
-db.sqlite3
+# Python
 __pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Entorno virtual
+venv/
+.env
+.env.*
+*.env
+
+# Archivos de configuración de entorno
+*.local
+*.envrc
+
+# Archivos de base de datos locales
+*.sqlite3
+*.db
+
+# Archivos temporales
+*.log
+*.pot
+*.mo
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Archivos de migraciones
+**/migrations/*
+!**/migrations/__init__.py
+
+# Archivos de media y archivos subidos
+/media/
+media/
+
+# Archivos de static generados
+/static/
+static/
+staticfiles/
+
+# Archivos de compilación de front-end
+node_modules/
+
+# Configuración de IDEs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Archivos de coverage y testing
+htmlcov/
+.coverage
+.tox/
+
+# Archivos de Render
+render.yaml
+
+# Otros
+*.bak
+*.orig

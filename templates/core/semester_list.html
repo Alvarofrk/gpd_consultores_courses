@@ -13,7 +13,7 @@
 
 {% if request.user.is_superuser %}
 <div class="manage-wrap">
-    <a class="btn btn-primary" href="{% url 'add_semester' %}"><i class="fas fa-plus"></i>{% trans 'Agregar nuevo grupo' %}</a>
+    <a class="btn btn-gpd" href="{% url 'add_semester' %}"><i class="fas fa-plus"></i>{% trans 'Agregar nuevo grupo' %}</a>
 </div>
 {% endif %}
 

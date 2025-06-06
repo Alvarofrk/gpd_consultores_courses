@@ -2,11 +2,31 @@
 # Exit on error
 set -o errexit
 
-# Modify this line as needed for your package manager (pip, poetry, etc.)
+# Print commands
+set -x
+
+# Install dependencies
 pip install -r requirements.txt
 
-# Convert static asset files
+# Install gunicorn if not already installed
+pip install gunicorn
+
+# Collect static files
 python manage.py collectstatic --no-input
 
-# Apply any outstanding database migrations
+# Apply database migrations
 python manage.py migrate
+
+# Create cache table
+python manage.py createcachetable
+
+# Verify static files
+ls -la staticfiles/
+
+# Print Python version
+python --version
+
+# Print installed packages
+pip freeze
+
+echo "Build completed successfully!"

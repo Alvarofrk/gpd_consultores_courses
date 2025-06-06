@@ -21,7 +21,7 @@
 
 {% if request.user.is_superuser or request.user.is_lecturer %}
 <div class="manage-wrap">
-    <a class="btn btn-primary" href="{% url 'quiz_create' course.slug %}"><i class="fas fa-plus"></i>{% trans 'Agregar Cuestionario' %}</a>
+    <a class="btn btn-gpd" href="{% url 'quiz_create' course.slug %}"><i class="fas fa-plus"></i>{% trans 'Agregar Cuestionario' %}</a>
 </div>
 {% endif %}
 

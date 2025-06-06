@@ -115,9 +115,23 @@
       </li>
     </ul>
 
-    {% if percent < 80 %}
+    {% if percent >= 80 %}
+      {% with cert_path="static/pdfs/"|add:course.code|add:".pdf" %}
+        {% if cert_path|file_exists %}
+          <div class="text-center mt-4">
+            <a href="{% url 'generar_certificado' sitting.id %}" class="btn btn-gpd">
+              <i class="fas fa-download"></i> {% trans "Descargar Certificado" %}
+            </a>
+          </div>
+        {% else %}
+          <div class="text-center mt-4">
+            <span class="text-danger">{% trans "No hay plantilla de certificado para este curso." %}</span>
+          </div>
+        {% endif %}
+      {% endwith %}
+    {% else %}
     <div class="text-center mt-4">
-      <a href="{% url 'quiz_take' course.id quiz.slug %}" class="btn btn-primary">
+      <a href="{% url 'quiz_take' course.id quiz.slug %}" class="btn btn-gpd">
         <i class="fas fa-redo"></i> {% trans "Reintentar examen" %}
       </a>
     </div>

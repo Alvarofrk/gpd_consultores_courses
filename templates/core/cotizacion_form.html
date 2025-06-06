@@ -10,46 +10,89 @@
     <div class="row">
         <div class="col-12">
             <div class="card">
-                <div class="card-header bg-primary text-white">
+                <div class="card-header text-white" style="background-color:#1a3764;">
                     <h4 class="mb-0">{% trans 'Nueva Cotización' %}</h4>
                 </div>
                 <div class="card-body">
                     <form method="post" class="needs-validation" novalidate>
                         {% csrf_token %}
+                        {% include 'snippets/messages.html' %}
+                        <!-- DEPURACIÓN: Mostrar todos los errores internos del formulario y formset -->
+                        {% if form.errors %}
+                            <div class="alert alert-warning">
+                                <strong>Errores del formulario principal (debug):</strong>
+                                <pre>{{ form.errors.as_json }}</pre>
+                            </div>
+                        {% endif %}
+                        {% if formset.errors %}
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-circle me-2"></i>Por favor, llena todos los items antes de guardar la cotización.
+                            </div>
+                        {% endif %}
+                        {% if formset.non_form_errors %}
+                            <div class="alert alert-warning">
+                                <strong>Errores generales del formset (debug):</strong>
+                                <pre>{{ formset.non_form_errors }}</pre>
+                            </div>
+                        {% endif %}
+                        
+                        <!-- Mostrar errores generales del formulario principal -->
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                <strong>Errores en el formulario principal:</strong>
+                                <ul class="mb-0">
+                                    {% for error in form.non_field_errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
                         
                         <!-- Información Básica -->
                         <div class="card mb-4">
                             <div class="card-header bg-light">
-                                <h5 class="mb-0">{% trans 'Información Básica' %}</h5>
+                                <h5 class="mb-0">Información Básica</h5>
                             </div>
                             <div class="card-body">
                                 <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="{{ form.nombre_anio.id_for_label }}" class="form-label">{% trans 'Nombre del Año' %}</label>
-                                        {{ form.nombre_anio|add_class:"form-control" }}
-                                        {{ form.nombre_anio.errors }}
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label for="{{ form.cotizacion.id_for_label }}" class="form-label">{% trans 'Cotización' %}</label>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="{{ form.cotizacion.id_for_label }}" class="form-label">Cotización</label>
                                         {{ form.cotizacion|add_class:"form-control" }}
-                                        {{ form.cotizacion.errors }}
+                                        {% if form.cotizacion.errors %}
+                                            <div class="text-danger small mt-1">{{ form.cotizacion.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="{{ form.tipo_cotizacion.id_for_label }}" class="form-label">Tipo de Cotización</label>
+                                        {{ form.tipo_cotizacion|add_class:"form-control" }}
+                                        {% if form.tipo_cotizacion.errors %}
+                                            <div class="text-danger small mt-1">{{ form.tipo_cotizacion.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="{{ form.estado.id_for_label }}" class="form-label">Estado</label>
+                                        {{ form.estado|add_class:"form-control" }}
+                                        {% if form.estado.errors %}
+                                            <div class="text-danger small mt-1">{{ form.estado.errors.0 }}</div>
+                                        {% endif %}
                                     </div>
                                 </div>
                                 <div class="row">
-                                    <div class="col-md-4 mb-3">
-                                        <label for="{{ form.tipo_cotizacion.id_for_label }}" class="form-label">{% trans 'Tipo de Cotización' %}</label>
-                                        {{ form.tipo_cotizacion|add_class:"form-control" }}
-                                        {{ form.tipo_cotizacion.errors }}
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.fecha_cotizacion.id_for_label }}" class="form-label">Fecha de Cotización</label>
+                                        {{ form.fecha_cotizacion }}
+                                        {% if form.fecha_cotizacion.errors %}
+                                            <div class="text-danger small mt-1">{{ form.fecha_cotizacion.errors.0 }}</div>
+                                        {% endif %}
+                                        <div style="font-size: 1rem; font-weight: 400; color: #333;">Fecha actual guardada: {{ form.fields.fecha_cotizacion.initial }}</div>
                                     </div>
-                                    <div class="col-md-4 mb-3">
-                                        <label for="{{ form.fecha_cotizacion.id_for_label }}" class="form-label">{% trans 'Fecha de Cotización' %}</label>
-                                        {{ form.fecha_cotizacion|add_class:"form-control" }}
-                                        {{ form.fecha_cotizacion.errors }}
-                                    </div>
-                                    <div class="col-md-4 mb-3">
-                                        <label for="{{ form.validez_cotizacion.id_for_label }}" class="form-label">{% trans 'Validez de Cotización' %}</label>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.validez_cotizacion.id_for_label }}" class="form-label">Validez de Cotización</label>
                                         {{ form.validez_cotizacion|add_class:"form-control" }}
-                                        {{ form.validez_cotizacion.errors }}
+                                        {% if form.validez_cotizacion.errors %}
+                                            <div class="text-danger small mt-1">{{ form.validez_cotizacion.errors.0 }}</div>
+                                        {% endif %}
+                                        <div style="font-size: 1rem; font-weight: 400; color: #333;">Fecha actual guardada: {{ form.fields.validez_cotizacion.initial }}</div>
                                     </div>
                                 </div>
                             </div>
@@ -65,19 +108,25 @@
                                     <div class="col-md-6 mb-3">
                                         <label for="{{ form.dirigido_a.id_for_label }}" class="form-label">{% trans 'Dirigido a' %}</label>
                                         {{ form.dirigido_a|add_class:"form-control" }}
-                                        {{ form.dirigido_a.errors }}
+                                        {% if form.dirigido_a.errors %}
+                                            <div class="text-danger small mt-1">{{ form.dirigido_a.errors.0 }}</div>
+                                        {% endif %}
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label for="{{ form.empresa.id_for_label }}" class="form-label">{% trans 'Empresa' %}</label>
                                         {{ form.empresa|add_class:"form-control" }}
-                                        {{ form.empresa.errors }}
+                                        {% if form.empresa.errors %}
+                                            <div class="text-danger small mt-1">{{ form.empresa.errors.0 }}</div>
+                                        {% endif %}
                                     </div>
                                 </div>
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
                                         <label for="{{ form.ruc.id_for_label }}" class="form-label">{% trans 'RUC' %}</label>
                                         {{ form.ruc|add_class:"form-control" }}
-                                        {{ form.ruc.errors }}
+                                        {% if form.ruc.errors %}
+                                            <div class="text-danger small mt-1">{{ form.ruc.errors.0 }}</div>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
@@ -93,24 +142,33 @@
                                     <div class="col-md-12 mb-3">
                                         <label for="{{ form.servicio.id_for_label }}" class="form-label">{% trans 'Servicio' %}</label>
                                         {{ form.servicio|add_class:"form-control" }}
-                                        {{ form.servicio.errors }}
+                                        {% if form.servicio.errors %}
+                                            <div class="text-danger small mt-1">{{ form.servicio.errors.0 }}</div>
+                                        {% endif %}
                                     </div>
                                 </div>
                                 <div class="row">
                                     <div class="col-md-4 mb-3">
                                         <label for="{{ form.modalidad.id_for_label }}" class="form-label">{% trans 'Modalidad' %}</label>
                                         {{ form.modalidad|add_class:"form-control" }}
-                                        {{ form.modalidad.errors }}
+                                        {% if form.modalidad.errors %}
+                                            <div class="text-danger small mt-1">{{ form.modalidad.errors.0 }}</div>
+                                        {% endif %}
                                     </div>
                                     <div class="col-md-4 mb-3">
                                         <label for="{{ form.sede_servicio.id_for_label }}" class="form-label">{% trans 'Sede de Servicio' %}</label>
                                         {{ form.sede_servicio|add_class:"form-control" }}
-                                        {{ form.sede_servicio.errors }}
+                                        {% if form.sede_servicio.errors %}
+                                            <div class="text-danger small mt-1">{{ form.sede_servicio.errors.0 }}</div>
+                                        {% endif %}
                                     </div>
                                     <div class="col-md-4 mb-3">
                                         <label for="{{ form.fecha_servicio.id_for_label }}" class="form-label">{% trans 'Fecha de Servicio' %}</label>
-                                        {{ form.fecha_servicio|add_class:"form-control" }}
-                                        {{ form.fecha_servicio.errors }}
+                                        {{ form.fecha_servicio }}
+                                        {% if form.fecha_servicio.errors %}
+                                            <div class="text-danger small mt-1">{{ form.fecha_servicio.errors.0 }}</div>
+                                        {% endif %}
+                                        <div style="font-size: 1rem; font-weight: 400; color: #333;">Fecha actual guardada: {{ form.fields.fecha_servicio.initial }}</div>
                                     </div>
                                 </div>
                             </div>
@@ -126,7 +184,9 @@
                                     <div class="col-md-6 mb-3">
                                         <label for="{{ form.tiempo_entrega.id_for_label }}" class="form-label">{% trans 'Tiempo de Entrega' %}</label>
                                         {{ form.tiempo_entrega|add_class:"form-control" }}
-                                        {{ form.tiempo_entrega.errors }}
+                                        {% if form.tiempo_entrega.errors %}
+                                            <div class="text-danger small mt-1">{{ form.tiempo_entrega.errors.0 }}</div>
+                                        {% endif %}
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label for="{{ form.modalidad_pago.id_for_label }}" class="form-label">{% trans 'Modalidad de Pago' %}</label>
@@ -140,52 +200,71 @@
                         <!-- Items de la Cotización -->
                         <div class="card mb-4">
                             <div class="card-header bg-light">
-                                <h5 class="mb-0">{% trans 'Items de la Cotización' %}</h5>
+                                <h5 class="mb-0">{% trans 'Items' %}</h5>
                             </div>
                             <div class="card-body">
+                                {% if formset.errors %}
+                                    <div class="alert alert-danger">
+                                        <i class="fas fa-exclamation-circle me-2"></i>Faltan datos. Por favor, revisa los campos obligatorios.
+                                    </div>
+                                {% endif %}
                                 {{ formset.management_form }}
                                 <div id="items-container">
                                     {% for form in formset.forms %}
-                                    <div class="item-form mb-3 p-3 border rounded bg-white shadow-sm">
-                                        <div class="row align-items-end">
-                                            <div class="col-md-3 mb-3">
-                                                <label for="{{ form.curso.id_for_label }}" class="form-label fw-bold">{% trans 'Curso' %}</label>
+                                    <div class="item-form mb-3 p-3 border rounded bg-white shadow-sm" data-form-index="{{ forloop.counter0 }}">
+                                        <div class="row g-2 align-items-end">
+                                            <div class="col-12 mb-2">
+                                                <span class="badge" style="font-size:1rem; background-color:#1a3764; color:#fff;">Ítem {{ forloop.counter }}</span>
+                                            </div>
+                                            <div class="col-12 col-md-3 mb-2">
+                                                <label for="{{ form.curso.id_for_label }}" class="form-label fw-bold">Curso</label>
                                                 {{ form.curso|add_class:"form-control" }}
                                                 {{ form.curso.errors }}
                                             </div>
-                                            <div class="col-md-2 mb-3">
-                                                <label for="{{ form.duracion.id_for_label }}" class="form-label fw-bold">{% trans 'Duración' %}</label>
+                                            <div class="col-6 col-md-2 mb-2">
+                                                <label for="{{ form.duracion.id_for_label }}" class="form-label fw-bold">Duración</label>
                                                 {{ form.duracion|add_class:"form-control" }}
                                                 {{ form.duracion.errors }}
                                             </div>
-                                            <div class="col-md-3 mb-3">
-                                                <label for="{{ form.descripcion.id_for_label }}" class="form-label fw-bold">{% trans 'Descripción' %}</label>
+                                            <div class="col-12 col-md-3 mb-2">
+                                                <label for="{{ form.descripcion.id_for_label }}" class="form-label fw-bold">Descripción</label>
                                                 {{ form.descripcion|add_class:"form-control" }}
                                                 {{ form.descripcion.errors }}
                                             </div>
-                                            <div class="col-md-1 mb-3">
-                                                <label for="{{ form.cantidad.id_for_label }}" class="form-label fw-bold">{% trans 'Cant.' %}</label>
+                                            <div class="col-6 col-md-1 mb-2">
+                                                <label for="{{ form.cantidad.id_for_label }}" class="form-label fw-bold">Cant.</label>
                                                 {{ form.cantidad|add_class:"form-control cantidad"|attr:"type:number"|attr:"min:1"|attr:"step:1" }}
                                                 {{ form.cantidad.errors }}
                                             </div>
-                                            <div class="col-md-2 mb-3">
-                                                <label for="{{ form.precio_unitario.id_for_label }}" class="form-label fw-bold">{% trans 'Precio Unit.' %}</label>
+                                            <div class="col-6 col-md-2 mb-2">
+                                                <label for="{{ form.precio_unitario.id_for_label }}" class="form-label fw-bold">Precio Unitario</label>
                                                 {{ form.precio_unitario|add_class:"form-control precio"|attr:"type:number"|attr:"min:0"|attr:"step:0.01" }}
                                                 {{ form.precio_unitario.errors }}
                                             </div>
-                                            <div class="col-md-1 mb-3">
-                                                <div class="form-label fw-bold">{% trans 'Subtotal' %}</div>
-                                                <div class="subtotal text-end" style="padding: 0.375rem 0.75rem;">0.00</div>
+                                            <div class="col-6 col-md-1 mb-2 d-flex flex-column align-items-end justify-content-end">
+                                                <label class="form-label fw-bold">Subtotal</label>
+                                                <div class="subtotal text-end mb-2" style="padding: 0.375rem 0.75rem; min-width: 70px;">0.00</div>
                                             </div>
                                         </div>
                                         {{ form.id }}
                                         {{ form.DELETE }}
                                     </div>
+                                    <!-- Mostrar errores de cada ítem -->
+                                    {% if form.non_field_errors %}
+                                        <div class="alert alert-danger">
+                                            <strong>Error en ítem {{ forloop.counter }}:</strong>
+                                            <ul class="mb-0">
+                                                {% for error in form.non_field_errors %}
+                                                    <li>{{ error }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                    {% endif %}
                                     {% endfor %}
                                 </div>
                                 <div class="row mt-4">
-                                    <div class="col-md-11 text-end">
-                                        <h4 class="mb-0">{% trans 'Total:' %} <span id="total-amount" class="text-primary">S/ 0.00</span></h4>
+                                    <div class="col-md-12 text-end">
+                                        <h4 class="mb-0">Total: <span id="total-amount" class="text-primary">S/ 0.00</span></h4>
                                     </div>
                                 </div>
                             </div>
@@ -195,7 +274,7 @@
                             <a href="{% url 'cotizaciones_list' %}" class="btn btn-secondary">
                                 <i class="fas fa-arrow-left"></i> {% trans 'Volver' %}
                             </a>
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="btn btn-gpd">
                                 <i class="fas fa-save"></i> {% trans 'Guardar Cotización' %}
                             </button>
                         </div>
@@ -210,44 +289,177 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Función para actualizar los cálculos de subtotales y total
     function actualizarCalculos() {
         let total = 0;
-        const itemForms = document.querySelectorAll('.item-form');
-        itemForms.forEach(function(itemForm, idx) {
-            // Si el formulario está marcado para eliminar, lo ignoramos
-            const deleteInput = itemForm.querySelector('input[type="checkbox"][name$="-DELETE"]');
-            if (deleteInput && deleteInput.checked) return;
-
-            const cantidadInput = itemForm.querySelector('.cantidad');
-            const precioInput = itemForm.querySelector('.precio');
-            const subtotalElement = itemForm.querySelector('.subtotal');
-            if (!cantidadInput || !precioInput || !subtotalElement) return; // Si falta algo, ignora este ítem
-
-            let cantidad = parseFloat(cantidadInput.value) || 0;
-            let precio = parseFloat(precioInput.value) || 0;
-            let subtotal = cantidad * precio;
-            // Debug
-            console.log(`Ítem ${idx}: cantidad=${cantidad}, precio=${precio}, subtotal=${subtotal}`);
-            subtotalElement.textContent = subtotal.toFixed(2);
+        document.querySelectorAll('.item-form').forEach(function(itemForm) {
+            const deleteInput = itemForm.querySelector('input[name$="-DELETE"]');
+            if (deleteInput && ((deleteInput.type === "checkbox" && deleteInput.checked) || (deleteInput.type !== "checkbox" && deleteInput.value === "on"))) return;
+            const cantidad = itemForm.querySelector('.cantidad');
+            const precio = itemForm.querySelector('.precio');
+            const subtotalDiv = itemForm.querySelector('.subtotal');
+            if (!cantidad || !precio || !subtotalDiv) return;
+            const cantidadVal = parseFloat(cantidad.value) || 0;
+            const precioVal = parseFloat(precio.value) || 0;
+            const subtotal = cantidadVal * precioVal;
+            subtotalDiv.textContent = subtotal.toFixed(2);
             total += subtotal;
         });
         const totalElement = document.getElementById('total-amount');
-        if (totalElement) {
-            totalElement.textContent = 'S/ ' + total.toFixed(2);
+        if (totalElement) totalElement.textContent = 'S/ ' + total.toFixed(2);
+    }
+
+    // Función para actualizar el contador TOTAL_FORMS
+    function actualizarTotalForms() {
+        const forms = Array.from(document.querySelectorAll('.item-form')).filter(f => f.style.display !== 'none');
+        const totalForms = document.getElementById('id_items-TOTAL_FORMS');
+        if (totalForms) {
+            totalForms.value = forms.length;
+            console.log('TOTAL_FORMS actualizado:', totalForms.value);
         }
     }
 
-    function agregarListeners() {
-        const itemForms = document.querySelectorAll('.item-form');
-        itemForms.forEach(function(itemForm) {
-            const cantidadInput = itemForm.querySelector('.cantidad');
-            const precioInput = itemForm.querySelector('.precio');
-            if (cantidadInput) cantidadInput.addEventListener('input', actualizarCalculos);
-            if (precioInput) precioInput.addEventListener('input', actualizarCalculos);
+    // Función para actualizar la visibilidad de los botones de eliminar
+    function actualizarBotonesEliminar() {
+        const visibles = Array.from(document.querySelectorAll('.item-form')).filter(f => f.style.display !== 'none');
+        visibles.forEach(function(itemForm) {
+            const btnEliminar = itemForm.querySelector('.btn-eliminar-item');
+            if (btnEliminar) {
+                btnEliminar.style.display = visibles.length <= 1 ? 'none' : '';
+            }
         });
     }
 
-    agregarListeners();
+    // Función para verificar si un item está vacío
+    function esItemVacio(itemForm) {
+        const curso = itemForm.querySelector('input[name$="-curso"]');
+        const duracion = itemForm.querySelector('input[name$="-duracion"]');
+        const descripcion = itemForm.querySelector('textarea[name$="-descripcion"]');
+        const cantidad = itemForm.querySelector('.cantidad');
+        const precio = itemForm.querySelector('.precio');
+        
+        return (
+            (!curso.value || curso.value.trim() === '') &&
+            (!duracion.value || duracion.value.trim() === '') &&
+            (!descripcion.value || descripcion.value.trim() === '') &&
+            (!cantidad.value || cantidad.value.trim() === '') &&
+            (!precio.value || precio.value.trim() === '')
+        );
+    }
+
+    // Función para validar un item
+    function validarItem(itemForm) {
+        const cantidad = itemForm.querySelector('.cantidad');
+        const precio = itemForm.querySelector('.precio');
+        let esValido = true;
+        let mensajes = [];
+
+        if (cantidad && cantidad.value) {
+            const cantidadVal = parseInt(cantidad.value);
+            if (cantidadVal <= 0) {
+                mensajes.push('La cantidad debe ser mayor a 0');
+                esValido = false;
+            } else if (cantidadVal > 100) {
+                mensajes.push('La cantidad no puede ser mayor a 100');
+                esValido = false;
+            }
+        }
+
+        if (precio && precio.value) {
+            const precioVal = parseFloat(precio.value);
+            if (precioVal <= 0) {
+                mensajes.push('El precio unitario debe ser mayor a 0');
+                esValido = false;
+            }
+        }
+
+        return { esValido, mensajes };
+    }
+
+    // Función para marcar un item como eliminado
+    function marcarComoEliminado(itemForm) {
+        const deleteInput = itemForm.querySelector('input[name$="-DELETE"]');
+        if (deleteInput) {
+            if (deleteInput.type === "checkbox") {
+                deleteInput.checked = true;
+            } else {
+                deleteInput.value = "on";
+            }
+        }
+        itemForm.style.display = 'none';
+    }
+
+    // Función para agregar los event listeners a un item
+    function agregarListeners(itemForm) {
+        const cantidad = itemForm.querySelector('.cantidad');
+        const precio = itemForm.querySelector('.precio');
+        if (cantidad) cantidad.oninput = actualizarCalculos;
+        if (precio) precio.oninput = actualizarCalculos;
+        
+        const btnEliminar = itemForm.querySelector('.btn-eliminar-item');
+        if (btnEliminar) {
+            btnEliminar.onclick = function() {
+                const visibles = Array.from(document.querySelectorAll('.item-form')).filter(f => f.style.display !== 'none');
+                if (visibles.length <= 1) {
+                    alert('Debe haber al menos un ítem en la cotización.');
+                    return;
+                }
+                marcarComoEliminado(itemForm);
+                actualizarTotalForms();
+                actualizarBotonesEliminar();
+                actualizarCalculos();
+            };
+        }
+    }
+
+    // Manejar el envío del formulario
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Marcar como eliminados los items vacíos en vez de quitarlos del DOM
+            let hayItemsValidos = false;
+            let hayErrores = false;
+            let mensajesError = [];
+
+            document.querySelectorAll('.item-form').forEach(function(itemForm) {
+                if (esItemVacio(itemForm)) {
+                    marcarComoEliminado(itemForm);
+                } else {
+                    hayItemsValidos = true;
+                    const { esValido, mensajes } = validarItem(itemForm);
+                    if (!esValido) {
+                        hayErrores = true;
+                        mensajesError.push(...mensajes);
+                    }
+                }
+            });
+            
+            // Actualizar el contador
+            actualizarTotalForms();
+            
+            // Verificar si hay al menos un item
+            if (!hayItemsValidos) {
+                alert('Debe haber al menos un ítem en la cotización.');
+                return false;
+            }
+
+            // Mostrar errores si los hay
+            if (hayErrores) {
+                alert('Por favor corrija los siguientes errores:\n' + mensajesError.join('\n'));
+                return false;
+            }
+            
+            // Si todo está bien, enviar el formulario
+            this.submit();
+        });
+    }
+
+    // Inicialización
+    document.querySelectorAll('.item-form').forEach(agregarListeners);
+    actualizarTotalForms();
+    actualizarBotonesEliminar();
     actualizarCalculos();
 });
 </script>

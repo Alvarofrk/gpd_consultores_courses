@@ -3,7 +3,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django import forms
 from django.db import transaction
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseNotAllowed
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
@@ -12,11 +12,12 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import Paragraph
 from io import BytesIO
 from datetime import datetime
+from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 
 from accounts.decorators import admin_required, lecturer_required
 from accounts.models import User, Student
 from .forms import SessionForm, SemesterForm, NewsAndEventsForm, CotizacionForm, ItemCotizacionFormSet
-from .models import NewsAndEvents, ActivityLog, Session, Semester, Cotizacion, ItemCotizacion
+from .models import NewsAndEvents, ActivityLog, Session, Semester, Cotizacion, ItemCotizacion, HistorialEstado
 
 
 # ########################################################
@@ -222,13 +223,43 @@ def unset_current_semester():
 
 @login_required
 def cotizaciones_list_view(request):
-    """Mostrar lista de todas las cotizaciones"""
-    if request.user.is_superuser:
-        cotizaciones = Cotizacion.objects.all()
-    else:
-        cotizaciones = Cotizacion.objects.filter(creado_por=request.user)
+    """Lista de cotizaciones con filtros y paginación"""
+    cotizaciones = Cotizacion.objects.all().order_by('-fecha_cotizacion')
     
-    return render(request, "core/cotizaciones_list.html", {"cotizaciones": cotizaciones})
+    # Filtros
+    estado = request.GET.get('estado')
+    fecha_desde = request.GET.get('fecha_desde')
+    fecha_hasta = request.GET.get('fecha_hasta')
+    cliente = request.GET.get('cliente')
+    
+    if estado:
+        cotizaciones = cotizaciones.filter(estado=estado)
+    if fecha_desde:
+        cotizaciones = cotizaciones.filter(fecha__gte=fecha_desde)
+    if fecha_hasta:
+        cotizaciones = cotizaciones.filter(fecha__lte=fecha_hasta)
+    if cliente:
+        cotizaciones = cotizaciones.filter(cliente__icontains=cliente)
+    
+    # Paginación
+    paginator = Paginator(cotizaciones, 10)  # 10 items por página
+    page = request.GET.get('page')
+    try:
+        cotizaciones = paginator.page(page)
+    except PageNotAnInteger:
+        cotizaciones = paginator.page(1)
+    except EmptyPage:
+        cotizaciones = paginator.page(paginator.num_pages)
+    
+    context = {
+        'cotizaciones': cotizaciones,
+        'estados': Cotizacion.ESTADO_CHOICES,
+        'estado_actual': estado,
+        'fecha_desde': fecha_desde,
+        'fecha_hasta': fecha_hasta,
+        'cliente': cliente,
+    }
+    return render(request, 'core/cotizaciones_list.html', context)
 
 
 @login_required
@@ -236,28 +267,35 @@ def cotizacion_add_view(request):
     if request.method == 'POST':
         form = CotizacionForm(request.POST)
         formset = ItemCotizacionFormSet(request.POST, prefix='items')
-        
         if form.is_valid():
             try:
                 with transaction.atomic():
-                    # Solo crea la instancia, NO la guardes aún
                     cotizacion = form.save(commit=False)
-
-                    # Crear el formset con la instancia de la cotización ya creada
                     formset = ItemCotizacionFormSet(request.POST, instance=cotizacion, prefix='items')
-
                     if formset.is_valid():
+                        instances = formset.save(commit=False)
+                        items_validos = []
+                        for instance in instances:
+                            # Guardar solo si hay algún campo relevante lleno
+                            if instance.curso or instance.descripcion or instance.duracion or instance.cantidad or instance.precio_unitario:
+                                instance.cotizacion = cotizacion
+                                items_validos.append(instance)
+                        if not items_validos:
+                            messages.error(request, "Debe agregar al menos un ítem a la cotización.")
+                            return render(request, 'core/cotizacion_form.html', {
+                                'form': form,
+                                'formset': formset,
+                                'title': 'Nueva Cotización'
+                            })
                         cotizacion.creado_por = request.user
                         cotizacion.save()
-                        formset.save()  # Guarda, elimina y actualiza correctamente los ítems
-
-                        # Recalcular el monto total
+                        for instance in items_validos:
+                            instance.save()
                         total = sum(item.subtotal for item in cotizacion.items.all())
                         cotizacion.monto_total = total
                         cotizacion.save()
-
                         messages.success(request, "Cotización creada exitosamente.")
-                        return redirect("cotizaciones_list")
+                        return redirect('cotizaciones_list')
                     else:
                         for error in formset.errors:
                             if error:
@@ -265,27 +303,17 @@ def cotizacion_add_view(request):
                         for error in formset.non_form_errors():
                             messages.error(request, error)
             except Exception as e:
-                messages.error(request, f"Error al guardar la cotización: {str(e)}")
+                messages.error(request, f"Error al crear la cotización: {str(e)}")
         else:
-            messages.error(request, "Por favor corrija los errores en el formulario principal.")
+            messages.error(request, "Por favor corrija los errores en el formulario.")
     else:
-        form = CotizacionForm()
-        formset = ItemCotizacionFormSet(prefix='items', queryset=ItemCotizacion.objects.none())
-    
-    return render(request, "core/cotizacion_form_nuevo.html", {"form": form, "formset": formset})
-
-
-@login_required
-def cotizacion_edit_view(request, pk):
-    cotizacion = get_object_or_404(Cotizacion, pk=pk)
-    if request.method == 'POST':
-        form = CotizacionForm(request.POST, instance=cotizacion)
-        if form.is_valid():
-            form.save()
-            return redirect('cotizacion_detail', pk=cotizacion.pk)
-    else:
-        form = CotizacionForm(instance=cotizacion)
-    return render(request, 'core/cotizacion_form.html', {'form': form, 'cotizacion': cotizacion})
+        form = CotizacionForm(initial={'estado': 'pendiente'})
+        formset = ItemCotizacionFormSet(prefix='items')
+    return render(request, 'core/cotizacion_form.html', {
+        'form': form,
+        'formset': formset,
+        'title': 'Nueva Cotización'
+    })
 
 
 @login_required
@@ -305,43 +333,33 @@ def cotizacion_detail_view(request, pk):
 def cotizacion_update_view(request, pk):
     """Actualizar una cotización existente"""
     cotizacion = get_object_or_404(Cotizacion, pk=pk)
-    
     # Verificar permisos
     if not request.user.is_superuser and cotizacion.creado_por != request.user:
         messages.error(request, "No tienes permiso para editar esta cotización.")
         return redirect("cotizaciones_list")
-    
     if request.method == "POST":
         form = CotizacionForm(request.POST, instance=cotizacion)
         formset = ItemCotizacionFormSet(request.POST, instance=cotizacion, prefix='items')
-        
         if form.is_valid():
             if formset.is_valid():
                 try:
                     with transaction.atomic():
                         if not request.user.is_superuser:
                             form.instance.estado = cotizacion.estado
-                        
-                        # Guardar la cotización
                         cotizacion = form.save()
-                        
-                        # Guardar el formset
                         instances = formset.save(commit=False)
-                        
                         # Eliminar items marcados para eliminación
                         for obj in formset.deleted_objects:
                             obj.delete()
-                        
-                        # Guardar items nuevos/modificados
+                        # Guardar solo los ítems con datos relevantes
                         for instance in instances:
-                            instance.cotizacion = cotizacion
-                            instance.save()
-                        
+                            if instance.curso or instance.descripcion or instance.duracion or instance.cantidad or instance.precio_unitario:
+                                instance.cotizacion = cotizacion
+                                instance.save()
                         # Recalcular el monto total
                         total = sum(item.subtotal for item in cotizacion.items.all())
                         cotizacion.monto_total = total
                         cotizacion.save()
-                        
                         messages.success(request, "Cotización actualizada exitosamente.")
                         return redirect("cotizaciones_list")
                 except Exception as e:
@@ -359,7 +377,6 @@ def cotizacion_update_view(request, pk):
         if not request.user.is_superuser:
             form.fields['estado'].widget = forms.HiddenInput()
         formset = ItemCotizacionFormSet(instance=cotizacion, prefix='items')
-    
     return render(request, "core/cotizacion_form.html", {
         "form": form,
         "formset": formset,
@@ -389,28 +406,38 @@ def cotizacion_delete_view(request, pk):
 @login_required
 def cotizacion_change_status_view(request, pk):
     """Cambiar el estado de una cotización"""
+    if request.method != "POST":
+        return HttpResponseNotAllowed(['POST'])
+    
     if not request.user.is_superuser:
         messages.error(request, "Solo los administradores pueden cambiar el estado de las cotizaciones.")
         return redirect("cotizaciones_list")
     
     cotizacion = get_object_or_404(Cotizacion, pk=pk)
+    nuevo_estado = request.POST.get("estado")
+    comentario = request.POST.get("comentario", "")
     
-    if request.method == "POST":
-        nuevo_estado = request.POST.get("estado")
-        if nuevo_estado in dict(Cotizacion.ESTADO_CHOICES):
-            cotizacion.estado = nuevo_estado
-            cotizacion.save()
-            messages.success(request, f"Estado de la cotización cambiado a {cotizacion.get_estado_display()}.")
-        else:
-            messages.error(request, "Estado no válido.")
-    elif request.method == "GET":
-        nuevo_estado = request.GET.get("estado")
-        if nuevo_estado in dict(Cotizacion.ESTADO_CHOICES):
-            cotizacion.estado = nuevo_estado
-            cotizacion.save()
-            messages.success(request, f"Estado de la cotización cambiado a {cotizacion.get_estado_display()}.")
-        else:
-            messages.error(request, "Estado no válido.")
+    if nuevo_estado in dict(Cotizacion.ESTADO_CHOICES):
+        try:
+            with transaction.atomic():
+                # Crear registro en el historial
+                HistorialEstado.objects.create(
+                    cotizacion=cotizacion,
+                    estado_anterior=cotizacion.estado,
+                    estado_nuevo=nuevo_estado,
+                    usuario=request.user,
+                    comentario=comentario
+                )
+                
+                # Actualizar estado
+                cotizacion.estado = nuevo_estado
+                cotizacion.save()
+                
+                messages.success(request, f"Estado de la cotización cambiado a {cotizacion.get_estado_display()}.")
+        except Exception as e:
+            messages.error(request, f"Error al cambiar el estado: {str(e)}")
+    else:
+        messages.error(request, "Estado no válido.")
     
     return redirect("cotizaciones_list")
 
@@ -425,11 +452,11 @@ def cotizacion_download_pdf(request, pk):
 
     # LOGOS ARRIBA (doble de tamaño, ajuste fino)
     try:
-        p.drawImage('static/img/gpd.jpg', 30, height-100, width=240, height=100, preserveAspectRatio=True, mask='auto')
+        p.drawImage('static/img/logo1.jpg', 30, height-100, width=240, height=100, preserveAspectRatio=True, mask='auto')
     except:
         pass
     try:
-        p.drawImage('static/img/iso.png', width-240, height-90, width=160, height=80, preserveAspectRatio=True, mask='auto')
+        p.drawImage('static/img/iso.PNG', width-240, height-90, width=160, height=80, preserveAspectRatio=True, mask='auto')
     except:
         pass
 
@@ -474,7 +501,7 @@ def cotizacion_download_pdf(request, pk):
     p.drawString(x2+90, y_cot-15, cotizacion.tipo_cotizacion or "-")
     p.drawString(x2+90, y_cot-30, cotizacion.fecha_cotizacion.strftime('%d/%m/%Y') if cotizacion.fecha_cotizacion else "-")
     p.drawString(x2+110, y_cot-45, cotizacion.validez_cotizacion.strftime('%d/%m/%Y') if cotizacion.validez_cotizacion else "-")
-
+    
     # LÍNEA NARANJA
     p.setStrokeColorRGB(1, 0.5, 0)
     p.setLineWidth(2)
@@ -493,7 +520,7 @@ def cotizacion_download_pdf(request, pk):
     p.drawString(120, y_serv-30, cotizacion.sede_servicio or "-")
     p.drawString(120, y_serv-45, cotizacion.fecha_servicio.strftime('%d/%m/%Y') if cotizacion.fecha_servicio else "-")
 
-    # TABLA DE ÍTEMS (posición dinámica)
+    # TABLA DE ÍTEMS (posición fija para 7 ítems)
     styles = getSampleStyleSheet()
     styleN = styles["Normal"]
     styleN.fontName = 'Helvetica'
@@ -525,21 +552,52 @@ def cotizacion_download_pdf(request, pk):
         ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
         ('FONTSIZE', (0,1), (-1,-1), 8),
     ]))
-    y_tabla = y_serv-160
+    # Calcular la altura de la tabla con 7 ítems
+    dummy_data = [["-", "-", "-", "-", "-", "-"] for _ in range(7)]
+    dummy_table = Table([items_data[0]] + dummy_data, colWidths=[150, 100, 60, 70, 60, 80])
+    dummy_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1a3764')),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 9),
+        ('BOTTOMPADDING', (0,0), (-1,0), 8),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+        ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
+        ('FONTSIZE', (0,1), (-1,-1), 8),
+    ]))
+    # Calcular la altura de la tabla con 7 ítems
+    dummy_data = [["-", "-", "-", "-", "-", "-"] for _ in range(7)]
+    dummy_table = Table([items_data[0]] + dummy_data, colWidths=[150, 100, 60, 70, 60, 80])
+    dummy_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1a3764')),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 9),
+        ('BOTTOMPADDING', (0,0), (-1,0), 8),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+        ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
+        ('FONTSIZE', (0,1), (-1,-1), 8),
+    ]))
+    _, table_height_max = dummy_table.wrap(width-60, height)
     table_width, table_height = table.wrap(width-60, height)
+    # Alinear la tabla real pegada arriba del espacio reservado para 7 ítems
+    y_tabla_max = y_serv - 200
+    y_tabla = y_tabla_max
     table.drawOn(p, 30, y_tabla)
 
-    # TOTALES (justo debajo de la tabla, margen reducido)
-    y_tot = y_tabla - table_height - 5
+    # TOTALES (siempre debajo del espacio reservado para 7 ítems)
+    y_tot = y_tabla_max - table_height_max + 120
     p.setFont("Helvetica-Bold", 9)
-    p.drawString(width-180, y_tot, "TOTAL, S/:")
+    p.drawString(width-300, y_tot, "TOTAL, S/:")
     p.setFont("Helvetica", 9)
-    p.drawString(width-120, y_tot, f"S/ {cotizacion.monto_total:.2f}")
+    p.drawString(width-180, y_tot, f"S/ {cotizacion.monto_total:.2f}")
     p.setFont("Helvetica-Bold", 8)
-    p.drawString(width-180, y_tot-15, "SUBTOTAL")
-    p.drawString(width-180, y_tot-30, "SUBTOTAL + IGV")
-    p.drawString(width-180, y_tot-45, "12% DE DETRACCIÓN - Banco de la Nación*")
-    p.drawString(width-180, y_tot-60, "INVERSIÓN TOTAL A DEPOSITAR")
+    p.drawString(width-300, y_tot-15, "SUBTOTAL")
+    p.drawString(width-300, y_tot-30, "SUBTOTAL + IGV")
+    p.drawString(width-300, y_tot-45, "12% DE DETRACCIÓN - Banco de la Nación*")
+    p.drawString(width-300, y_tot-60, "INVERSIÓN TOTAL A DEPOSITAR")
 
     # MEDIOS DE PAGO (justo debajo de totales)
     y_pago = y_tot-90

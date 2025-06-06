@@ -35,12 +35,34 @@ class QuizAddForm(forms.ModelForm):
     class Meta:
         model = Quiz
         exclude = []
+        labels = {
+            'category': 'Categoría',
+            'title': 'Título',
+            'pass_mark': 'Nota mínima para aprobar (%)',
+            'description': 'Descripción',
+            'random_order': 'Orden aleatorio de preguntas',
+            'answers_at_end': 'Mostrar respuestas al final',
+            'exam_paper': 'Guardar resultados de cada intento',
+            'single_attempt': 'Permitir solo un intento',
+            'draft': 'Borrador (no visible para estudiantes)',
+        }
+        help_texts = {
+            'category': 'Selecciona el tipo de cuestionario',
+            'title': 'Introduce el título del cuestionario',
+            'pass_mark': 'Porcentaje necesario para aprobar el examen',
+            'description': 'Descripción detallada del cuestionario',
+            'random_order': '¿Mostrar las preguntas en orden aleatorio?',
+            'answers_at_end': '¿Mostrar las respuestas correctas solo al final?',
+            'exam_paper': 'Si está activado, se guardarán los resultados de cada intento',
+            'single_attempt': 'Si está activado, solo se permitirá un intento por usuario',
+            'draft': 'Si está activado, el cuestionario no será visible para los estudiantes',
+        }
 
     questions = forms.ModelMultipleChoiceField(
         queryset=Question.objects.all().select_subclasses(),
         required=False,
-        label=_("Questions"),
-        widget=FilteredSelectMultiple(verbose_name=_("Questions"), is_stacked=False),
+        label="Preguntas",
+        widget=FilteredSelectMultiple(verbose_name="Preguntas", is_stacked=False),
     )
 
     def __init__(self, *args, **kwargs):
@@ -49,6 +71,10 @@ class QuizAddForm(forms.ModelForm):
             self.fields["questions"].initial = (
                 self.instance.question_set.all().select_subclasses()
             )
+        # Limitar la categoría solo a 'exam'
+        self.fields['category'].choices = [
+            choice for choice in self.fields['category'].choices if choice[0] == 'exam'
+        ]
 
     def save(self, commit=True):
         quiz = super(QuizAddForm, self).save(commit=False)
@@ -62,6 +88,18 @@ class MCQuestionForm(forms.ModelForm):
     class Meta:
         model = MCQuestion
         exclude = ()
+        labels = {
+            'content': 'Enunciado de la pregunta',
+            'figure': 'Imagen (opcional)',
+            'explanation': 'Explicación (opcional)',
+            'choice_order': 'Orden de las opciones',
+        }
+        help_texts = {
+            'content': 'Escribe el texto de la pregunta que se mostrará al usuario',
+            'figure': 'Agrega una imagen si es necesario',
+            'explanation': 'Explicación que se mostrará después de responder la pregunta',
+            'choice_order': 'El orden en que se mostrarán las opciones de respuesta',
+        }
 
 
 class MCQuestionFormSet(forms.BaseInlineFormSet):

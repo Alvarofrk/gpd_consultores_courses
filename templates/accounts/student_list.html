@@ -13,8 +13,8 @@
 
 {% if request.user.is_superuser %}
 <div class="manage-wrap">
-    <a class="btn btn-sm btn-primary" href="{% url 'add_student' %}"><i class="fas fa-plus"></i>{% trans 'Añadir Participante' %}</a>
-    <a class="btn btn-sm btn-primary" target="_blank" href="{% url 'student_list_pdf' %}"><i class="fas fa-download"></i>{% trans 'Descargar Lista de Participantes' %}</a>
+    <a class="btn btn-sm btn-gpd" href="{% url 'add_student' %}"><i class="fas fa-plus"></i>{% trans 'Añadir Participante' %}</a>
+    <a class="btn btn-sm btn-gpd" target="_blank" href="{% url 'student_list_pdf' %}"><i class="fas fa-download"></i>{% trans 'Descargar Lista de Participantes' %}</a>
 </div>
 {% endif %}
 

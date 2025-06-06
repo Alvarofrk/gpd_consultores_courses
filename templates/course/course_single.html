@@ -27,10 +27,10 @@
             </a>
             {% endif %}
             {% if request.user.is_superuser or request.user.is_lecturer %}
-            <a class="btn btn-sm btn-primary" href="{% url 'upload_file_view' course.slug %}">
+            <a class="btn btn-gpd btn-sm" href="{% url 'upload_file_view' course.slug %}">
                 <i class="fas fa-plus"></i> {% trans 'Subir nuevo archivo' %}
             </a>
-            <a class="btn btn-sm btn-primary" href="{% url 'upload_video' course.slug %}">
+            <a class="btn btn-gpd btn-sm" href="{% url 'upload_video' course.slug %}">
                 <i class="fas fa-plus"></i> {% trans 'Subir nuevo video' %}
             </a>
             {% endif %}
@@ -42,13 +42,14 @@
 <p class="small text-muted">{{ course.summary }}</p>
 
 <!-- Botón para ver todos los videos del curso -->
-<a href="{% url 'course_video_navigation_first' course.slug %}" 
-   class="btn mb-4" 
-   style="background-color: #FF8C42; color: black; padding: 10px 20px; border-radius: 5px; text-align: center; font-weight: bold; text-decoration: none; display: inline-block; border: 2px solid #FF8C42; font-size: 16px; transition: background-color 0.3s ease, transform 0.2s ease;">
+<a class="btn btn-gpd mb-4" href="{% url 'course_video_navigation_first' course.slug %}" style="padding: 10px 20px; border-radius: 5px; text-align: center; font-weight: bold; text-decoration: none; display: inline-block; font-size: 16px; transition: background-color 0.3s ease, transform 0.2s ease;">
     {% trans 'INICIAR CURSO' %}
 </a>
-
-
+{% if request.user.is_superuser or request.user.is_lecturer %}
+<a class="btn btn-gpd mb-4 ms-2" href="{% url 'quiz_index' course.slug %}" style="padding: 10px 20px; border-radius: 5px; text-align: center; font-weight: bold; text-decoration: none; display: inline-block; font-size: 16px; transition: background-color 0.3s ease, transform 0.2s ease;">
+    <i class="fas fa-list"></i> {% trans 'Tomar examen' %}
+</a>
+{% endif %}
 
 {% include 'snippets/messages.html' %}
 

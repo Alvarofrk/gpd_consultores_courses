@@ -177,12 +177,24 @@ class Progress(models.Model):
             self.save()
 
     def show_exams(self):
-        if self.user.is_superuser:
-            return Sitting.objects.filter(complete=True).order_by("-end")
-        else:
-            return Sitting.objects.filter(user=self.user, complete=True).order_by(
-                "-end"
-            )
+        # Obtener todos los exámenes completados del usuario
+        sittings = Sitting.objects.filter(user=self.user, complete=True).order_by("-end")
+        # Agrupar por curso y quiz, mostrar solo el aprobado si existe
+        filtered = []
+        vistos = set()
+        for sitting in sittings:
+            key = (sitting.course_id, sitting.quiz_id)
+            if key in vistos:
+                continue
+            if sitting.get_percent_correct >= sitting.quiz.pass_mark:
+                filtered.append(sitting)
+                vistos.add(key)
+            else:
+                # Solo agregar el no aprobado si no hay aprobado para ese curso/quiz
+                if not Sitting.objects.filter(user=self.user, course=sitting.course, quiz=sitting.quiz, complete=True, current_score__gte=sitting.quiz.pass_mark * sitting.quiz.get_max_score / 100).exists():
+                    filtered.append(sitting)
+                    vistos.add(key)
+        return filtered
 
 
 class SittingManager(models.Manager):
@@ -216,6 +228,16 @@ class SittingManager(models.Manager):
         return new_sitting
 
     def user_sitting(self, user, quiz, course):
+        # Verificar si ya existe un registro aprobado
+        approved_sitting = self.filter(
+            user=user,
+            quiz=quiz,
+            course=course,
+            complete=True,
+            current_score__gte=quiz.pass_mark * quiz.get_max_score / 100
+        ).first()
+        if approved_sitting:
+            return False  # No permitir crear uno nuevo si ya aprobó
         if (
             quiz.single_attempt
             and self.filter(user=user, quiz=quiz, course=course, complete=True).exists()

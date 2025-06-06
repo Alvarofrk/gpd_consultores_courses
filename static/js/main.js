@@ -87,3 +87,53 @@ $(document).ready(function () {
     $("#main-content").css("pointer-events", "auto");
   });
 });
+
+// Sidebar con overlay para móvil (definitivo)
+function openSidebar() {
+  document.getElementById("side-nav").classList.add("toggle-active");
+  document.getElementById("main").classList.add("toggle-active");
+  document.getElementById("top-navbar").classList.add("toggle-active");
+  document.querySelector(".manage-wrap").classList.add("toggle-active");
+  // Eliminar overlay anterior si existe
+  var oldOverlay = document.getElementById('sidebar-overlay');
+  if (oldOverlay) oldOverlay.remove();
+  // Crear overlay y ponerlo al final del body
+  var overlay = document.createElement('div');
+  overlay.id = 'sidebar-overlay';
+  overlay.onclick = closeSidebar;
+  document.body.appendChild(overlay);
+}
+
+function closeSidebar() {
+  document.getElementById("side-nav").classList.remove("toggle-active");
+  document.getElementById("main").classList.remove("toggle-active");
+  document.getElementById("top-navbar").classList.remove("toggle-active");
+  document.querySelector(".manage-wrap").classList.remove("toggle-active");
+  var overlay = document.getElementById('sidebar-overlay');
+  if (overlay) overlay.remove();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  var btn = document.getElementById('sidebar-toggle-btn');
+  if (btn) {
+    btn.onclick = function () {
+      if (document.getElementById("side-nav").classList.contains("toggle-active")) {
+        closeSidebar();
+      } else {
+        openSidebar();
+      }
+    };
+  }
+  // Permitir cerrar sidebar con tecla ESC
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      closeSidebar();
+    }
+  });
+  // Cerrar sidebar si se hace scroll en móvil
+  window.addEventListener('scroll', function () {
+    if (window.innerWidth <= 900 && document.getElementById("side-nav").classList.contains("toggle-active")) {
+      closeSidebar();
+    }
+  });
+});

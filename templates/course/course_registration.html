@@ -34,7 +34,7 @@
         <p class="form-title fw-bold">{% trans 'Añadir curso' %}</p>
         <div class="container">
             <div class="d-flex justify-content-between mb-3">
-                <button title="{% trans 'Guardar' %}" type="submit" class="btn btn-primary"><i class="fa fa-plus"></i> {% trans 'Añadir seleccionados' %}</button>
+                <button title="{% trans 'Guardar' %}" type="submit" class="btn btn-gpd"><i class="fa fa-plus"></i> {% trans 'Añadir seleccionados' %}</button>
             </div>
 
             <div class="table-responsive p-0 px-2 mt-2">
@@ -188,7 +188,7 @@
         <form action="{% url 'course_drop' %}" method="POST">
             {% csrf_token %}
             <div class="d-flex justify-content-between mb-4">
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-gpd">
                     <i class="fa fa-times"></i> {% trans 'Retirar seleccionados' %}
                 </button>
             </div>

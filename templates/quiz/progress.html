@@ -96,38 +96,40 @@
                 <td>{{ sitting.user.username }}</td>
                 <td>{{ sitting.user.get_full_name }}</td>
                 {% endif %}
-                <td>{{ sitting.quiz.title }}</td>
+                <td>{{ sitting.course.title }}</td>
                 <td>{{ sitting.current_score }}</td>
                 <td>{{ sitting.current_score|multiply:100 }}%</td>
                 <td>
-                    {% if sitting.current_score >= 80 %}
-                    <span class="badge bg-success">{% trans "Aprobado" %}</span>
+                    {% if sitting.get_percent_correct >= sitting.quiz.pass_mark %}
+                        <span class="badge bg-success">{% trans "Aprobado" %}</span>
                     {% else %}
-                    <span class="badge bg-danger">{% trans "No Aprobado" %}</span>
+                        <span class="badge bg-danger">{% trans "No Aprobado" %}</span>
                     {% endif %}
                 </td>
                 <td>
-                    {% if sitting.current_score >= 80 %}
-                    {{ sitting.end|date:"d/m/Y" }}
+                    {% if sitting.fecha_aprobacion %}
+                        {{ sitting.fecha_aprobacion|date:"d/m/Y" }}
                     {% else %}
-                    -
+                        -
                     {% endif %}
                 </td>
                 <td>
-                    {% if sitting.current_score >= 80 %}
-                    {{ sitting.end|add_days:365|date:"d/m/Y" }}
+                    {% if sitting.fecha_aprobacion %}
+                        {{ sitting.fecha_aprobacion|add_days:365|date:"d/m/Y" }}
                     {% else %}
-                    -
+                        -
                     {% endif %}
                 </td>
                 {% if request.user.is_student %}
                 <td>
-                    {% if sitting.current_score >= 80 %}
-                    <a href="{% url 'generar_certificado' sitting.id %}" class="btn btn-primary btn-sm">
+                    {% if sitting.get_percent_correct >= 80 %}
+                    <a href="{% url 'generar_certificado' sitting.id %}" class="btn btn-gpd btn-sm">
                         <i class="fas fa-download"></i> {% trans "Descargar" %}
                     </a>
                     {% else %}
-                    -
+                    <a href="{% url 'quiz_take' sitting.course.id sitting.quiz.slug %}" class="btn btn-gpd btn-sm">
+                        <i class="fas fa-redo"></i> {% trans "Reintentar examen" %}
+                    </a>
                     {% endif %}
                 </td>
                 {% endif %}

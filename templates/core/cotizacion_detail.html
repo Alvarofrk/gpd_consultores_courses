@@ -13,7 +13,7 @@
 </nav>
 
 <div class="manage-wrap">
-    <a class="btn btn-primary" href="{% url 'cotizacion_update' pk=cotizacion.pk %}">
+    <a class="btn btn-gpd" href="{% url 'cotizacion_update' pk=cotizacion.pk %}">
         <i class="fas fa-edit"></i>{% trans 'Editar' %}
     </a>
     <a class="btn btn-info" href="{% url 'cotizacion_download_pdf' pk=cotizacion.pk %}" target="_blank">
@@ -97,7 +97,7 @@
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-bordered">
+            <table class="table table-bordered" style="margin-bottom: 0.7rem;">
                 <thead>
                     <tr>
                         <th>#</th>
@@ -153,7 +153,7 @@
                     </div>
                 </div>
                 <div class="col-md-6 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-gpd">
                         <i class="fas fa-save"></i> {% trans 'Actualizar Estado' %}
                     </button>
                 </div>
