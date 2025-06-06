@@ -284,6 +284,77 @@
       height: 2px;
     }
   }
+
+  .modern-form-group {
+    position: relative;
+    margin-bottom: 1.2rem;
+  }
+  .modern-form-group input {
+    width: 100%;
+    padding: 0.8rem 1rem 0.8rem 2.5rem;
+    border-radius: 8px;
+    border: 1.5px solid #bfc9d1;
+    font-size: 1rem;
+    background: #f8fafc;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+    box-shadow: none;
+  }
+  .modern-form-group input:focus {
+    border-color: #033b80;
+    box-shadow: 0 0 0 2px #033b8033;
+    background: #fff;
+  }
+  .modern-form-group label {
+    position: absolute;
+    top: 50%;
+    left: 2.5rem;
+    transform: translateY(-50%);
+    font-size: 1rem;
+    color: #7a869a;
+    pointer-events: none;
+    transition: 0.2s;
+    opacity: 0;
+  }
+  .modern-form-group input:focus + label,
+  .modern-form-group input:not(:placeholder-shown) + label {
+    opacity: 1;
+    top: 0.2rem;
+    left: 2.5rem;
+    font-size: 0.85rem;
+    color: #033b80;
+    background: #fff;
+    padding: 0 0.2rem;
+    border-radius: 4px;
+  }
+  .modern-form-group .input-icon {
+    position: absolute;
+    left: 0.8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #bfc9d1;
+    font-size: 1.2rem;
+    pointer-events: none;
+    transition: color 0.2s;
+  }
+  .modern-form-group input:focus ~ .input-icon {
+    color: #033b80;
+  }
+  .btn-login {
+    width: 100%;
+    background: linear-gradient(90deg, #033b80 0%, #1a237e 100%);
+    color: #fff;
+    border: none;
+    font-weight: 600;
+    letter-spacing: 1px;
+    box-shadow: 0 2px 8px rgba(3,59,128,0.08);
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn-login:hover, .btn-login:focus {
+    background: linear-gradient(90deg, #1a237e 0%, #033b80 100%);
+    transform: translateY(-2px) scale(1.02);
+    color: #fff;
+  }
 </style>
 
 <div class="login-container">
@@ -297,7 +368,16 @@
       <div class="card-body">
         <form method="post" novalidate>
           {% csrf_token %}
-          {{ form|crispy }}
+          <div class="modern-form-group">
+            <input type="text" name="username" id="id_username" placeholder=" " required autofocus value="{{ form.username.value|default:'' }}">
+            <label for="id_username">Nombre de usuario</label>
+            <span class="input-icon"><i class="fas fa-user"></i></span>
+          </div>
+          <div class="modern-form-group">
+            <input type="password" name="password" id="id_password" placeholder=" " required>
+            <label for="id_password">Contraseña</label>
+            <span class="input-icon"><i class="fas fa-lock"></i></span>
+          </div>
           <button type="submit" class="btn btn-login">
             {% trans 'Iniciar Sesión' %}
           </button>
