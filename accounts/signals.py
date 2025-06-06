@@ -18,10 +18,10 @@ def post_save_account_receiver(instance=None, created=False, *args, **kwargs):
             instance.save()
             send_new_account_email(instance, password)
 
-        if instance.is_lecturer:    
-            username, password = generate_lecturer_credentials()
-            print(f"Generated credentials for lecturer: {username}, {password}")  # Imprime las credenciales generadas
-            instance.username = username
-            instance.set_password(password)  # Aquí es cuando la contraseña se convierte en hash
+        if instance.is_lecturer:
+            username = instance.username
+            password = username  # O usa generate_password(username) si prefieres
+            print(f"Generated credentials for lecturer: {username}, {password}")
+            instance.set_password(password)
             instance.save()
             send_new_account_email(instance, password)
