@@ -49,12 +49,13 @@
                 <td>{{ student.cargo|default:"-" }}</td>
 
                 {% if request.user.is_superuser %}
-                <td>
+                <td style="position: static;">
                     <div class="dropdown">
                         <button class="btn btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fa fa-ellipsis-vertical"></i>
                         </button>
-                        <ul class="dropdown-menu">
+                        <ul class="dropdown-menu dropdown-menu-end position-absolute"
+                            style="position: absolute; right: 0; left: auto; transform: translate(0, 30px);">
                           <li><a class="dropdown-item" href="{% url 'student_edit' student.student.pk %}"><i class="unstyled me-2 fas fa-edit"></i>{% trans 'Actualizar' %}</a></li>
                           <li><a class="dropdown-item" href="{% url 'manage_student_courses' student.id %}"><i class="unstyled me-2 fas fa-book"></i>{% trans 'Gestionar Cursos' %}</a></li>
                           <li><a class="dropdown-item" target="_blank" href="{% url 'profile_single' student.student.id %}?download_pdf=1"><i class="unstyled me-2 fas fa-download"></i>{% trans 'Descargar PDF' %}</a></li>
