@@ -137,13 +137,16 @@ def generar_certificado(request, sitting_id):
     # Datos comunes
     nombre_estudiante = f"{request.user.first_name} {request.user.last_name}"
     puntaje = int(sitting.get_percent_correct / 5)
-    fecha_aprobacion_formateada = obtener_fecha_aprobacion(sitting)
+    fecha_aprobacion_dt = sitting.fecha_aprobacion or datetime.now()
+    fecha_aprobacion_str = fecha_aprobacion_dt.strftime("%d/%m/%Y")
+    fecha_vencimiento_dt = fecha_aprobacion_dt + timedelta(days=365)
+    fecha_vencimiento_str = fecha_vencimiento_dt.strftime("%d/%m/%Y")
     nombre_usuario = request.user.username
     certificate_code = sitting.certificate_code
 
     # Diccionario de posiciones por código de curso
     POSICIONES_CERTIFICADOS = {
-        "C01-IPERC":    {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
+        "C01-IPERC":    {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
         "C02-PA":       {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
         "C04-EC":      {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
         "C05-TC":      {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
@@ -166,7 +169,9 @@ def generar_certificado(request, sitting_id):
     posiciones = POSICIONES_CERTIFICADOS.get(codigo, {
         "pos_nombre": (305, 305),
         "pos_puntaje": (479, 198),
-        "pos_fecha": (585, 220),
+        "pos_fecha_aprobacion": (585, 220),
+        "pos_fecha_aprobacion2": (585, 180),
+        "pos_fecha_vencimiento": (585, 195),
         "pos_usuario": (485, 273),
         "pos_codigo": (679, 466),
         "pos_qr": (500, 50),
@@ -189,19 +194,21 @@ def generar_certificado(request, sitting_id):
     p.setFont("Helvetica-Bold", 14)
     p.drawString(posiciones["pos_puntaje"][0], posiciones["pos_puntaje"][1], f"{puntaje}")
 
-    # Fecha
-    p.setFont("Helvetica", 16)
-    p.setFillColorRGB(0.051, 0.231, 0.4)  # Color azul (como en tu plantilla original)
-    p.drawString(posiciones["pos_fecha"][0], posiciones["pos_fecha"][1], f"{fecha_aprobacion_formateada}")
+    # Fechas (aprobación y vencimiento) en tamaño más pequeño y color negro
+    p.setFont("Helvetica", 12)
+    p.setFillColorRGB(0, 0, 0)  # Negro
+    p.drawString(posiciones["pos_fecha_aprobacion"][0], posiciones["pos_fecha_aprobacion"][1], f"{fecha_aprobacion_str}")
+    p.drawString(posiciones["pos_fecha_aprobacion2"][0], posiciones["pos_fecha_aprobacion2"][1], f"Aprobado: {fecha_aprobacion_str}")
+    p.drawString(posiciones["pos_fecha_vencimiento"][0], posiciones["pos_fecha_vencimiento"][1], f"Vence: {fecha_vencimiento_str}")
 
     # Nombre de usuario
     p.setFont("Helvetica", 16)
     p.setFillColorRGB(0.051, 0.231, 0.4)  # Color azul (como en tu plantilla original)
     p.drawString(posiciones["pos_usuario"][0], posiciones["pos_usuario"][1], f"{nombre_usuario}")
 
-    # Código del certificado
-    p.setFont("Helvetica-Bold", 16)
-    p.setFillColorRGB(0.051, 0.231, 0.4)  # Color azul (como en tu plantilla original)
+    # Código del certificado más pequeño y negro
+    p.setFont("Helvetica-Bold", 12)
+    p.setFillColorRGB(0, 0, 0)  # Negro
     p.drawString(posiciones["pos_codigo"][0], posiciones["pos_codigo"][1], f"{certificate_code}")
 
     # Generar la URL de verificación con el prefijo correcto
@@ -216,7 +223,7 @@ def generar_certificado(request, sitting_id):
     qr_img = ImageReader(qr_buffer)
 
     # Por ejemplo, en la esquina inferior derecha
-    p.drawImage(qr_img, posiciones["pos_qr"][0], posiciones["pos_qr"][1], width=90, height=90)
+    p.drawImage(qr_img, posiciones["pos_qr"][0], posiciones["pos_qr"][1], width=65, height=65)
 
     # Finalizar el contenido del buffer
     p.showPage()
