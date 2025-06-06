@@ -33,8 +33,8 @@ Thumbs.db
 !**/migrations/__init__.py
 
 # Archivos de media y archivos subidos
-/media/
-media/
+#/media/
+#media/
 
 # Archivos de compilación de front-end
 node_modules/
