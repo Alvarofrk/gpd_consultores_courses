@@ -19,7 +19,7 @@ class StaffAddForm(UserCreationForm):
             }
         ),
         label="Username",
-        required=False,
+        required=True,
     )
 
     first_name = forms.CharField(

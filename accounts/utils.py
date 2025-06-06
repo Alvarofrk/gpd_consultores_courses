@@ -30,8 +30,9 @@ def generate_lecturer_id():
 #     #return generate_student_id(), generate_student_id()
 
 
-def generate_lecturer_credentials():
-    username = generate_lecturer_id()
+def generate_lecturer_credentials(username=None):
+    if username is None:
+        username = generate_lecturer_id()
     password = generate_password(username)
     return username, password
     

@@ -221,6 +221,10 @@ def staff_add_view(request):
         form = StaffAddForm(request.POST)
         if form.is_valid():
             lecturer = form.save()
+            username = form.cleaned_data.get('username')
+            password = generate_password(username)
+            lecturer.set_password(password)
+            lecturer.save()
             full_name = lecturer.get_full_name
             email = lecturer.email
             messages.success(
@@ -228,6 +232,7 @@ def staff_add_view(request):
                 f"Account for lecturer {full_name} has been created. "
                 f"An email with account credentials will be sent to {email} within a minute.",
             )
+            send_new_account_email(lecturer, password)
             return redirect("lecturer_list")
     else:
         form = StaffAddForm()
