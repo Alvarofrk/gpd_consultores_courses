@@ -31,7 +31,9 @@ def generate_lecturer_id():
 
 
 def generate_lecturer_credentials():
-    return generate_lecturer_id(), generate_password()
+    username = generate_lecturer_id()
+    password = generate_password(username)
+    return username, password
     
 
 
