@@ -36,11 +36,6 @@ Thumbs.db
 /media/
 media/
 
-# Archivos de static generados
-/static/
-static/
-staticfiles/
-
 # Archivos de compilación de front-end
 node_modules/
 
