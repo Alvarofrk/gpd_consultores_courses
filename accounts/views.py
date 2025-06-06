@@ -29,6 +29,7 @@ from accounts.models import Parent, Student, User
 from core.models import Semester, Session
 from course.models import Course
 from result.models import TakenCourse, Result
+from accounts.utils import generate_password, send_new_account_email
 
 # ########################################################
 # Utility Functions
