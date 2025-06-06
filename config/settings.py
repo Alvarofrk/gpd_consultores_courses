@@ -147,7 +147,7 @@ DATABASES = {
         'USER': config('DATABASE_USER'),
         'PASSWORD': config('DATABASE_PASSWORD'),
         'HOST': config('DATABASE_HOST'),
-        'PORT': config('DATABASE_PORT' cast=int),
+        'PORT': config('DATABASE_PORT', cast=int),
      }
 }
 
