@@ -49,6 +49,30 @@
     letter-spacing: 2px;
     position: relative;
     padding-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+  }
+
+  .welcome-logo {
+    height: 110px;
+    width: auto;
+    object-fit: contain;
+    filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+  }
+
+  .main-logo {
+    height: 80px;
+    width: auto;
+    object-fit: contain;
+    filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+  }
+
+  .welcome-text-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
   .welcome-text::after {
@@ -66,19 +90,19 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    margin: 0.7rem 0 0 0;
-    padding: 1.7rem 1rem;
+    margin: 0.5rem 0 0 0;
+    padding: 1.2rem 0.8rem;
     background-color: white;
-    border-radius: 18px;
+    border-radius: 12px;
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.10);
-    gap: 2rem;
+    gap: 1.5rem;
     width: 100%;
-    max-width: 800px;
+    max-width: 600px;
   }
 
   .logo-img {
-    height: 90px;
-    max-width: 180px;
+    height: 70px;
+    max-width: 140px;
     object-fit: contain;
     opacity: 0.95;
     transition: all 0.3s ease;
@@ -245,6 +269,15 @@
     .welcome-text {
       font-size: 2.2rem;
       margin-bottom: 2rem;
+      gap: 1rem;
+    }
+
+    .main-logo {
+      height: 65px;
+    }
+
+    .welcome-logo {
+      height: 80px;
     }
     
     .welcome-text::after {
@@ -267,17 +300,24 @@
     }
     .logos-container {
       max-width: 98vw;
-      padding: 1rem 0.2rem;
-      gap: 1rem;
+      padding: 0.8rem 0.2rem;
+      gap: 0.8rem;
     }
     .logo-img {
-      height: 60px;
-      max-width: 100px;
+      height: 50px;
+      max-width: 80px;
     }
     .welcome-text {
       font-size: 1.2rem;
       margin-bottom: 0.7rem;
       letter-spacing: 1px;
+      gap: 0.8rem;
+    }
+    .main-logo {
+      height: 45px;
+    }
+    .welcome-logo {
+      height: 80px;
     }
     .welcome-text::after {
       width: 50px;
@@ -359,7 +399,10 @@
 
 <div class="login-container">
   <div class="login-content">
-    <h1 class="welcome-text">GPD<br>CONSULTORES</h1>
+    <h1 class="welcome-text">
+      <img src="{% static 'img/logoblanco.png' %}" alt="GPD Consultores" class="main-logo">
+      <img src="{% static 'img/logoaniversario.png' %}" alt="Logo Aniversario" class="welcome-logo">
+    </h1>
     
     <div class="card">
       <div class="card-header">

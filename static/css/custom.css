@@ -1,0 +1,26 @@
+/* Estilos personalizados para el logo del sidebar */
+
+.logo-sidebar-wrapper {
+    background: transparent !important;
+    /* Quitar el fondo blanco */
+    border-radius: 12px;
+    box-shadow: none !important;
+    /* Quitar la sombra */
+    padding: 8px 4px 8px 4px;
+    margin: 10px 10px 10px 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 70px;
+}
+
+.logo-sidebar-img {
+    max-width: 210px;
+    max-height: 110px;
+    width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+    object-fit: contain;
+    transition: max-width 0.2s, max-height 0.2s;
+}
