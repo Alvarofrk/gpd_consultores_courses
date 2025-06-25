@@ -21,6 +21,7 @@ from .views import (
     cotizacion_delete_view,
     cotizacion_change_status_view,
     cotizacion_download_pdf,
+    generate_qr_view,
 )
 
 
@@ -48,4 +49,5 @@ urlpatterns = [
     path("cotizaciones/<int:pk>/delete/", cotizacion_delete_view, name="cotizacion_delete"),
     path("cotizaciones/<int:pk>/change-status/", cotizacion_change_status_view, name="cotizacion_change_status"),
     path("cotizaciones/<int:pk>/download-pdf/", cotizacion_download_pdf, name="cotizacion_download_pdf"),
+    path("generate-qr/", generate_qr_view, name="generate_qr"),
 ]

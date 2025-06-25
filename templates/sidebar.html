@@ -119,6 +119,11 @@
             <li class="{% if request.path == cp %}active{% endif %}">
                 <a href="{% url 'change_password' %}"><i class="fas fa-key"></i>{% trans 'Cambiar contraseña' %}</a>
             </li>
+            {% if request.user.is_superuser %}
+            <li class="{% if request.path == '/generate-qr/' %}active{% endif %}">
+                <a href="{% url 'generate_qr' %}"><i class="fas fa-qrcode"></i>{% trans 'Generador QR' %}</a>
+            </li>
+            {% endif %}
         </ul>
     </div>
 

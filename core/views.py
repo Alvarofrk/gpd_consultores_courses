@@ -3,9 +3,9 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django import forms
 from django.db import transaction
-from django.http import HttpResponse, HttpResponseNotAllowed
+from django.http import HttpResponse, HttpResponseNotAllowed, FileResponse
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
+from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib import colors
 from reportlab.platypus import Table, TableStyle, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -13,11 +13,13 @@ from reportlab.platypus import Paragraph
 from io import BytesIO
 from datetime import datetime
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
+import io
 
 from accounts.decorators import admin_required, lecturer_required
 from accounts.models import User, Student
 from .forms import SessionForm, SemesterForm, NewsAndEventsForm, CotizacionForm, ItemCotizacionFormSet
 from .models import NewsAndEvents, ActivityLog, Session, Semester, Cotizacion, ItemCotizacion, HistorialEstado
+from .utils import generate_qr_code
 
 
 # ########################################################
@@ -659,3 +661,80 @@ def cotizacion_download_pdf(request, pk):
     response = HttpResponse(buffer, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="cotizacion_{cotizacion.pk}.pdf"'
     return response
+
+
+@login_required
+@admin_required
+def generate_qr_view(request):
+    """Vista para generar códigos QR de cualquier URL o texto"""
+    if request.method == 'POST':
+        url_or_text = request.POST.get('url_or_text', '').strip()
+        qr_size = int(request.POST.get('qr_size', 150))
+        export_format = request.POST.get('export_format', 'PNG')
+        
+        if url_or_text:
+            # Generar el QR
+            qr_img = generate_qr_code(url_or_text, qr_size, export_format)
+            
+            if export_format in ['PNG', 'JPEG']:
+                # Exportar como imagen
+                buffer = io.BytesIO()
+                qr_img.save(buffer, format=export_format)
+                buffer.seek(0)
+                
+                # Determinar el tipo MIME
+                content_type = 'image/png' if export_format == 'PNG' else 'image/jpeg'
+                file_extension = 'png' if export_format == 'PNG' else 'jpg'
+                
+                response = HttpResponse(buffer.getvalue(), content_type=content_type)
+                response['Content-Disposition'] = f'attachment; filename="codigo_qr.{file_extension}"'
+                return response
+                
+            else:
+                # Exportar como PDF (formato original)
+                buffer = io.BytesIO()
+                p = canvas.Canvas(buffer, pagesize=A4)
+                width, height = A4
+                
+                # Título con estilo moderno
+                p.setFont("Helvetica-Bold", 20)
+                p.setFillColorRGB(0.102, 0.216, 0.392)  # Color azul GPD (#1a3764)
+                p.drawCentredString(width/2, height-50, "Código QR Generado")
+                
+                # Información del contenido
+                p.setFont("Helvetica", 12)
+                p.setFillColorRGB(0, 0, 0)
+                content_preview = url_or_text[:60] + "..." if len(url_or_text) > 60 else url_or_text
+                p.drawString(50, height-80, f"Contenido: {content_preview}")
+                
+                # QR centrado con borde
+                qr_width = qr_size
+                qr_height = qr_size
+                qr_x = (width - qr_width) / 2
+                qr_y = (height - qr_height) / 2 - 30
+                
+                # Dibujar borde alrededor del QR
+                p.setStrokeColorRGB(0.102, 0.216, 0.392)  # Color azul GPD
+                p.setLineWidth(2)
+                p.rect(qr_x - 10, qr_y - 10, qr_width + 20, qr_height + 20)
+                
+                # Dibujar el QR
+                p.drawImage(qr_img, qr_x, qr_y, width=qr_width, height=qr_height)
+                
+                # Instrucciones
+                p.setFont("Helvetica", 10)
+                p.setFillColorRGB(108, 117, 125)  # Color gris
+                p.drawString(50, qr_y - 40, "Escanea este código QR con tu dispositivo móvil")
+                
+                # Información adicional
+                p.setFont("Helvetica", 8)
+                p.drawString(50, qr_y - 60, f"Generado el: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+                p.drawString(50, qr_y - 75, f"Tamaño: {qr_size}px | Formato: PDF")
+                
+                p.showPage()
+                p.save()
+                buffer.seek(0)
+                
+                return FileResponse(buffer, as_attachment=True, filename='codigo_qr.pdf')
+    
+    return render(request, 'core/generate_qr.html')
