@@ -182,6 +182,11 @@ class Cotizacion(models.Model):
         """Calcula el porcentaje pendiente por pagar"""
         return 100 - self.porcentaje_cancelado
 
+    @property
+    def igv(self):
+        """Retorna el IGV calculado como la diferencia entre total_con_igv y monto_total"""
+        return self.total_con_igv - self.monto_total
+
     def clean(self):
         # Validar fechas
         if self.validez_cotizacion and self.fecha_cotizacion:
