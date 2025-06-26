@@ -174,156 +174,203 @@
                             </div>
                         </div>
 
-                        <!-- Modalidad de Pago -->
+                        <!-- Forma de Pago -->
                         <div class="card mb-4">
                             <div class="card-header bg-light">
-                                <h5 class="mb-0">{% trans 'Modalidad de Pago' %}</h5>
+                                <h5 class="mb-0">Forma de Pago</h5>
                             </div>
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
-                                        <label for="{{ form.tiempo_entrega.id_for_label }}" class="form-label">{% trans 'Tiempo de Entrega' %}</label>
-                                        {{ form.tiempo_entrega|add_class:"form-control" }}
-                                        {% if form.tiempo_entrega.errors %}
-                                            <div class="text-danger small mt-1">{{ form.tiempo_entrega.errors.0 }}</div>
+                                        <label for="{{ form.forma_pago.id_for_label }}" class="form-label">Selecciona la forma de pago <span class="text-danger">*</span></label>
+                                        {{ form.forma_pago|add_class:"form-control" }}
+                                        {% if form.forma_pago.errors %}
+                                            <div class="text-danger small mt-1">{{ form.forma_pago.errors.0 }}</div>
                                         {% endif %}
                                     </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label for="{{ form.modalidad_pago.id_for_label }}" class="form-label">{% trans 'Modalidad de Pago' %}</label>
-                                        {{ form.modalidad_pago|add_class:"form-control" }}
-                                        {{ form.modalidad_pago.errors }}
+                                    <div class="col-md-6 mb-3" id="tipo-plazo-group" style="display:none;">
+                                        <label class="form-label">Tipo de plazo de crédito</label>
+                                        <select class="form-control" id="tipo-plazo-select">
+                                            <option value="">Selecciona el tipo de plazo</option>
+                                            <option value="dias">Plazo en días</option>
+                                            <option value="fecha">Fecha específica</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3 d-none" id="plazo-credito-dias-group">
+                                        <label for="{{ form.plazo_credito_dias.id_for_label }}" class="form-label">Plazo de crédito (días)</label>
+                                        <div class="input-group">
+                                            {{ form.plazo_credito_dias|add_class:"form-control" }}
+                                            <span class="input-group-text">días desde la fecha de cotización</span>
+                                        </div>
+                                        {% if form.plazo_credito_dias.errors %}
+                                            <div class="text-danger small mt-1">{{ form.plazo_credito_dias.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-6 mb-3 d-none" id="plazo-credito-fecha-group">
+                                        <label for="{{ form.plazo_credito_fecha.id_for_label }}" class="form-label">Fecha límite de pago</label>
+                                        {{ form.plazo_credito_fecha|add_class:"form-control" }}
+                                        {% if form.plazo_credito_fecha.errors %}
+                                            <div class="text-danger small mt-1">{{ form.plazo_credito_fecha.errors.0 }}</div>
+                                        {% endif %}
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-
-                        <!-- Porcentajes de Pago -->
-                        <div class="card mb-4">
-                            <div class="card-header bg-light">
-                                <h5 class="mb-0">{% trans 'Porcentajes de Pago' %}</h5>
-                            </div>
-                            <div class="card-body">
                                 <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="{{ form.monto_cancelado.id_for_label }}" class="form-label">{% trans 'Monto Cancelado' %}</label>
-                                        {{ form.monto_cancelado|add_class:"form-control" }}
-                                        {% if form.monto_cancelado.errors %}
-                                            <div class="text-danger small mt-1">{{ form.monto_cancelado.errors.0 }}</div>
-                                        {% endif %}
-                                        <div class="form-text">Ingresa el monto que ya ha sido pagado</div>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
+                                    <div class="col-md-12">
                                         <div class="card bg-light">
                                             <div class="card-body">
-                                                <h6 class="card-title">{% trans 'Resumen de Pagos' %}</h6>
+                                                <h6 class="card-title">Resumen de la Forma de Pago</h6>
                                                 <div class="row">
-                                                    <div class="col-6">
-                                                        <small class="text-muted">{% trans 'Porcentaje Cancelado:' %}</small>
-                                                        <div class="fw-bold text-success" id="porcentaje-cancelado">0%</div>
+                                                    <div class="col-md-3">
+                                                        <small class="text-muted">Adelanto:</small>
+                                                        <div class="fw-bold text-success" id="adelanto-text">-</div>
                                                     </div>
-                                                    <div class="col-6">
-                                                        <small class="text-muted">{% trans 'Monto Pendiente:' %}</small>
-                                                        <div class="fw-bold text-warning" id="monto-pendiente">S/ 0.00</div>
+                                                    <div class="col-md-3">
+                                                        <small class="text-muted">Saldo/Deuda:</small>
+                                                        <div class="fw-bold text-danger" id="saldo-text">-</div>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <small class="text-muted">% Adelanto:</small>
+                                                        <div class="fw-bold text-success" id="porcentaje-adelanto-text">-</div>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <small class="text-muted">% Saldo:</small>
+                                                        <div class="fw-bold text-danger" id="porcentaje-saldo-text">-</div>
                                                     </div>
                                                 </div>
-                                                <div class="row mt-2">
-                                                    <div class="col-6">
-                                                        <small class="text-muted">{% trans 'Porcentaje Pendiente:' %}</small>
-                                                        <div class="fw-bold text-danger" id="porcentaje-pendiente">100%</div>
+                                                <div class="row mt-2" id="plazo-credito-resumen" style="display:none;">
+                                                    <div class="col-md-12">
+                                                        <small class="text-muted">Plazo de crédito:</small>
+                                                        <div class="fw-bold text-primary" id="plazo-credito-text">-</div>
                                                     </div>
                                                 </div>
-                                            </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Nuevo código para el monto pagado -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.monto_cancelado.id_for_label }}" class="form-label">Monto Pagado</label>
+                            {{ form.monto_cancelado|add_class:"form-control" }}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Resumen de Crédito en Tiempo Real</h6>
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <small class="text-muted">Monto Pagado:</small>
+                                            <div class="fw-bold text-success" id="monto-pagado-resumen">-</div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <small class="text-muted">Monto Pendiente:</small>
+                                            <div class="fw-bold text-danger" id="monto-pendiente-resumen">-</div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <small class="text-muted">% Pagado:</small>
+                                            <div class="fw-bold text-success" id="porcentaje-pagado-resumen">-</div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <small class="text-muted">Estado Crédito:</small>
+                                            <div class="fw-bold" id="estado-credito-resumen">-</div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Items de la Cotización -->
-                        <div class="card mb-4">
-                            <div class="card-header bg-light">
-                                <h5 class="mb-0">{% trans 'Items' %}</h5>
-                            </div>
-                            <div class="card-body">
-                                {% if formset.errors %}
+                    <!-- Items de la Cotización -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">{% trans 'Items' %}</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if formset.errors %}
+                                <div class="alert alert-danger">
+                                    <i class="fas fa-exclamation-circle me-2"></i>Faltan datos. Por favor, revisa los campos obligatorios.
+                                </div>
+                            {% endif %}
+                            {{ formset.management_form }}
+                            <div id="items-container">
+                                {% for form in formset.forms %}
+                                <div class="item-form mb-3 p-3 border rounded bg-white shadow-sm" data-form-index="{{ forloop.counter0 }}">
+                                    <div class="row g-2 align-items-end">
+                                        <div class="col-12 mb-2">
+                                            <span class="badge" style="font-size:1rem; background-color:#1a3764; color:#fff;">Ítem {{ forloop.counter }}</span>
+                                        </div>
+                                        <div class="col-12 col-md-3 mb-2">
+                                            <label for="{{ form.curso.id_for_label }}" class="form-label fw-bold">Curso</label>
+                                            {{ form.curso|add_class:"form-control" }}
+                                            {{ form.curso.errors }}
+                                        </div>
+                                        <div class="col-6 col-md-2 mb-2">
+                                            <label for="{{ form.duracion.id_for_label }}" class="form-label fw-bold">Duración</label>
+                                            {{ form.duracion|add_class:"form-control" }}
+                                            {{ form.duracion.errors }}
+                                        </div>
+                                        <div class="col-12 col-md-3 mb-2">
+                                            <label for="{{ form.descripcion.id_for_label }}" class="form-label fw-bold">Descripción</label>
+                                            {{ form.descripcion|add_class:"form-control" }}
+                                            {{ form.descripcion.errors }}
+                                        </div>
+                                        <div class="col-6 col-md-1 mb-2">
+                                            <label for="{{ form.cantidad.id_for_label }}" class="form-label fw-bold">Cant.</label>
+                                            {{ form.cantidad|add_class:"form-control cantidad"|attr:"type:number"|attr:"min:1"|attr:"step:1" }}
+                                            {{ form.cantidad.errors }}
+                                        </div>
+                                        <div class="col-6 col-md-2 mb-2">
+                                            <label for="{{ form.precio_unitario.id_for_label }}" class="form-label fw-bold">Precio Unitario</label>
+                                            {{ form.precio_unitario|add_class:"form-control precio"|attr:"type:number"|attr:"min:0"|attr:"step:0.01" }}
+                                            {{ form.precio_unitario.errors }}
+                                        </div>
+                                        <div class="col-6 col-md-1 mb-2 d-flex flex-column align-items-end justify-content-end">
+                                            <label class="form-label fw-bold">Subtotal</label>
+                                            <div class="subtotal text-end mb-2" style="padding: 0.375rem 0.75rem; min-width: 70px;">0.00</div>
+                                        </div>
+                                    </div>
+                                    {{ form.id }}
+                                    <div class="form-check mt-2">
+                                        {{ form.DELETE }}
+                                        <label class="form-check-label" for="{{ form.DELETE.id_for_label }}">
+                                            Marcar para eliminar
+                                        </label>
+                                    </div>
+                                </div>
+                                <!-- Mostrar errores de cada ítem -->
+                                {% if form.non_field_errors %}
                                     <div class="alert alert-danger">
-                                        <i class="fas fa-exclamation-circle me-2"></i>Faltan datos. Por favor, revisa los campos obligatorios.
+                                        <strong>Error en ítem {{ forloop.counter }}:</strong>
+                                        <ul class="mb-0">
+                                            {% for error in form.non_field_errors %}
+                                                <li>{{ error }}</li>
+                                            {% endfor %}
+                                        </ul>
                                     </div>
                                 {% endif %}
-                                {{ formset.management_form }}
-                                <div id="items-container">
-                                    {% for form in formset.forms %}
-                                    <div class="item-form mb-3 p-3 border rounded bg-white shadow-sm" data-form-index="{{ forloop.counter0 }}">
-                                        <div class="row g-2 align-items-end">
-                                            <div class="col-12 mb-2">
-                                                <span class="badge" style="font-size:1rem; background-color:#1a3764; color:#fff;">Ítem {{ forloop.counter }}</span>
-                                            </div>
-                                            <div class="col-12 col-md-3 mb-2">
-                                                <label for="{{ form.curso.id_for_label }}" class="form-label fw-bold">Curso</label>
-                                                {{ form.curso|add_class:"form-control" }}
-                                                {{ form.curso.errors }}
-                                            </div>
-                                            <div class="col-6 col-md-2 mb-2">
-                                                <label for="{{ form.duracion.id_for_label }}" class="form-label fw-bold">Duración</label>
-                                                {{ form.duracion|add_class:"form-control" }}
-                                                {{ form.duracion.errors }}
-                                            </div>
-                                            <div class="col-12 col-md-3 mb-2">
-                                                <label for="{{ form.descripcion.id_for_label }}" class="form-label fw-bold">Descripción</label>
-                                                {{ form.descripcion|add_class:"form-control" }}
-                                                {{ form.descripcion.errors }}
-                                            </div>
-                                            <div class="col-6 col-md-1 mb-2">
-                                                <label for="{{ form.cantidad.id_for_label }}" class="form-label fw-bold">Cant.</label>
-                                                {{ form.cantidad|add_class:"form-control cantidad"|attr:"type:number"|attr:"min:1"|attr:"step:1" }}
-                                                {{ form.cantidad.errors }}
-                                            </div>
-                                            <div class="col-6 col-md-2 mb-2">
-                                                <label for="{{ form.precio_unitario.id_for_label }}" class="form-label fw-bold">Precio Unitario</label>
-                                                {{ form.precio_unitario|add_class:"form-control precio"|attr:"type:number"|attr:"min:0"|attr:"step:0.01" }}
-                                                {{ form.precio_unitario.errors }}
-                                            </div>
-                                            <div class="col-6 col-md-1 mb-2 d-flex flex-column align-items-end justify-content-end">
-                                                <label class="form-label fw-bold">Subtotal</label>
-                                                <div class="subtotal text-end mb-2" style="padding: 0.375rem 0.75rem; min-width: 70px;">0.00</div>
-                                            </div>
-                                        </div>
-                                        {{ form.id }}
-                                        {{ form.DELETE }}
-                                    </div>
-                                    <!-- Mostrar errores de cada ítem -->
-                                    {% if form.non_field_errors %}
-                                        <div class="alert alert-danger">
-                                            <strong>Error en ítem {{ forloop.counter }}:</strong>
-                                            <ul class="mb-0">
-                                                {% for error in form.non_field_errors %}
-                                                    <li>{{ error }}</li>
-                                                {% endfor %}
-                                            </ul>
-                                        </div>
-                                    {% endif %}
-                                    {% endfor %}
-                                </div>
-                                <div class="row mt-4">
-                                    <div class="col-md-12 text-end">
-                                        <h4 class="mb-0">Total: <span id="total-amount" class="text-primary">S/ 0.00</span></h4>
-                                        <h5 class="mb-0">Total + IGV (18%): <span id="total-igv" class="text-success">S/ 0.00</span></h5>
-                                        <h6 class="mb-0">12% Detracción - Banco de la Nación: <span id="detraccion" class="text-warning">S/ 0.00</span></h6>
-                                        <h5 class="mb-0 text-success fw-bold">INVERSIÓN TOTAL A DEPOSITAR: <span id="total-final" class="text-success">S/ 0.00</span></h5>
-                                    </div>
+                                {% endfor %}
+                            </div>
+                            <div class="row mt-4">
+                                <div class="col-md-12 text-end">
+                                    <h4 class="mb-0">Total: <span id="total-amount" class="text-primary">S/ 0.00</span></h4>
+                                    <h5 class="mb-0">Total + IGV (18%): <span id="total-igv" class="text-success">S/ 0.00</span></h5>
+                                    <h6 class="mb-0">12% Detracción - Banco de la Nación: <span id="detraccion" class="text-warning">S/ 0.00</span></h6>
+                                    <h5 class="mb-0 text-success fw-bold">INVERSIÓN TOTAL A DEPOSITAR: <span id="total-final" class="text-success">S/ 0.00</span></h5>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="d-flex justify-content-between">
-                            <a href="{% url 'cotizaciones_list' %}" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left"></i> {% trans 'Volver' %}
-                            </a>
-                            <button type="submit" class="btn btn-gpd">
-                                <i class="fas fa-save"></i> {% trans 'Guardar Cotización' %}
-                            </button>
-                        </div>
-                    </form>
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'cotizaciones_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> {% trans 'Volver' %}
+                        </a>
+                        <button type="submit" class="btn btn-gpd">
+                            <i class="fas fa-save"></i> {% trans 'Guardar Cotización' %}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -333,6 +380,128 @@
 
 {% block extra_js %}
 <script>
+console.log('=== SCRIPT DE PRUEBA EN TEMPLATE ===');
+console.log('Verificando elementos del formulario...');
+
+// Verificar si los elementos existen
+var formaPago = document.getElementById('id_forma_pago');
+console.log('Elemento formaPago encontrado:', formaPago);
+if (formaPago) {
+    console.log('Valor actual de formaPago:', formaPago.value);
+    console.log('Opciones disponibles:');
+    for (var i = 0; i < formaPago.options.length; i++) {
+        console.log('Opción ' + i + ':', formaPago.options[i].value, '-', formaPago.options[i].text);
+    }
+}
+
+// Verificar elementos de crédito
+var plazoDiasGroup = document.getElementById('plazo-credito-dias-group');
+var plazoFechaGroup = document.getElementById('plazo-credito-fecha-group');
+var plazoResumen = document.getElementById('plazo-credito-resumen');
+var tipoPlazoGroup = document.getElementById('tipo-plazo-group');
+var tipoPlazoSelect = document.getElementById('tipo-plazo-select');
+
+console.log('plazoDiasGroup:', plazoDiasGroup);
+console.log('plazoFechaGroup:', plazoFechaGroup);
+console.log('plazoResumen:', plazoResumen);
+console.log('tipoPlazoGroup:', tipoPlazoGroup);
+console.log('tipoPlazoSelect:', tipoPlazoSelect);
+
+// Agregar event listener de prueba
+if (formaPago) {
+    formaPago.addEventListener('change', function() {
+        console.log('=== EVENTO CHANGE DETECTADO ===');
+        console.log('Nuevo valor:', formaPago.value);
+        console.log('¿Es igual a "al_credito"?', formaPago.value === 'al_credito');
+        
+        if (formaPago.value === 'al_credito') {
+            console.log('Mostrando selector de tipo de plazo...');
+            if (tipoPlazoGroup) {
+                tipoPlazoGroup.style.display = '';
+                console.log('tipoPlazoGroup mostrado');
+            }
+        } else {
+            console.log('Ocultando campos de crédito...');
+            if (tipoPlazoGroup) tipoPlazoGroup.style.display = 'none';
+            if (plazoDiasGroup) plazoDiasGroup.style.display = 'none';
+            if (plazoFechaGroup) plazoFechaGroup.style.display = 'none';
+            if (plazoResumen) plazoResumen.style.display = 'none';
+        }
+    });
+}
+
+// Agregar event listener para tipo de plazo
+if (tipoPlazoSelect) {
+    tipoPlazoSelect.addEventListener('change', function() {
+        console.log('=== EVENTO CHANGE EN TIPO PLAZO ===');
+        console.log('Tipo seleccionado:', tipoPlazoSelect.value);
+        
+        // Ocultar ambos campos primero
+        if (plazoDiasGroup) plazoDiasGroup.style.display = 'none';
+        if (plazoFechaGroup) plazoFechaGroup.style.display = 'none';
+        
+        if (tipoPlazoSelect.value === 'dias') {
+            console.log('Mostrando campo de días');
+            if (plazoDiasGroup) {
+                plazoDiasGroup.style.display = '';
+                console.log('Campo de días mostrado correctamente');
+            }
+        } else if (tipoPlazoSelect.value === 'fecha') {
+            console.log('Mostrando campo de fecha');
+            if (plazoFechaGroup) {
+                plazoFechaGroup.style.display = '';
+                console.log('Campo de fecha mostrado correctamente');
+            }
+        } else {
+            console.log('Ningún tipo seleccionado');
+        }
+    });
+} else {
+    console.log('ERROR: No se encontró tipoPlazoSelect para agregar event listener');
+}
+
+// Función de prueba para verificar el funcionamiento
+function probarTipoPlazo() {
+    console.log('=== PRUEBA MANUAL DE TIPO PLAZO ===');
+    
+    var tipoPlazoSelect = document.getElementById('tipo-plazo-select');
+    var plazoDiasGroup = document.getElementById('plazo-credito-dias-group');
+    var plazoFechaGroup = document.getElementById('plazo-credito-fecha-group');
+    
+    console.log('tipoPlazoSelect:', tipoPlazoSelect);
+    console.log('plazoDiasGroup:', plazoDiasGroup);
+    console.log('plazoFechaGroup:', plazoFechaGroup);
+    
+    if (tipoPlazoSelect) {
+        console.log('Valor actual:', tipoPlazoSelect.value);
+        
+        // Probar mostrar campo de días
+        console.log('Probando mostrar campo de días...');
+        if (plazoDiasGroup) {
+            plazoDiasGroup.style.display = '';
+            console.log('✅ Campo de días mostrado');
+        } else {
+            console.log('❌ No se encontró plazoDiasGroup');
+        }
+        
+        if (plazoFechaGroup) {
+            plazoFechaGroup.style.display = 'none';
+            console.log('✅ Campo de fecha ocultado');
+        }
+        
+        // Cambiar el valor a 'dias' para probar
+        tipoPlazoSelect.value = 'dias';
+        console.log('Valor cambiado a "dias"');
+        
+        // Disparar el evento change
+        var event = new Event('change');
+        tipoPlazoSelect.dispatchEvent(event);
+        console.log('Evento change disparado');
+    } else {
+        console.log('❌ No se encontró tipoPlazoSelect');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Función para actualizar los cálculos de subtotales y total
     function actualizarCalculos() {
@@ -367,6 +536,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Calcular total final
         const totalFinal = totalConIgv + detraccion;
         if (totalFinalElement) totalFinalElement.textContent = 'S/ ' + totalFinal.toFixed(2);
+        
+        // Actualizar forma de pago si existe la función
+        if (typeof actualizarCamposPago === 'function') {
+            actualizarCamposPago();
+        }
     }
 
     // Función para actualizar el contador TOTAL_FORMS
@@ -521,58 +695,6 @@ document.addEventListener('DOMContentLoaded', function() {
     actualizarTotalForms();
     actualizarBotonesEliminar();
     actualizarCalculos();
-    
-    // Funcionalidad para porcentajes de pago
-    function actualizarPorcentajesPago() {
-        const montoCancelado = parseFloat(document.getElementById('{{ form.monto_cancelado.id_for_label }}').value) || 0;
-        const totalFinal = parseFloat(document.getElementById('total-final').textContent.replace('S/ ', '')) || 0;
-        
-        if (totalFinal > 0) {
-            const porcentajeCancelado = (montoCancelado / totalFinal) * 100;
-            const montoPendiente = totalFinal - montoCancelado;
-            const porcentajePendiente = 100 - porcentajeCancelado;
-            
-            document.getElementById('porcentaje-cancelado').textContent = porcentajeCancelado.toFixed(1) + '%';
-            document.getElementById('monto-pendiente').textContent = 'S/ ' + montoPendiente.toFixed(2);
-            document.getElementById('porcentaje-pendiente').textContent = porcentajePendiente.toFixed(1) + '%';
-            
-            // Cambiar colores según el porcentaje
-            const porcentajeCanceladoElement = document.getElementById('porcentaje-cancelado');
-            const porcentajePendienteElement = document.getElementById('porcentaje-pendiente');
-            
-            if (porcentajeCancelado >= 100) {
-                porcentajeCanceladoElement.className = 'fw-bold text-success';
-                porcentajePendienteElement.className = 'fw-bold text-success';
-            } else if (porcentajeCancelado >= 50) {
-                porcentajeCanceladoElement.className = 'fw-bold text-warning';
-                porcentajePendienteElement.className = 'fw-bold text-warning';
-            } else {
-                porcentajeCanceladoElement.className = 'fw-bold text-danger';
-                porcentajePendienteElement.className = 'fw-bold text-danger';
-            }
-        } else {
-            document.getElementById('porcentaje-cancelado').textContent = '0%';
-            document.getElementById('monto-pendiente').textContent = 'S/ 0.00';
-            document.getElementById('porcentaje-pendiente').textContent = '100%';
-        }
-    }
-    
-    // Agregar event listener al campo monto_cancelado
-    const montoCanceladoInput = document.getElementById('{{ form.monto_cancelado.id_for_label }}');
-    if (montoCanceladoInput) {
-        montoCanceladoInput.addEventListener('input', function() {
-            actualizarPorcentajesPago();
-        });
-    }
-    
-    // Modificar la función actualizarCalculos para que también actualice los porcentajes
-    const originalActualizarCalculos = actualizarCalculos;
-    actualizarCalculos = function() {
-        originalActualizarCalculos();
-        actualizarPorcentajesPago();
-    };
-    
-    // Inicializar porcentajes
 });
 </script>
 {% endblock %} 

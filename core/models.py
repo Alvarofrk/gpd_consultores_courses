@@ -115,6 +115,12 @@ class Cotizacion(models.Model):
         ('credito', 'Crédito'),
     ]
     
+    FORMA_PAGO_CHOICES = [
+        ('50_50', '50% al iniciar y 50% al finalizar'),
+        ('100_adelantado', '100% adelantado'),
+        ('al_credito', 'Al crédito'),
+    ]
+    
     # Información básica
     nombre_anio = models.CharField(max_length=100, verbose_name="Nombre del Año", null=True, blank=True)
     cotizacion = models.CharField(max_length=50, null=True, blank=True, verbose_name="Número de Cotización")
@@ -144,6 +150,23 @@ class Cotizacion(models.Model):
     creado_por = models.ForeignKey('accounts.User', on_delete=models.CASCADE, null=True, blank=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    forma_pago = models.CharField(
+        max_length=20,
+        choices=FORMA_PAGO_CHOICES,
+        default='100_adelantado',
+        verbose_name="Forma de Pago"
+    )
+    plazo_credito_dias = models.IntegerField(
+        null=True, blank=True,
+        verbose_name="Plazo de crédito (días)",
+        help_text="Plazo en días para pago al crédito"
+    )
+    plazo_credito_fecha = models.DateField(
+        null=True, blank=True,
+        verbose_name="Fecha límite de crédito",
+        help_text="Fecha límite para pago al crédito"
+    )
 
     def __str__(self):
         return f"{self.nombre_anio} - {self.empresa}"
@@ -187,6 +210,109 @@ class Cotizacion(models.Model):
         """Retorna el IGV calculado como la diferencia entre total_con_igv y monto_total"""
         return self.total_con_igv - self.monto_total
 
+    @property
+    def adelanto(self):
+        if self.forma_pago == '50_50':
+            return self.total_con_detraccion * 0.5
+        elif self.forma_pago == '100_adelantado':
+            return self.total_con_detraccion
+        return 0
+
+    @property
+    def saldo(self):
+        if self.forma_pago == '50_50':
+            return self.total_con_detraccion * 0.5
+        elif self.forma_pago == '100_adelantado':
+            return 0
+        elif self.forma_pago == 'al_credito':
+            return self.total_con_detraccion
+        return 0
+
+    @property
+    def porcentaje_adelanto(self):
+        if self.forma_pago == '50_50':
+            return 50
+        elif self.forma_pago == '100_adelantado':
+            return 100
+        return 0
+
+    @property
+    def porcentaje_saldo(self):
+        if self.forma_pago == '50_50':
+            return 50
+        elif self.forma_pago == '100_adelantado':
+            return 0
+        elif self.forma_pago == 'al_credito':
+            return 100
+        return 0
+
+    # Propiedades específicas para crédito
+    @property
+    def fecha_vencimiento_calculada(self):
+        """Calcula la fecha de vencimiento basada en el plazo"""
+        if self.forma_pago != 'al_credito':
+            return None
+        
+        if not self.fecha_cotizacion:
+            return None
+            
+        from datetime import timedelta
+        if self.plazo_credito_dias:
+            return self.fecha_cotizacion + timedelta(days=self.plazo_credito_dias)
+        elif self.plazo_credito_fecha:
+            return self.plazo_credito_fecha
+        return None
+
+    @property
+    def monto_credito(self):
+        """Monto total a crédito (solo para forma_pago = 'al_credito')"""
+        if self.forma_pago == 'al_credito':
+            return self.total_con_detraccion
+        return 0
+
+    @property
+    def monto_pendiente_credito(self):
+        """Monto pendiente del crédito"""
+        if self.forma_pago == 'al_credito':
+            return self.total_con_detraccion - self.monto_cancelado
+        return 0
+
+    @property
+    def porcentaje_pagado_credito(self):
+        """Porcentaje pagado del crédito"""
+        if self.forma_pago == 'al_credito' and self.total_con_detraccion > 0:
+            return (self.monto_cancelado / self.total_con_detraccion) * 100
+        return 0
+
+    @property
+    def dias_restantes_credito(self):
+        """Días restantes hasta el vencimiento"""
+        if self.forma_pago == 'al_credito' and self.fecha_vencimiento_calculada:
+            from django.utils import timezone
+            dias = (self.fecha_vencimiento_calculada - timezone.now().date()).days
+            return max(0, dias)  # No mostrar días negativos
+        return None
+
+    @property
+    def estado_credito(self):
+        """Estado del crédito basado en pagos y vencimiento"""
+        if self.forma_pago != 'al_credito':
+            return None
+        
+        if self.monto_pendiente_credito == 0:
+            return 'pagado'
+        elif self.dias_restantes_credito is not None and self.dias_restantes_credito <= 0:
+            return 'vencido'
+        elif self.monto_cancelado > 0:
+            return 'parcial'
+        else:
+            return 'pendiente'
+
+    @property
+    def esta_vencido(self):
+        """Verifica si el crédito está vencido"""
+        return self.forma_pago == 'al_credito' and self.dias_restantes_credito is not None and self.dias_restantes_credito <= 0
+
     def clean(self):
         # Validar fechas
         if self.validez_cotizacion and self.fecha_cotizacion:
@@ -214,16 +340,44 @@ class Cotizacion(models.Model):
                 'monto_total': 'El monto total no puede ser negativo'
             })
         
-        # Validar monto cancelado
+        # Validar monto cancelado (campo interno)
         if self.monto_cancelado < 0:
             raise ValidationError({
                 'monto_cancelado': 'El monto cancelado no puede ser negativo'
             })
         
-        if self.monto_cancelado > self.total_con_detraccion:
+        # Validar forma de pago
+        if self.forma_pago == 'al_credito':
+            if not self.plazo_credito_dias and not self.plazo_credito_fecha:
+                raise ValidationError({
+                    'forma_pago': 'Para pago al crédito debe especificar un plazo en días o una fecha límite'
+                })
+        
+        # Validar plazo de crédito
+        if self.plazo_credito_dias is not None and self.plazo_credito_dias <= 0:
             raise ValidationError({
-                'monto_cancelado': 'El monto cancelado no puede ser mayor al total a pagar'
+                'plazo_credito_dias': 'El plazo de crédito debe ser mayor a 0 días'
             })
+        
+        if self.plazo_credito_fecha and self.fecha_cotizacion:
+            if self.plazo_credito_fecha <= self.fecha_cotizacion:
+                raise ValidationError({
+                    'plazo_credito_fecha': 'La fecha límite de crédito debe ser posterior a la fecha de cotización'
+                })
+        
+        # Validaciones específicas para crédito
+        if self.forma_pago == 'al_credito':
+            # El monto cancelado no puede ser mayor al total
+            if self.monto_cancelado > self.total_con_detraccion:
+                raise ValidationError({
+                    'monto_cancelado': 'El monto pagado no puede ser mayor al total a crédito'
+                })
+            
+            # Validar que tenga fecha de cotización para calcular vencimiento
+            if not self.fecha_cotizacion and self.plazo_credito_dias:
+                raise ValidationError({
+                    'fecha_cotizacion': 'Para calcular el plazo de crédito en días, debe especificar la fecha de cotización'
+                })
 
     class Meta:
         verbose_name = "Cotización"

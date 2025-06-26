@@ -24,6 +24,7 @@ import calendar
 import qrcode
 from PIL import Image, ImageDraw, ImageFont
 import base64
+from decimal import Decimal
 
 from accounts.decorators import admin_required, lecturer_required
 from accounts.models import User, Student
@@ -286,8 +287,10 @@ def cotizacion_add_view(request):
                     if formset.is_valid():
                         instances = formset.save(commit=False)
                         items_validos = []
-                        for instance in instances:
-                            # Guardar solo si hay algún campo relevante lleno
+                        for form_item, instance in zip(formset.forms, instances):
+                            # Omitir los ítems marcados para borrar
+                            if form_item.cleaned_data.get('DELETE'):
+                                continue
                             if instance.curso or instance.descripcion or instance.duracion or instance.cantidad or instance.precio_unitario:
                                 instance.cotizacion = cotizacion
                                 items_validos.append(instance)
@@ -308,8 +311,8 @@ def cotizacion_add_view(request):
                         messages.success(request, "Cotización creada exitosamente.")
                         return redirect('cotizaciones_list')
                     else:
-                        for error in formset.errors:
-                            if error:
+                        for i, error in enumerate(formset.errors):
+                            if error and not formset.forms[i].cleaned_data.get('DELETE'):
                                 messages.error(request, f"Error en item: {error}")
                         for error in formset.non_form_errors():
                             messages.error(request, error)
@@ -362,8 +365,10 @@ def cotizacion_update_view(request, pk):
                         # Eliminar items marcados para eliminación
                         for obj in formset.deleted_objects:
                             obj.delete()
-                        # Guardar solo los ítems con datos relevantes
-                        for instance in instances:
+                        # Guardar solo los ítems con datos relevantes y no marcados para borrar
+                        for form_item, instance in zip(formset.forms, instances):
+                            if form_item.cleaned_data.get('DELETE'):
+                                continue
                             if instance.curso or instance.descripcion or instance.duracion or instance.cantidad or instance.precio_unitario:
                                 instance.cotizacion = cotizacion
                                 instance.save()
@@ -376,8 +381,8 @@ def cotizacion_update_view(request, pk):
                 except Exception as e:
                     messages.error(request, f"Error al guardar la cotización: {str(e)}")
             else:
-                for error in formset.errors:
-                    if error:
+                for i, error in enumerate(formset.errors):
+                    if error and not formset.forms[i].cleaned_data.get('DELETE'):
                         messages.error(request, f"Error en item: {error}")
                 for error in formset.non_form_errors():
                     messages.error(request, error)
@@ -616,14 +621,76 @@ def cotizacion_download_pdf(request, pk):
     y_pago_txt = y_pago-10
     p.drawString(35, y_pago_txt, "Tiempo de entrega:")
     p.drawString(130, y_pago_txt, cotizacion.tiempo_entrega or "-")
-    p.drawString(35, y_pago_txt-10, "Modalidad de pago:")
-    modalidad_pago = cotizacion.get_modalidad_pago_display() or "-"
-    adelanto_pct = f"{cotizacion.porcentaje_cancelado:.0f}%"
-    adelanto_monto = f"S/ {cotizacion.monto_cancelado:.2f}"
-    deuda_pct = f"{cotizacion.porcentaje_pendiente:.0f}%"
-    deuda_monto = f"S/ {cotizacion.monto_pendiente:.2f}"
-    texto_pago = f"{modalidad_pago}   |   Adelanto: {adelanto_pct} ({adelanto_monto})   |   Deuda: {deuda_pct} ({deuda_monto})"
+    p.drawString(35, y_pago_txt-10, "Forma de pago:")
+    
+    # Calcular montos según la forma de pago
+    total_final = cotizacion.total_con_detraccion
+    if cotizacion.forma_pago == '50_50':
+        adelanto_monto = total_final * Decimal('0.5')
+        saldo_monto = total_final * Decimal('0.5')
+        adelanto_pct = "50%"
+        saldo_pct = "50%"
+        forma_pago_texto = "50% al iniciar y 50% al finalizar"
+    elif cotizacion.forma_pago == '100_adelantado':
+        adelanto_monto = total_final
+        saldo_monto = Decimal('0')
+        adelanto_pct = "100%"
+        saldo_pct = "0%"
+        forma_pago_texto = "100% adelantado"
+    elif cotizacion.forma_pago == 'al_credito':
+        adelanto_monto = Decimal('0')
+        saldo_monto = total_final
+        adelanto_pct = "0%"
+        saldo_pct = "100%"
+        forma_pago_texto = "Al crédito"
+    else:
+        adelanto_monto = Decimal('0')
+        saldo_monto = total_final
+        adelanto_pct = "0%"
+        saldo_pct = "100%"
+        forma_pago_texto = "-"
+    
+    # Mostrar forma de pago y montos
+    texto_pago = f"{forma_pago_texto}   |   Adelanto: {adelanto_pct} (S/ {adelanto_monto:.2f})   |   Saldo: {saldo_pct} (S/ {saldo_monto:.2f})"
     p.drawString(130, y_pago_txt-10, texto_pago)
+    
+    # Mostrar plazo de crédito si corresponde
+    if cotizacion.forma_pago == 'al_credito':
+        plazo_texto = ""
+        if cotizacion.plazo_credito_dias:
+            plazo_texto = f"Plazo: {cotizacion.plazo_credito_dias} días"
+        elif cotizacion.plazo_credito_fecha:
+            plazo_texto = f"Plazo: Hasta {cotizacion.plazo_credito_fecha.strftime('%d/%m/%Y')}"
+        if plazo_texto:
+            p.drawString(35, y_pago_txt-20, plazo_texto)
+            y_pago_txt -= 10  # Ajustar posición para las siguientes líneas
+        
+        # Mostrar información adicional de crédito
+        if cotizacion.fecha_vencimiento_calculada:
+            p.drawString(35, y_pago_txt-20, f"Vencimiento: {cotizacion.fecha_vencimiento_calculada.strftime('%d/%m/%Y')}")
+            y_pago_txt -= 10
+        
+        if cotizacion.dias_restantes_credito is not None:
+            if cotizacion.dias_restantes_credito > 0:
+                p.drawString(35, y_pago_txt-20, f"Días restantes: {cotizacion.dias_restantes_credito}")
+            else:
+                p.drawString(35, y_pago_txt-20, "ESTADO: VENCIDO")
+            y_pago_txt -= 10
+        
+        # Mostrar estado del crédito
+        estado_texto = ""
+        if cotizacion.estado_credito == 'pagado':
+            estado_texto = "ESTADO: PAGADO"
+        elif cotizacion.estado_credito == 'parcial':
+            estado_texto = f"ESTADO: PAGO PARCIAL ({cotizacion.porcentaje_pagado_credito:.1f}%)"
+        elif cotizacion.estado_credito == 'vencido':
+            estado_texto = "ESTADO: VENCIDO"
+        else:
+            estado_texto = "ESTADO: PENDIENTE"
+        
+        p.drawString(35, y_pago_txt-20, estado_texto)
+        y_pago_txt -= 10
+    
     p.drawString(35, y_pago_txt-20, "Cuenta de ahorros BCP:")
     p.drawString(180, y_pago_txt-20, "215-95088021-001")
     p.drawString(35, y_pago_txt-30, "Cuenta CCI:")

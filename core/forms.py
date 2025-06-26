@@ -53,6 +53,9 @@ class CotizacionForm(forms.ModelForm):
             'fecha_servicio',
             'tiempo_entrega',
             'modalidad_pago',
+            'forma_pago',
+            'plazo_credito_dias',
+            'plazo_credito_fecha',
             'monto_cancelado',
         ]
         widgets = {
@@ -63,11 +66,18 @@ class CotizacionForm(forms.ModelForm):
             'modalidad_pago': forms.Select(attrs={'class': 'form-control'}),
             'estado': forms.Select(attrs={'class': 'form-control'}),
             'tipo_cotizacion': forms.TextInput(attrs={'class': 'form-control'}),
+            'forma_pago': forms.Select(attrs={'class': 'form-control'}),
+            'plazo_credito_dias': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0',
+                'placeholder': 'Ej: 30'
+            }),
+            'plazo_credito_fecha': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'monto_cancelado': forms.NumberInput(attrs={
                 'class': 'form-control',
                 'min': '0',
                 'step': '0.01',
-                'placeholder': '0.00'
+                'type': 'number'
             }),
         }
 
@@ -76,6 +86,7 @@ class CotizacionForm(forms.ModelForm):
         self.fields['fecha_cotizacion'].required = False
         self.fields['fecha_servicio'].required = False
         self.fields['validez_cotizacion'].required = False
+        self.fields['monto_cancelado'].required = False
         if self.instance and self.instance.pk:
             if self.instance.fecha_cotizacion:
                 self.fields['fecha_cotizacion'].initial = self.instance.fecha_cotizacion.strftime('%Y-%m-%d')
@@ -83,6 +94,7 @@ class CotizacionForm(forms.ModelForm):
                 self.fields['fecha_servicio'].initial = self.instance.fecha_servicio.strftime('%Y-%m-%d')
             if self.instance.validez_cotizacion:
                 self.fields['validez_cotizacion'].initial = self.instance.validez_cotizacion.strftime('%Y-%m-%d')
+            self.fields['monto_cancelado'].initial = self.instance.monto_cancelado
 
     def clean(self):
         cleaned_data = super().clean()
@@ -152,7 +164,7 @@ ItemCotizacionFormSet = inlineformset_factory(
     ItemCotizacion,
     form=ItemCotizacionForm,
     extra=7,
-    can_delete=False,
+    can_delete=True,
     max_num=7,
     validate_max=True,
     fields=['curso', 'duracion', 'descripcion', 'cantidad', 'precio_unitario']
