@@ -17,7 +17,7 @@
                 </div>
                 
                 <div class="card-body">
-                    <form method="post" class="needs-validation" novalidate>
+                    <form method="post" novalidate>
                         {% csrf_token %}
                         
                         <div class="row">
@@ -114,7 +114,7 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="{{ form.mensaje_recordatorio.id_for_label }}" class="form-label">
-                                        {{ form.mensaje_recordatorio.label }} *
+                                        {{ form.mensaje_recordatorio.label }}
                                     </label>
                                     {{ form.mensaje_recordatorio }}
                                     {% if form.mensaje_recordatorio.errors %}
@@ -217,6 +217,22 @@
                                     {% endif %}
                                     <div class="form-text">{{ form.canales_envio.help_text }}</div>
                                 </div>
+                                
+                                <!-- Campo activo -->
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        {{ form.activo }}
+                                        <label class="form-check-label" for="{{ form.activo.id_for_label }}">
+                                            {{ form.activo.label }}
+                                        </label>
+                                    </div>
+                                    {% if form.activo.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.activo.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">Marca esta casilla para que el evento aparezca en el calendario</div>
+                                </div>
                             </div>
                         </div>
                         
@@ -308,25 +324,22 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Establecer fecha y hora actual por defecto si es un nuevo evento
-    {% if not form.instance.pk %}
-    const now = new Date();
-    const fechaInicio = document.getElementById('{{ form.fecha_inicio.id_for_label }}');
-    if (fechaInicio && !fechaInicio.value) {
-        const fechaActual = now.toISOString().slice(0, 16);
-        fechaInicio.value = fechaActual;
-    }
-    {% endif %}
-    
-    // Validación del formulario
-    const form = document.querySelector('.needs-validation');
-    form.addEventListener('submit', function(event) {
-        if (!form.checkValidity()) {
-            event.preventDefault();
-            event.stopPropagation();
+    try {
+        // Establecer fecha y hora actual por defecto si es un nuevo evento
+        {% if not form.instance.pk %}
+        const now = new Date();
+        const fechaInicioId = '{{ form.fecha_inicio.id_for_label }}';
+        if (fechaInicioId) {
+            const fechaInicio = document.getElementById(fechaInicioId);
+            if (fechaInicio && !fechaInicio.value) {
+                const fechaActual = now.toISOString().slice(0, 16);
+                fechaInicio.value = fechaActual;
+            }
         }
-        form.classList.add('was-validated');
-    });
+        {% endif %}
+    } catch (error) {
+        console.log('Error en JavaScript del formulario:', error);
+    }
 });
 </script>
 {% endblock %} 

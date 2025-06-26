@@ -749,6 +749,7 @@ def generate_qr_view(request):
 @admin_required
 def calendario_view(request):
     """Vista principal del calendario"""
+    print("=== VISTA CALENDARIO EJECUTÁNDOSE ===")
     from datetime import datetime, date
     import calendar
     
@@ -756,6 +757,14 @@ def calendario_view(request):
     mes = int(request.GET.get('mes', datetime.now().month))
     año = int(request.GET.get('año', datetime.now().year))
     tipo_filtro = request.GET.get('tipo', '')
+    
+    print(f"CALENDARIO - Mes: {mes}, Año: {año}, Tipo filtro: {tipo_filtro}")
+    
+    # Verificar todos los eventos en la base de datos
+    todos_eventos = Evento.objects.all()
+    print(f"TODOS LOS EVENTOS EN BD: {todos_eventos.count()}")
+    for evento in todos_eventos:
+        print(f"  - {evento.titulo} | Fecha: {evento.fecha_inicio} | Activo: {evento.activo} | Creado por: {evento.creado_por}")
     
     # Crear formulario de filtro
     filtro_form = FiltroEventoForm(initial={'mes': mes, 'año': año, 'tipo': tipo_filtro})
@@ -767,9 +776,14 @@ def calendario_view(request):
         activo=True
     ).order_by('fecha_inicio')
     
+    print(f"EVENTOS ENCONTRADOS: {eventos.count()}")
+    for evento in eventos:
+        print(f"  - {evento.titulo} ({evento.fecha_inicio}) - Activo: {evento.activo}")
+    
     # Aplicar filtro por tipo si se especifica
     if tipo_filtro:
         eventos = eventos.filter(tipo=tipo_filtro)
+        print(f"EVENTOS DESPUÉS DEL FILTRO: {eventos.count()}")
     
     # Crear calendario
     cal = calendar.monthcalendar(año, mes)
@@ -782,6 +796,8 @@ def calendario_view(request):
         if dia not in eventos_por_dia:
             eventos_por_dia[dia] = []
         eventos_por_dia[dia].append(evento)
+    
+    print(f"EVENTOS POR DÍA: {eventos_por_dia}")
     
     context = {
         'calendario': cal,
@@ -799,23 +815,37 @@ def calendario_view(request):
 @login_required
 @admin_required
 def evento_create_view(request):
-    """Crear nuevo evento"""
+    print(f"MÉTODO: {request.method}")
     if request.method == 'POST':
+        print('LLEGA AL POST')
+        print(f"POST DATA: {request.POST}")
+        print(f"FILES: {request.FILES}")
         form = EventoForm(request.POST)
+        print(f"FORMULARIO CREADO: {form}")
+        print(f"FORMULARIO VÁLIDO: {form.is_valid()}")
         if form.is_valid():
+            print('FORMULARIO VÁLIDO')
+            print(f"DATOS LIMPIOS: {form.cleaned_data}")
             evento = form.save(commit=False)
             evento.creado_por = request.user
             evento.save()
+            print(f"EVENTO GUARDADO: {evento.pk}")
             messages.success(request, f'Evento "{evento.titulo}" creado exitosamente.')
             return redirect('calendario')
+        else:
+            print('FORMULARIO INVÁLIDO')
+            print(f"ERRORES: {form.errors}")
+            print(f"ERRORES NO FIELD: {form.non_field_errors()}")
     else:
+        print('MÉTODO GET')
         form = EventoForm()
     
     context = {
-        'form': form,
-        'titulo': 'Crear Nuevo Evento',
-        'accion': 'Crear'
+        'form': form, 
+        'titulo': 'Nuevo Evento', 
+        'accion': 'Guardar'
     }
+    print(f"RENDERIZANDO CON CONTEXT: {context}")
     return render(request, 'core/evento_form.html', context)
 
 

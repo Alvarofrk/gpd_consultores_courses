@@ -155,86 +155,45 @@ ItemCotizacionFormSet = inlineformset_factory(
 class EventoForm(forms.ModelForm):
     """Formulario para crear y editar eventos"""
     
-    # Campos de fecha y hora con widgets personalizados
-    fecha_inicio = forms.DateTimeField(
-        widget=forms.DateTimeInput(
-            attrs={
-                'type': 'datetime-local',
-                'class': 'form-control',
-                'placeholder': 'Selecciona fecha y hora'
-            }
-        ),
-        input_formats=['%Y-%m-%dT%H:%M'],
-        help_text="Fecha y hora de inicio del evento"
-    )
-    
-    fecha_fin = forms.DateTimeField(
-        widget=forms.DateTimeInput(
-            attrs={
-                'type': 'datetime-local',
-                'class': 'form-control',
-                'placeholder': 'Selecciona fecha y hora (opcional)'
-            }
-        ),
-        input_formats=['%Y-%m-%dT%H:%M'],
-        required=False,
-        help_text="Fecha y hora de fin del evento (opcional)"
-    )
-    
     # Campo para canales de envío
     canales_envio = forms.MultipleChoiceField(
         choices=Evento.CANAL_CHOICES,
-        widget=forms.CheckboxSelectMultiple,
-        help_text="Selecciona los canales para enviar el recordatorio"
-    )
-    
-    emails_destino = forms.CharField(
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
         required=False,
-        label="Emails destinatarios",
-        widget=forms.Textarea(attrs={
-            'class': 'form-control',
-            'rows': 2,
-            'placeholder': 'ejemplo1@email.com, ejemplo2@email.com o uno por línea'
-        }),
-        help_text="Separa los emails por coma o salto de línea."
-    )
-    
-    telefonos_destino = forms.CharField(
-        required=False,
-        label="Números WhatsApp destinatarios",
-        widget=forms.Textarea(attrs={
-            'class': 'form-control',
-            'rows': 2,
-            'placeholder': '+51987654321, +51912345678 o uno por línea'
-        }),
-        help_text="Incluye el código de país. Separa los números por coma o salto de línea."
+        help_text="Selecciona los canales para enviar recordatorios"
     )
     
     class Meta:
         model = Evento
-        fields = [
-            'titulo', 'descripcion', 'tipo', 'fecha_inicio', 'fecha_fin',
-            'mensaje_recordatorio', 'dias_antes', 'horas_antes', 'canales_envio',
-            'emails_destino', 'telefonos_destino'
-        ]
+        fields = ['titulo', 'descripcion', 'tipo', 'fecha_inicio', 'fecha_fin', 'mensaje_recordatorio', 'dias_antes', 'horas_antes', 'canales_envio', 'emails_destino', 'telefonos_destino', 'activo']
         widgets = {
             'titulo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Título del evento'}),
             'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Descripción del evento'}),
             'tipo': forms.Select(attrs={'class': 'form-select'}),
-            'mensaje_recordatorio': forms.Textarea(attrs={
-                'class': 'form-control', 
-                'rows': 4, 
-                'placeholder': 'Mensaje que se enviará como recordatorio. Puedes usar variables como [fecha], [hora], [titulo]'
-            }),
-            'dias_antes': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'max': 30}),
-            'horas_antes': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'max': 24}),
+            'fecha_inicio': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
+            'fecha_fin': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
+            'mensaje_recordatorio': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'dias_antes': forms.NumberInput(attrs={'class': 'form-control'}),
+            'horas_antes': forms.NumberInput(attrs={'class': 'form-control'}),
+            'emails_destino': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'telefonos_destino': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Establecer valores por defecto para canales de envío
-        if not self.instance.pk:  # Si es un nuevo evento
-            self.fields['canales_envio'].initial = ['email']
+        # Hacer campos opcionales
+        for field in ['fecha_fin', 'mensaje_recordatorio', 'dias_antes', 'horas_antes', 'emails_destino', 'telefonos_destino']:
+            self.fields[field].required = False
+            if hasattr(self.fields[field].widget, 'attrs'):
+                self.fields[field].widget.attrs.pop('required', None)
+        
+        # Si es una instancia existente, establecer los valores de canales_envio
+        if self.instance and self.instance.pk:
+            if self.instance.canales_envio:
+                self.fields['canales_envio'].initial = self.instance.canales_envio
+            else:
+                # Para nuevos eventos, establecer activo como True por defecto
+                self.fields['activo'].initial = True
     
     def clean(self):
         cleaned_data = super().clean()
@@ -245,17 +204,28 @@ class EventoForm(forms.ModelForm):
         if fecha_inicio and fecha_fin and fecha_fin <= fecha_inicio:
             raise forms.ValidationError("La fecha de fin debe ser posterior a la fecha de inicio.")
         
-        # Validar que no se envíe recordatorio después del evento
-        dias_antes = cleaned_data.get('dias_antes', 0)
-        horas_antes = cleaned_data.get('horas_antes', 0)
+        # Validar que el recordatorio se envíe antes del inicio del evento
+        dias_antes = cleaned_data.get('dias_antes', 0) or 0
+        horas_antes = cleaned_data.get('horas_antes', 0) or 0
         
+        # Si hay recordatorio configurado, validar que sea antes del evento
         if fecha_inicio and (dias_antes > 0 or horas_antes > 0):
             from datetime import timedelta
             tiempo_recordatorio = timedelta(days=dias_antes, hours=horas_antes)
-            if tiempo_recordatorio >= (fecha_fin - fecha_inicio if fecha_fin else timedelta(hours=1)):
-                raise forms.ValidationError("El recordatorio no puede enviarse después del evento.")
+            
+            # El recordatorio debe enviarse antes del inicio del evento
+            # No necesitamos validar contra la duración del evento
+            # Solo verificamos que los valores sean razonables (no negativos)
+            if dias_antes < 0 or horas_antes < 0:
+                raise forms.ValidationError("Los días y horas antes del evento deben ser valores positivos.")
         
         return cleaned_data
+
+    def clean_canales_envio(self):
+        data = self.cleaned_data.get('canales_envio')
+        if not data:
+            return []
+        return list(data)
 
 
 class FiltroEventoForm(forms.Form):

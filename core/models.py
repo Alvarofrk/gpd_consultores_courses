@@ -276,12 +276,12 @@ class Evento(models.Model):
     fecha_fin = models.DateTimeField(verbose_name="Fecha y Hora de Fin", blank=True, null=True)
     
     # Configuración de recordatorios
-    mensaje_recordatorio = models.TextField(verbose_name="Mensaje de Recordatorio")
-    dias_antes = models.IntegerField(default=1, verbose_name="Días antes del evento")
-    horas_antes = models.IntegerField(default=0, verbose_name="Horas antes del evento")
-    canales_envio = models.JSONField(default=list, verbose_name="Canales de Envío")
-    emails_destino = models.TextField(blank=True, verbose_name="Emails destinatarios", help_text="Separa los emails por coma, punto y coma o salto de línea.")
-    telefonos_destino = models.TextField(blank=True, verbose_name="Números WhatsApp destinatarios", help_text="Incluye el código de país. Separa los números por coma o salto de línea.")
+    mensaje_recordatorio = models.TextField(verbose_name="Mensaje de Recordatorio", blank=True, null=True)
+    dias_antes = models.IntegerField(default=1, verbose_name="Días antes del evento", blank=True, null=True)
+    horas_antes = models.IntegerField(default=0, verbose_name="Horas antes del evento", blank=True, null=True)
+    canales_envio = models.JSONField(default=list, verbose_name="Canales de Envío", blank=True, null=True)
+    emails_destino = models.TextField(blank=True, null=True, verbose_name="Emails destinatarios", help_text="Separa los emails por coma, punto y coma o salto de línea.")
+    telefonos_destino = models.TextField(blank=True, null=True, verbose_name="Números WhatsApp destinatarios", help_text="Incluye el código de país. Separa los números por coma o salto de línea.")
     
     # Estado del recordatorio
     recordatorio_enviado = models.BooleanField(default=False, verbose_name="Recordatorio Enviado")
