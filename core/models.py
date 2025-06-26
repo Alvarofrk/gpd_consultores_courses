@@ -136,6 +136,9 @@ class Cotizacion(models.Model):
     tiempo_entrega = models.CharField(max_length=100, verbose_name="Tiempo de Entrega", null=True, blank=True)
     modalidad_pago = models.CharField(max_length=20, choices=MODALIDAD_PAGO_CHOICES, verbose_name="Modalidad de Pago", null=True, blank=True)
     
+    # Información de pagos
+    monto_cancelado = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Monto Cancelado", help_text="Monto que ya ha sido pagado")
+    
     # Campos del sistema
     monto_total = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Monto Total")
     creado_por = models.ForeignKey('accounts.User', on_delete=models.CASCADE, null=True, blank=True)
@@ -162,6 +165,23 @@ class Cotizacion(models.Model):
         """Calcula el total final con IGV y detracción"""
         return self.total_con_igv + self.detraccion
 
+    @property
+    def porcentaje_cancelado(self):
+        """Calcula el porcentaje cancelado del total final"""
+        if self.total_con_detraccion > 0:
+            return (self.monto_cancelado / self.total_con_detraccion) * 100
+        return 0
+
+    @property
+    def monto_pendiente(self):
+        """Calcula el monto pendiente por pagar"""
+        return self.total_con_detraccion - self.monto_cancelado
+
+    @property
+    def porcentaje_pendiente(self):
+        """Calcula el porcentaje pendiente por pagar"""
+        return 100 - self.porcentaje_cancelado
+
     def clean(self):
         # Validar fechas
         if self.validez_cotizacion and self.fecha_cotizacion:
@@ -187,6 +207,17 @@ class Cotizacion(models.Model):
         if self.monto_total < 0:
             raise ValidationError({
                 'monto_total': 'El monto total no puede ser negativo'
+            })
+        
+        # Validar monto cancelado
+        if self.monto_cancelado < 0:
+            raise ValidationError({
+                'monto_cancelado': 'El monto cancelado no puede ser negativo'
+            })
+        
+        if self.monto_cancelado > self.total_con_detraccion:
+            raise ValidationError({
+                'monto_cancelado': 'El monto cancelado no puede ser mayor al total a pagar'
             })
 
     class Meta:

@@ -617,7 +617,13 @@ def cotizacion_download_pdf(request, pk):
     p.drawString(35, y_pago_txt, "Tiempo de entrega:")
     p.drawString(130, y_pago_txt, cotizacion.tiempo_entrega or "-")
     p.drawString(35, y_pago_txt-10, "Modalidad de pago:")
-    p.drawString(130, y_pago_txt-10, cotizacion.get_modalidad_pago_display() or "-")
+    modalidad_pago = cotizacion.get_modalidad_pago_display() or "-"
+    adelanto_pct = f"{cotizacion.porcentaje_cancelado:.0f}%"
+    adelanto_monto = f"S/ {cotizacion.monto_cancelado:.2f}"
+    deuda_pct = f"{cotizacion.porcentaje_pendiente:.0f}%"
+    deuda_monto = f"S/ {cotizacion.monto_pendiente:.2f}"
+    texto_pago = f"{modalidad_pago}   |   Adelanto: {adelanto_pct} ({adelanto_monto})   |   Deuda: {deuda_pct} ({deuda_monto})"
+    p.drawString(130, y_pago_txt-10, texto_pago)
     p.drawString(35, y_pago_txt-20, "Cuenta de ahorros BCP:")
     p.drawString(180, y_pago_txt-20, "215-95088021-001")
     p.drawString(35, y_pago_txt-30, "Cuenta CCI:")

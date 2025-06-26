@@ -53,6 +53,7 @@ class CotizacionForm(forms.ModelForm):
             'fecha_servicio',
             'tiempo_entrega',
             'modalidad_pago',
+            'monto_cancelado',
         ]
         widgets = {
             'fecha_cotizacion': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
@@ -62,6 +63,12 @@ class CotizacionForm(forms.ModelForm):
             'modalidad_pago': forms.Select(attrs={'class': 'form-control'}),
             'estado': forms.Select(attrs={'class': 'form-control'}),
             'tipo_cotizacion': forms.TextInput(attrs={'class': 'form-control'}),
+            'monto_cancelado': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0',
+                'step': '0.01',
+                'placeholder': '0.00'
+            }),
         }
 
     def __init__(self, *args, **kwargs):

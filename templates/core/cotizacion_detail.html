@@ -91,6 +91,75 @@
     </div>
 </div>
 
+<!-- Porcentajes de Pago -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">{% trans 'Porcentajes de Pago' %}</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h6 class="card-title">{% trans 'Resumen de Pagos' %}</h6>
+                        <div class="row">
+                            <div class="col-6">
+                                <p><strong>{% trans 'Monto Cancelado:' %}</strong></p>
+                                <h4 class="text-success">S/ {{ cotizacion.monto_cancelado|floatformat:2 }}</h4>
+                            </div>
+                            <div class="col-6">
+                                <p><strong>{% trans 'Monto Pendiente:' %}</strong></p>
+                                <h4 class="text-warning">S/ {{ cotizacion.monto_pendiente|floatformat:2 }}</h4>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-6">
+                                <p><strong>{% trans 'Porcentaje Cancelado:' %}</strong></p>
+                                <h4 class="text-success">{{ cotizacion.porcentaje_cancelado|floatformat:1 }}%</h4>
+                            </div>
+                            <div class="col-6">
+                                <p><strong>{% trans 'Porcentaje Pendiente:' %}</strong></p>
+                                <h4 class="text-danger">{{ cotizacion.porcentaje_pendiente|floatformat:1 }}%</h4>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <p><strong>{% trans 'Total a Pagar:' %}</strong></p>
+                                <h4 class="text-primary">S/ {{ cotizacion.total_con_detraccion|floatformat:2 }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">{% trans 'Detalles del Pago' %}</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>{% trans 'Subtotal:' %}</strong></td>
+                                <td class="text-end">S/ {{ cotizacion.monto_total|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>{% trans 'IGV (18%):' %}</strong></td>
+                                <td class="text-end">S/ {{ cotizacion.total_con_igv|add:cotizacion.monto_total|multiply:-1|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>{% trans 'Detracción (12%):' %}</strong></td>
+                                <td class="text-end">S/ {{ cotizacion.detraccion|floatformat:2 }}</td>
+                            </tr>
+                            <tr class="table-success">
+                                <td><strong>{% trans 'Total Final:' %}</strong></td>
+                                <td class="text-end"><strong>S/ {{ cotizacion.total_con_detraccion|floatformat:2 }}</strong></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card mb-4">
     <div class="card-header">
         <h5 class="mb-0">{% trans 'Items de la Cotización' %}</h5>
