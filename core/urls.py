@@ -22,6 +22,13 @@ from .views import (
     cotizacion_change_status_view,
     cotizacion_download_pdf,
     generate_qr_view,
+    calendario_view,
+    evento_create_view,
+    evento_update_view,
+    evento_delete_view,
+    evento_detail_view,
+    logs_recordatorios_view,
+    enviar_recordatorios_manual_view,
 )
 
 
@@ -50,4 +57,13 @@ urlpatterns = [
     path("cotizaciones/<int:pk>/change-status/", cotizacion_change_status_view, name="cotizacion_change_status"),
     path("cotizaciones/<int:pk>/download-pdf/", cotizacion_download_pdf, name="cotizacion_download_pdf"),
     path("generate-qr/", generate_qr_view, name="generate_qr"),
+    
+    # URLs del sistema de calendario y recordatorios
+    path("calendario/", calendario_view, name="calendario"),
+    path("calendario/evento/nuevo/", evento_create_view, name="evento_create"),
+    path("calendario/evento/<int:pk>/editar/", evento_update_view, name="evento_update"),
+    path("calendario/evento/<int:pk>/eliminar/", evento_delete_view, name="evento_delete"),
+    path("calendario/evento/<int:pk>/", evento_detail_view, name="evento_detail"),
+    path("calendario/logs/", logs_recordatorios_view, name="logs_recordatorios"),
+    path("calendario/enviar-recordatorios/", enviar_recordatorios_manual_view, name="enviar_recordatorios_manual"),
 ]

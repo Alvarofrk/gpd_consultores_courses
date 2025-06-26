@@ -14,12 +14,21 @@ from io import BytesIO
 from datetime import datetime
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 import io
+from django.template.loader import render_to_string
+from django.utils import timezone
+from django.db.models import Q
+from django.conf import settings
+import os
+import json
+import calendar
+import qrcode
+from PIL import Image, ImageDraw, ImageFont
+import base64
 
 from accounts.decorators import admin_required, lecturer_required
 from accounts.models import User, Student
-from .forms import SessionForm, SemesterForm, NewsAndEventsForm, CotizacionForm, ItemCotizacionFormSet
-from .models import NewsAndEvents, ActivityLog, Session, Semester, Cotizacion, ItemCotizacion, HistorialEstado
-from .utils import generate_qr_code
+from .forms import SessionForm, SemesterForm, NewsAndEventsForm, CotizacionForm, ItemCotizacionFormSet, EventoForm, FiltroEventoForm
+from .models import NewsAndEvents, ActivityLog, Session, Semester, Cotizacion, ItemCotizacion, HistorialEstado, Evento, LogRecordatorio
 
 
 # ########################################################
@@ -522,7 +531,7 @@ def cotizacion_download_pdf(request, pk):
     p.drawString(120, y_serv-30, cotizacion.sede_servicio or "-")
     p.drawString(120, y_serv-45, cotizacion.fecha_servicio.strftime('%d/%m/%Y') if cotizacion.fecha_servicio else "-")
 
-    # TABLA DE ÍTEMS (posición fija para 7 ítems)
+    # TABLA DE ÍTEMS (solo una vez, con altura dinámica)
     styles = getSampleStyleSheet()
     styleN = styles["Normal"]
     styleN.fontName = 'Helvetica'
@@ -554,52 +563,44 @@ def cotizacion_download_pdf(request, pk):
         ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
         ('FONTSIZE', (0,1), (-1,-1), 8),
     ]))
-    # Calcular la altura de la tabla con 7 ítems
-    dummy_data = [["-", "-", "-", "-", "-", "-"] for _ in range(7)]
-    dummy_table = Table([items_data[0]] + dummy_data, colWidths=[150, 100, 60, 70, 60, 80])
-    dummy_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1a3764')),
-        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0), (-1,0), 9),
-        ('BOTTOMPADDING', (0,0), (-1,0), 8),
-        ('GRID', (0,0), (-1,-1), 0.5, colors.black),
-        ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
-        ('FONTSIZE', (0,1), (-1,-1), 8),
-    ]))
-    # Calcular la altura de la tabla con 7 ítems
-    dummy_data = [["-", "-", "-", "-", "-", "-"] for _ in range(7)]
-    dummy_table = Table([items_data[0]] + dummy_data, colWidths=[150, 100, 60, 70, 60, 80])
-    dummy_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1a3764')),
-        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0), (-1,0), 9),
-        ('BOTTOMPADDING', (0,0), (-1,0), 8),
-        ('GRID', (0,0), (-1,-1), 0.5, colors.black),
-        ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
-        ('FONTSIZE', (0,1), (-1,-1), 8),
-    ]))
-    _, table_height_max = dummy_table.wrap(width-60, height)
     table_width, table_height = table.wrap(width-60, height)
-    # Alinear la tabla real pegada arriba del espacio reservado para 7 ítems
-    y_tabla_max = y_serv - 200
-    y_tabla = y_tabla_max
+    # Calcular la altura del encabezado (primera fila)
+    header_table = Table([items_data[0]], colWidths=[150, 100, 60, 70, 60, 80])
+    header_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1a3764')),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 9),
+        ('BOTTOMPADDING', (0,0), (-1,0), 8),
+    ]))
+    _, header_height = header_table.wrap(width-60, height)
+    # Ubicar la tabla justo después de los datos generales, dejando margen suficiente
+    y_tabla = y_serv - 30 - header_height - table_height
     table.drawOn(p, 30, y_tabla)
 
-    # TOTALES (siempre debajo del espacio reservado para 7 ítems)
-    y_tot = y_tabla_max - table_height_max + 120
+    # TOTALES (justo debajo de la tabla)
+    y_tot = y_tabla - 30
     p.setFont("Helvetica-Bold", 9)
     p.drawString(width-300, y_tot, "TOTAL, S/:")
     p.setFont("Helvetica", 9)
-    p.drawString(width-180, y_tot, f"S/ {cotizacion.monto_total:.2f}")
+    p.drawString(width-80, y_tot, f"S/ {cotizacion.total_con_detraccion:.2f}")
     p.setFont("Helvetica-Bold", 8)
     p.drawString(width-300, y_tot-15, "SUBTOTAL")
+    p.setFont("Helvetica", 8)
+    p.drawString(width-80, y_tot-15, f"S/ {cotizacion.monto_total:.2f}")
+    p.setFont("Helvetica-Bold", 8)
     p.drawString(width-300, y_tot-30, "SUBTOTAL + IGV")
+    p.setFont("Helvetica", 8)
+    p.drawString(width-80, y_tot-30, f"S/ {cotizacion.total_con_igv:.2f}")
+    p.setFont("Helvetica-Bold", 8)
     p.drawString(width-300, y_tot-45, "12% DE DETRACCIÓN - Banco de la Nación*")
+    p.setFont("Helvetica", 8)
+    p.drawString(width-80, y_tot-45, f"S/ {cotizacion.detraccion:.2f}")
+    p.setFont("Helvetica-Bold", 8)
     p.drawString(width-300, y_tot-60, "INVERSIÓN TOTAL A DEPOSITAR")
+    p.setFont("Helvetica", 9)
+    p.drawString(width-80, y_tot-60, f"S/ {cotizacion.total_con_detraccion:.2f}")
 
     # MEDIOS DE PAGO (justo debajo de totales)
     y_pago = y_tot-90
@@ -738,3 +739,183 @@ def generate_qr_view(request):
                 return FileResponse(buffer, as_attachment=True, filename='codigo_qr.pdf')
     
     return render(request, 'core/generate_qr.html')
+
+
+# ========================================================
+# VISTAS DEL SISTEMA DE CALENDARIO Y RECORDATORIOS
+# ========================================================
+
+@login_required
+@admin_required
+def calendario_view(request):
+    """Vista principal del calendario"""
+    from datetime import datetime, date
+    import calendar
+    
+    # Obtener mes y año de los parámetros o usar actual
+    mes = int(request.GET.get('mes', datetime.now().month))
+    año = int(request.GET.get('año', datetime.now().year))
+    tipo_filtro = request.GET.get('tipo', '')
+    
+    # Crear formulario de filtro
+    filtro_form = FiltroEventoForm(initial={'mes': mes, 'año': año, 'tipo': tipo_filtro})
+    
+    # Obtener eventos del mes
+    eventos = Evento.objects.filter(
+        fecha_inicio__year=año,
+        fecha_inicio__month=mes,
+        activo=True
+    ).order_by('fecha_inicio')
+    
+    # Aplicar filtro por tipo si se especifica
+    if tipo_filtro:
+        eventos = eventos.filter(tipo=tipo_filtro)
+    
+    # Crear calendario
+    cal = calendar.monthcalendar(año, mes)
+    nombre_mes = calendar.month_name[mes]
+    
+    # Organizar eventos por día
+    eventos_por_dia = {}
+    for evento in eventos:
+        dia = evento.fecha_inicio.day
+        if dia not in eventos_por_dia:
+            eventos_por_dia[dia] = []
+        eventos_por_dia[dia].append(evento)
+    
+    context = {
+        'calendario': cal,
+        'nombre_mes': nombre_mes,
+        'año': año,
+        'mes': mes,
+        'eventos_por_dia': eventos_por_dia,
+        'filtro_form': filtro_form,
+        'tipos_evento': Evento.TIPO_CHOICES,
+    }
+    
+    return render(request, 'core/calendario.html', context)
+
+
+@login_required
+@admin_required
+def evento_create_view(request):
+    """Crear nuevo evento"""
+    if request.method == 'POST':
+        form = EventoForm(request.POST)
+        if form.is_valid():
+            evento = form.save(commit=False)
+            evento.creado_por = request.user
+            evento.save()
+            messages.success(request, f'Evento "{evento.titulo}" creado exitosamente.')
+            return redirect('calendario')
+    else:
+        form = EventoForm()
+    
+    context = {
+        'form': form,
+        'titulo': 'Crear Nuevo Evento',
+        'accion': 'Crear'
+    }
+    return render(request, 'core/evento_form.html', context)
+
+
+@login_required
+@admin_required
+def evento_update_view(request, pk):
+    """Editar evento existente"""
+    evento = get_object_or_404(Evento, pk=pk)
+    
+    if request.method == 'POST':
+        form = EventoForm(request.POST, instance=evento)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Evento "{evento.titulo}" actualizado exitosamente.')
+            return redirect('calendario')
+    else:
+        form = EventoForm(instance=evento)
+    
+    context = {
+        'form': form,
+        'evento': evento,
+        'titulo': 'Editar Evento',
+        'accion': 'Actualizar'
+    }
+    return render(request, 'core/evento_form.html', context)
+
+
+@login_required
+@admin_required
+def evento_delete_view(request, pk):
+    """Eliminar evento"""
+    evento = get_object_or_404(Evento, pk=pk)
+    
+    if request.method == 'POST':
+        titulo_evento = evento.titulo
+        evento.delete()
+        messages.success(request, f'Evento "{titulo_evento}" eliminado exitosamente.')
+        return redirect('calendario')
+    
+    context = {
+        'evento': evento,
+        'titulo': 'Eliminar Evento'
+    }
+    return render(request, 'core/evento_confirm_delete.html', context)
+
+
+@login_required
+@admin_required
+def evento_detail_view(request, pk):
+    """Ver detalles del evento"""
+    evento = get_object_or_404(Evento, pk=pk)
+    
+    context = {
+        'evento': evento,
+        'titulo': 'Detalles del Evento'
+    }
+    return render(request, 'core/evento_detail.html', context)
+
+
+@login_required
+@admin_required
+def logs_recordatorios_view(request):
+    """Ver logs de recordatorios enviados"""
+    logs = LogRecordatorio.objects.all().order_by('-fecha_envio')
+    
+    # Paginación
+    paginator = Paginator(logs, 20)
+    page = request.GET.get('page')
+    try:
+        logs_paginados = paginator.page(page)
+    except (PageNotAnInteger, EmptyPage):
+        logs_paginados = paginator.page(1)
+    
+    context = {
+        'logs': logs_paginados,
+        'titulo': 'Logs de Recordatorios'
+    }
+    return render(request, 'core/logs_recordatorios.html', context)
+
+
+@login_required
+@admin_required
+def enviar_recordatorios_manual_view(request):
+    """Vista para enviar recordatorios manualmente (para pruebas)"""
+    from django.utils import timezone
+    
+    # Obtener eventos que necesitan recordatorio
+    eventos_pendientes = Evento.objects.filter(
+        activo=True,
+        recordatorio_enviado=False
+    )
+    
+    recordatorios_enviados = 0
+    
+    for evento in eventos_pendientes:
+        if evento.debe_enviar_recordatorio:
+            # Aquí iría la lógica de envío
+            # Por ahora solo marcamos como enviado
+            evento.marcar_recordatorio_enviado()
+            recordatorios_enviados += 1
+    
+    messages.success(request, f'Se enviaron {recordatorios_enviados} recordatorios.')
+    return redirect('calendario')

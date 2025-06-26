@@ -228,7 +228,7 @@ LOCALE_PATHS = (os.path.join(BASE_DIR, "locale"),)
 MODELTRANSLATION_DEFAULT_LANGUAGE = "es"
 LANGUAGE_CODE = "es-es"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "America/Lima"
 
 USE_I18N = True
 

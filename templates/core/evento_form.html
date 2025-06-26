@@ -1,0 +1,332 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-calendar-plus me-2"></i>
+                        {{ titulo }}
+                    </h4>
+                </div>
+                
+                <div class="card-body">
+                    <form method="post" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <!-- Información básica -->
+                            <div class="col-md-6">
+                                <h5 class="text-primary mb-3">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    {% trans 'Información del Evento' %}
+                                </h5>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.titulo.id_for_label }}" class="form-label">
+                                        {{ form.titulo.label }} *
+                                    </label>
+                                    {{ form.titulo }}
+                                    {% if form.titulo.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.titulo.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.tipo.id_for_label }}" class="form-label">
+                                        {{ form.tipo.label }} *
+                                    </label>
+                                    {{ form.tipo }}
+                                    {% if form.tipo.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.tipo.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.descripcion.id_for_label }}" class="form-label">
+                                        {{ form.descripcion.label }}
+                                    </label>
+                                    {{ form.descripcion }}
+                                    {% if form.descripcion.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.descripcion.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <!-- Fechas -->
+                            <div class="col-md-6">
+                                <h5 class="text-primary mb-3">
+                                    <i class="fas fa-clock me-2"></i>
+                                    {% trans 'Fecha y Hora' %}
+                                </h5>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.fecha_inicio.id_for_label }}" class="form-label">
+                                        {{ form.fecha_inicio.label }} *
+                                    </label>
+                                    {{ form.fecha_inicio }}
+                                    {% if form.fecha_inicio.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.fecha_inicio.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">{{ form.fecha_inicio.help_text }}</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.fecha_fin.id_for_label }}" class="form-label">
+                                        {{ form.fecha_fin.label }}
+                                    </label>
+                                    {{ form.fecha_fin }}
+                                    {% if form.fecha_fin.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.fecha_fin.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">{{ form.fecha_fin.help_text }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <hr class="my-4">
+                        
+                        <!-- Configuración de recordatorios -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h5 class="text-primary mb-3">
+                                    <i class="fas fa-bell me-2"></i>
+                                    {% trans 'Configuración de Recordatorios' %}
+                                </h5>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.mensaje_recordatorio.id_for_label }}" class="form-label">
+                                        {{ form.mensaje_recordatorio.label }} *
+                                    </label>
+                                    {{ form.mensaje_recordatorio }}
+                                    {% if form.mensaje_recordatorio.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.mensaje_recordatorio.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <strong>Variables disponibles:</strong><br>
+                                        [fecha] - Fecha del evento<br>
+                                        [hora] - Hora del evento<br>
+                                        [titulo] - Título del evento<br>
+                                        [descripcion] - Descripción del evento
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="{{ form.emails_destino.id_for_label }}" class="form-label">
+                                        {{ form.emails_destino.label }}
+                                    </label>
+                                    {{ form.emails_destino }}
+                                    {% if form.emails_destino.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.emails_destino.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">{{ form.emails_destino.help_text }}</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="{{ form.telefonos_destino.id_for_label }}" class="form-label">
+                                        {{ form.telefonos_destino.label }}
+                                    </label>
+                                    {{ form.telefonos_destino }}
+                                    {% if form.telefonos_destino.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.telefonos_destino.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">{{ form.telefonos_destino.help_text }}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.dias_antes.id_for_label }}" class="form-label">
+                                                {{ form.dias_antes.label }}
+                                            </label>
+                                            {{ form.dias_antes }}
+                                            {% if form.dias_antes.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.dias_antes.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.horas_antes.id_for_label }}" class="form-label">
+                                                {{ form.horas_antes.label }}
+                                            </label>
+                                            {{ form.horas_antes }}
+                                            {% if form.horas_antes.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.horas_antes.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        {{ form.canales_envio.label }}
+                                    </label>
+                                    <div class="canales-container">
+                                        {% for choice in form.canales_envio %}
+                                            <div class="form-check">
+                                                {{ choice.tag }}
+                                                <label class="form-check-label" for="{{ choice.id_for_label }}">
+                                                    {% if choice.choice_label == 'Email' %}
+                                                        <i class="fas fa-envelope text-primary me-2"></i>
+                                                    {% elif choice.choice_label == 'WhatsApp' %}
+                                                        <i class="fab fa-whatsapp text-success me-2"></i>
+                                                    {% elif choice.choice_label == 'Telegram' %}
+                                                        <i class="fab fa-telegram text-info me-2"></i>
+                                                    {% elif choice.choice_label == 'SMS' %}
+                                                        <i class="fas fa-sms text-warning me-2"></i>
+                                                    {% endif %}
+                                                    {{ choice.choice_label }}
+                                                </label>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% if form.canales_envio.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.canales_envio.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">{{ form.canales_envio.help_text }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Botones de acción -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between">
+                                    <a href="{% url 'calendario' %}" class="btn btn-secondary">
+                                        <i class="fas fa-arrow-left me-1"></i>
+                                        {% trans 'Cancelar' %}
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-1"></i>
+                                        {{ accion }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+:root {
+    --platform-primary: #15396a;
+    --platform-primary-hover: #1d488a;
+    --platform-secondary: #2196f3;
+    --platform-warning: #ff9800;
+    --platform-success: #4caf50;
+    --platform-danger: #f44336;
+    --platform-info: #00bcd4;
+    --platform-dark: #333333;
+    --platform-light: #f3f2f2;
+}
+
+.card-header.bg-primary,
+.btn-primary,
+.btn-outline-primary {
+    background-color: var(--platform-primary) !important;
+    border-color: var(--platform-primary) !important;
+    color: #fff !important;
+}
+
+.btn-primary:hover,
+.btn-outline-primary:hover {
+    background-color: var(--platform-primary-hover) !important;
+    border-color: var(--platform-primary-hover) !important;
+    color: #fff !important;
+}
+
+.text-primary,
+.h5.text-primary,
+.h4.text-primary {
+    color: var(--platform-primary) !important;
+}
+
+.canales-container {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 15px;
+    background-color: var(--platform-light);
+}
+
+.form-check {
+    margin-bottom: 10px;
+}
+
+.form-check:last-child {
+    margin-bottom: 0;
+}
+
+.form-check-input:checked {
+    background-color: var(--platform-primary);
+    border-color: var(--platform-primary);
+}
+
+.form-check-label {
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.form-check-label:hover {
+    color: var(--platform-primary);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Establecer fecha y hora actual por defecto si es un nuevo evento
+    {% if not form.instance.pk %}
+    const now = new Date();
+    const fechaInicio = document.getElementById('{{ form.fecha_inicio.id_for_label }}');
+    if (fechaInicio && !fechaInicio.value) {
+        const fechaActual = now.toISOString().slice(0, 16);
+        fechaInicio.value = fechaActual;
+    }
+    {% endif %}
+    
+    // Validación del formulario
+    const form = document.querySelector('.needs-validation');
+    form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+});
+</script>
+{% endblock %} 

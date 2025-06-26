@@ -3,6 +3,7 @@ from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from decimal import Decimal
 
 
 NEWS = _("News")
@@ -144,6 +145,23 @@ class Cotizacion(models.Model):
     def __str__(self):
         return f"{self.nombre_anio} - {self.empresa}"
 
+    @property
+    def total_con_igv(self):
+        """Calcula el total con IGV (18%)"""
+        return self.monto_total * Decimal('1.18')
+
+    @property
+    def detraccion(self):
+        """Calcula la detracción del 12% si el total + IGV es >= 700"""
+        if self.total_con_igv >= Decimal('700.00'):
+            return self.total_con_igv * Decimal('0.12')
+        return Decimal('0.00')
+
+    @property
+    def total_con_detraccion(self):
+        """Calcula el total final con IGV y detracción"""
+        return self.total_con_igv + self.detraccion
+
     def clean(self):
         # Validar fechas
         if self.validez_cotizacion and self.fecha_cotizacion:
@@ -227,3 +245,104 @@ class HistorialEstado(models.Model):
     
     def __str__(self):
         return f"{self.cotizacion} - {self.estado_anterior} -> {self.estado_nuevo}"
+
+
+class Evento(models.Model):
+    """Modelo para eventos del calendario con recordatorios automáticos"""
+    
+    TIPO_CHOICES = [
+        ('reunion', 'Reunión'),
+        ('curso', 'Curso'),
+        ('examen', 'Examen'),
+        ('certificado', 'Certificado'),
+        ('pago', 'Pago'),
+        ('otro', 'Otro'),
+    ]
+    
+    CANAL_CHOICES = [
+        ('email', 'Email'),
+        ('whatsapp', 'WhatsApp'),
+        ('telegram', 'Telegram'),
+        ('sms', 'SMS'),
+    ]
+    
+    # Información básica del evento
+    titulo = models.CharField(max_length=200, verbose_name="Título del Evento")
+    descripcion = models.TextField(blank=True, null=True, verbose_name="Descripción")
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='reunion', verbose_name="Tipo de Evento")
+    
+    # Fecha y hora
+    fecha_inicio = models.DateTimeField(verbose_name="Fecha y Hora de Inicio")
+    fecha_fin = models.DateTimeField(verbose_name="Fecha y Hora de Fin", blank=True, null=True)
+    
+    # Configuración de recordatorios
+    mensaje_recordatorio = models.TextField(verbose_name="Mensaje de Recordatorio")
+    dias_antes = models.IntegerField(default=1, verbose_name="Días antes del evento")
+    horas_antes = models.IntegerField(default=0, verbose_name="Horas antes del evento")
+    canales_envio = models.JSONField(default=list, verbose_name="Canales de Envío")
+    emails_destino = models.TextField(blank=True, verbose_name="Emails destinatarios", help_text="Separa los emails por coma, punto y coma o salto de línea.")
+    telefonos_destino = models.TextField(blank=True, verbose_name="Números WhatsApp destinatarios", help_text="Incluye el código de país. Separa los números por coma o salto de línea.")
+    
+    # Estado del recordatorio
+    recordatorio_enviado = models.BooleanField(default=False, verbose_name="Recordatorio Enviado")
+    fecha_envio_recordatorio = models.DateTimeField(blank=True, null=True, verbose_name="Fecha de Envío")
+    
+    # Información del creador
+    creado_por = models.ForeignKey('accounts.User', on_delete=models.CASCADE, verbose_name="Creado por")
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+    
+    # Evento activo/inactivo
+    activo = models.BooleanField(default=True, verbose_name="Evento Activo")
+    
+    class Meta:
+        verbose_name = "Evento"
+        verbose_name_plural = "Eventos"
+        ordering = ['-fecha_inicio']
+    
+    def __str__(self):
+        return f"{self.titulo} - {self.fecha_inicio.strftime('%d/%m/%Y %H:%M')}"
+    
+    @property
+    def fecha_recordatorio(self):
+        """Calcula cuándo debe enviarse el recordatorio"""
+        from datetime import timedelta
+        return self.fecha_inicio - timedelta(days=self.dias_antes, hours=self.horas_antes)
+    
+    @property
+    def debe_enviar_recordatorio(self):
+        """Verifica si debe enviarse el recordatorio"""
+        from django.utils import timezone
+        return (
+            self.activo and 
+            not self.recordatorio_enviado and 
+            timezone.now() >= self.fecha_recordatorio and
+            timezone.now() < self.fecha_inicio
+        )
+    
+    def marcar_recordatorio_enviado(self):
+        """Marca el recordatorio como enviado"""
+        from django.utils import timezone
+        self.recordatorio_enviado = True
+        self.fecha_envio_recordatorio = timezone.now()
+        self.save()
+
+
+class LogRecordatorio(models.Model):
+    """Log de recordatorios enviados"""
+    
+    evento = models.ForeignKey(Evento, on_delete=models.CASCADE, related_name='logs_recordatorio')
+    canal = models.CharField(max_length=20, choices=Evento.CANAL_CHOICES)
+    destinatario = models.CharField(max_length=200, verbose_name="Destinatario")
+    mensaje = models.TextField(verbose_name="Mensaje Enviado")
+    enviado_exitosamente = models.BooleanField(default=True, verbose_name="Enviado Exitosamente")
+    error_mensaje = models.TextField(blank=True, null=True, verbose_name="Mensaje de Error")
+    fecha_envio = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = "Log de Recordatorio"
+        verbose_name_plural = "Logs de Recordatorios"
+        ordering = ['-fecha_envio']
+    
+    def __str__(self):
+        return f"{self.evento.titulo} - {self.canal} - {self.fecha_envio.strftime('%d/%m/%Y %H:%M')}"

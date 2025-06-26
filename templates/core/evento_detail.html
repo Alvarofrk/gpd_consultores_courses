@@ -1,0 +1,309 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{{ evento.titulo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-calendar-check me-2"></i>
+                        {{ evento.titulo }}
+                    </h4>
+                    <div>
+                        <a href="{% url 'evento_update' evento.pk %}" class="btn btn-light btn-sm">
+                            <i class="fas fa-edit me-1"></i>
+                            {% trans 'Editar' %}
+                        </a>
+                        <a href="{% url 'evento_delete' evento.pk %}" class="btn btn-danger btn-sm ms-2">
+                            <i class="fas fa-trash me-1"></i>
+                            {% trans 'Eliminar' %}
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Información básica -->
+                        <div class="col-md-6">
+                            <h5 class="text-primary mb-3">
+                                <i class="fas fa-info-circle me-2"></i>
+                                {% trans 'Información del Evento' %}
+                            </h5>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">{% trans 'Título' %}</label>
+                                <p class="form-control-plaintext">{{ evento.titulo }}</p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">{% trans 'Tipo' %}</label>
+                                <p class="form-control-plaintext">
+                                    <span class="badge event-{{ evento.tipo }}">
+                                        <i class="fas fa-circle me-1"></i>
+                                        {{ evento.get_tipo_display }}
+                                    </span>
+                                </p>
+                            </div>
+                            
+                            {% if evento.descripcion %}
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">{% trans 'Descripción' %}</label>
+                                <p class="form-control-plaintext">{{ evento.descripcion|linebreaks }}</p>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">{% trans 'Estado' %}</label>
+                                <p class="form-control-plaintext">
+                                    {% if evento.activo %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check-circle me-1"></i>
+                                            {% trans 'Activo' %}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-times-circle me-1"></i>
+                                            {% trans 'Inactivo' %}
+                                        </span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <!-- Fechas -->
+                        <div class="col-md-6">
+                            <h5 class="text-primary mb-3">
+                                <i class="fas fa-clock me-2"></i>
+                                {% trans 'Fecha y Hora' %}
+                            </h5>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">{% trans 'Fecha de Inicio' %}</label>
+                                <p class="form-control-plaintext">
+                                    <i class="fas fa-calendar-day me-2 text-primary"></i>
+                                    {{ evento.fecha_inicio|date:"d/m/Y" }}
+                                    <br>
+                                    <i class="fas fa-clock me-2 text-primary"></i>
+                                    {{ evento.fecha_inicio|time:"H:i" }}
+                                </p>
+                            </div>
+                            
+                            {% if evento.fecha_fin %}
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">{% trans 'Fecha de Fin' %}</label>
+                                <p class="form-control-plaintext">
+                                    <i class="fas fa-calendar-day me-2 text-primary"></i>
+                                    {{ evento.fecha_fin|date:"d/m/Y" }}
+                                    <br>
+                                    <i class="fas fa-clock me-2 text-primary"></i>
+                                    {{ evento.fecha_fin|time:"H:i" }}
+                                </p>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">{% trans 'Creado por' %}</label>
+                                <p class="form-control-plaintext">
+                                    <i class="fas fa-user me-2 text-primary"></i>
+                                    {{ evento.creado_por.get_full_name|default:evento.creado_por.username }}
+                                </p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">{% trans 'Fecha de Creación' %}</label>
+                                <p class="form-control-plaintext">
+                                    <i class="fas fa-calendar-plus me-2 text-primary"></i>
+                                    {{ evento.fecha_creacion|date:"d/m/Y H:i" }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <!-- Configuración de recordatorios -->
+                    <div class="row">
+                        <div class="col-12">
+                            <h5 class="text-primary mb-3">
+                                <i class="fas fa-bell me-2"></i>
+                                {% trans 'Configuración de Recordatorios' %}
+                            </h5>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">{% trans 'Mensaje de Recordatorio' %}</label>
+                                <div class="alert alert-info">
+                                    {{ evento.mensaje_recordatorio|linebreaks }}
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">{% trans 'Tiempo de Recordatorio' %}</label>
+                                <p class="form-control-plaintext">
+                                    {% if evento.dias_antes > 0 %}
+                                        <i class="fas fa-calendar-minus me-2 text-warning"></i>
+                                        {{ evento.dias_antes }} {% trans 'día(s)' %}
+                                    {% endif %}
+                                    {% if evento.horas_antes > 0 %}
+                                        <i class="fas fa-clock me-2 text-warning"></i>
+                                        {{ evento.horas_antes }} {% trans 'hora(s)' %}
+                                    {% endif %}
+                                    {% if evento.dias_antes == 0 and evento.horas_antes == 0 %}
+                                        <i class="fas fa-info-circle me-2 text-info"></i>
+                                        {% trans 'Sin recordatorio programado' %}
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">{% trans 'Canales de Envío' %}</label>
+                                <div class="canales-list">
+                                    {% for canal in evento.canales_envio %}
+                                        <span class="badge me-2 mb-2">
+                                            {% if canal == 'email' %}
+                                                <i class="fas fa-envelope me-1"></i>
+                                            {% elif canal == 'whatsapp' %}
+                                                <i class="fab fa-whatsapp me-1"></i>
+                                            {% elif canal == 'telegram' %}
+                                                <i class="fab fa-telegram me-1"></i>
+                                            {% elif canal == 'sms' %}
+                                                <i class="fas fa-sms me-1"></i>
+                                            {% endif %}
+                                            {{ canal|title }}
+                                        </span>
+                                    {% empty %}
+                                        <p class="text-muted">{% trans 'No hay canales configurados' %}</p>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">{% trans 'Estado del Recordatorio' %}</label>
+                                <p class="form-control-plaintext">
+                                    {% if evento.recordatorio_enviado %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check-circle me-1"></i>
+                                            {% trans 'Enviado' %}
+                                        </span>
+                                        {% if evento.fecha_envio_recordatorio %}
+                                            <br>
+                                            <small class="text-muted">
+                                                {{ evento.fecha_envio_recordatorio|date:"d/m/Y H:i" }}
+                                            </small>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-clock me-1"></i>
+                                            {% trans 'Pendiente' %}
+                                        </span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Botones de acción -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between">
+                                <a href="{% url 'calendario' %}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left me-1"></i>
+                                    {% trans 'Volver al Calendario' %}
+                                </a>
+                                <div>
+                                    <a href="{% url 'evento_update' evento.pk %}" class="btn btn-primary">
+                                        <i class="fas fa-edit me-1"></i>
+                                        {% trans 'Editar Evento' %}
+                                    </a>
+                                    <a href="{% url 'evento_delete' evento.pk %}" class="btn btn-danger ms-2">
+                                        <i class="fas fa-trash me-1"></i>
+                                        {% trans 'Eliminar Evento' %}
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+:root {
+    --platform-primary: #15396a;
+    --platform-primary-hover: #1d488a;
+    --platform-secondary: #2196f3;
+    --platform-warning: #ff9800;
+    --platform-success: #4caf50;
+    --platform-danger: #f44336;
+    --platform-info: #00bcd4;
+    --platform-dark: #333333;
+    --platform-light: #f3f2f2;
+}
+
+.card-header.bg-primary,
+.btn-primary,
+.btn-outline-primary {
+    background-color: var(--platform-primary) !important;
+    border-color: var(--platform-primary) !important;
+    color: #fff !important;
+}
+
+.btn-primary:hover,
+.btn-outline-primary:hover {
+    background-color: var(--platform-primary-hover) !important;
+    border-color: var(--platform-primary-hover) !important;
+    color: #fff !important;
+}
+
+.text-primary,
+.h5.text-primary,
+.h4.text-primary {
+    color: var(--platform-primary) !important;
+}
+
+.canales-list .badge {
+    font-size: 0.9rem;
+    padding: 8px 12px;
+}
+
+.badge.event-reunion {
+    background-color: var(--platform-danger);
+    color: white;
+}
+
+.badge.event-curso {
+    background-color: var(--platform-success);
+    color: white;
+}
+
+.badge.event-examen {
+    background-color: var(--platform-warning);
+    color: white;
+}
+
+.badge.event-certificado {
+    background-color: var(--platform-info);
+    color: white;
+}
+
+.badge.event-pago {
+    background-color: var(--platform-primary);
+    color: white;
+}
+
+.badge.event-otro {
+    background-color: #6c757d;
+    color: white;
+}
+</style>
+{% endblock %} 

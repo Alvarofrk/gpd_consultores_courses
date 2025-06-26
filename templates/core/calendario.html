@@ -1,0 +1,322 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load i18n %}
+{% load calendar_extras %}
+
+{% block title %}{% trans 'Calendario de Eventos' %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-calendar-alt me-2"></i>
+                        {% trans 'Calendario de Eventos' %}
+                    </h4>
+                    <div>
+                        <a href="{% url 'evento_create' %}" class="btn btn-light btn-sm">
+                            <i class="fas fa-plus me-1"></i>
+                            {% trans 'Nuevo Evento' %}
+                        </a>
+                        <a href="{% url 'logs_recordatorios' %}" class="btn btn-outline-light btn-sm ms-2">
+                            <i class="fas fa-history me-1"></i>
+                            {% trans 'Logs' %}
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Filtros -->
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <form method="get" class="row g-3">
+                                <div class="col-md-3">
+                                    {{ filtro_form.mes }}
+                                </div>
+                                <div class="col-md-3">
+                                    {{ filtro_form.año }}
+                                </div>
+                                <div class="col-md-3">
+                                    {{ filtro_form.tipo }}
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="fas fa-filter me-1"></i>
+                                        {% trans 'Filtrar' %}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <a href="{% url 'enviar_recordatorios_manual' %}" class="btn btn-warning btn-sm">
+                                <i class="fas fa-bell me-1"></i>
+                                {% trans 'Enviar Recordatorios' %}
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Navegación del mes -->
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <a href="?mes={{ mes|add:'-1' }}&año={{ año }}" class="btn btn-outline-primary">
+                                    <i class="fas fa-chevron-left me-1"></i>
+                                    {% trans 'Mes Anterior' %}
+                                </a>
+                                <h5 class="mb-0 text-primary fw-bold">{{ nombre_mes }} {{ año }}</h5>
+                                <a href="?mes={{ mes|add:'1' }}&año={{ año }}" class="btn btn-outline-primary">
+                                    {% trans 'Mes Siguiente' %}
+                                    <i class="fas fa-chevron-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Calendario -->
+                    <div class="calendar-container">
+                        <div class="calendar-header">
+                            <div class="calendar-day-header">{% trans 'Lun' %}</div>
+                            <div class="calendar-day-header">{% trans 'Mar' %}</div>
+                            <div class="calendar-day-header">{% trans 'Mié' %}</div>
+                            <div class="calendar-day-header">{% trans 'Jue' %}</div>
+                            <div class="calendar-day-header">{% trans 'Vie' %}</div>
+                            <div class="calendar-day-header">{% trans 'Sáb' %}</div>
+                            <div class="calendar-day-header">{% trans 'Dom' %}</div>
+                        </div>
+                        
+                        <div class="calendar-body">
+                            {% for semana in calendario %}
+                                <div class="calendar-week">
+                                    {% for dia in semana %}
+                                        <div class="calendar-day {% if dia == 0 %}empty{% endif %}">
+                                            {% if dia != 0 %}
+                                                <div class="day-number">{{ dia }}</div>
+                                                {% if dia in eventos_por_dia %}
+                                                    <div class="events-container">
+                                                        {% for evento in eventos_por_dia|get_item:dia %}
+                                                            <div class="event-item event-{{ evento.tipo }}" 
+                                                                 data-bs-toggle="tooltip" 
+                                                                 data-bs-placement="top" 
+                                                                 title="{{ evento.titulo }} - {{ evento.fecha_inicio|time:'H:i' }}">
+                                                                <a href="{% url 'evento_detail' evento.pk %}" class="event-link">
+                                                                    <i class="fas fa-circle me-1"></i>
+                                                                    {{ evento.titulo|truncatechars:15 }}
+                                                                </a>
+                                                            </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                {% endif %}
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Leyenda -->
+                    <div class="mt-4">
+                        <h6 class="text-muted mb-3">{% trans 'Leyenda de Eventos' %}</h6>
+                        <div class="row">
+                            {% for tipo, nombre in tipos_evento %}
+                                <div class="col-md-2 mb-2">
+                                    <span class="badge event-{{ tipo }} me-2">
+                                        <i class="fas fa-circle"></i>
+                                    </span>
+                                    {{ nombre }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+:root {
+    --platform-primary: #15396a;
+    --platform-primary-hover: #1d488a;
+    --platform-secondary: #2196f3;
+    --platform-warning: #ff9800;
+    --platform-success: #4caf50;
+    --platform-danger: #f44336;
+    --platform-info: #00bcd4;
+    --platform-dark: #333333;
+    --platform-light: #f3f2f2;
+}
+
+.calendar-header {
+    background-color: var(--platform-light);
+}
+
+.card-header.bg-primary,
+.btn-primary,
+.btn-outline-primary {
+    background-color: var(--platform-primary) !important;
+    border-color: var(--platform-primary) !important;
+    color: #fff !important;
+}
+
+.btn-primary:hover,
+.btn-outline-primary:hover {
+    background-color: var(--platform-primary-hover) !important;
+    border-color: var(--platform-primary-hover) !important;
+    color: #fff !important;
+}
+
+.text-primary,
+.h5.text-primary,
+.h4.text-primary {
+    color: var(--platform-primary) !important;
+}
+
+.event-link:hover {
+    background-color: rgba(21, 57, 106, 0.08);
+}
+
+.badge.event-pago {
+    background-color: var(--platform-primary);
+    color: #fff;
+}
+
+/* Calendario */
+.calendar-container {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.calendar-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background-color: var(--platform-light);
+    border-bottom: 1px solid #dee2e6;
+}
+
+.calendar-day-header {
+    padding: 12px;
+    text-align: center;
+    font-weight: 600;
+    color: var(--platform-dark);
+    border-right: 1px solid #dee2e6;
+}
+
+.calendar-day-header:last-child {
+    border-right: none;
+}
+
+.calendar-body {
+    background-color: white;
+}
+
+.calendar-week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    border-bottom: 1px solid #dee2e6;
+}
+
+.calendar-week:last-child {
+    border-bottom: none;
+}
+
+.calendar-day {
+    min-height: 120px;
+    padding: 8px;
+    border-right: 1px solid #dee2e6;
+    position: relative;
+}
+
+.calendar-day:last-child {
+    border-right: none;
+}
+
+.calendar-day.empty {
+    background-color: var(--platform-light);
+}
+
+.day-number {
+    font-weight: 600;
+    color: var(--platform-dark);
+    margin-bottom: 8px;
+}
+
+.events-container {
+    max-height: 80px;
+    overflow-y: auto;
+}
+
+.event-item {
+    margin-bottom: 4px;
+    font-size: 0.8rem;
+}
+
+.event-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+/* Colores por tipo de evento */
+.event-reunion {
+    color: var(--platform-danger);
+}
+
+.event-curso {
+    color: var(--platform-success);
+}
+
+.event-examen {
+    color: var(--platform-warning);
+}
+
+.event-certificado {
+    color: var(--platform-info);
+}
+
+.event-otro {
+    color: #6c757d;
+}
+
+.badge.event-reunion {
+    background-color: var(--platform-danger);
+    color: white;
+}
+
+.badge.event-curso {
+    background-color: var(--platform-success);
+    color: white;
+}
+
+.badge.event-examen {
+    background-color: var(--platform-warning);
+    color: white;
+}
+
+.badge.event-certificado {
+    background-color: var(--platform-info);
+    color: white;
+}
+
+.badge.event-otro {
+    background-color: #6c757d;
+    color: white;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %} 
