@@ -2,6 +2,7 @@
 {% load i18n %}
 {% load static %}
 {% load widget_tweaks %}
+{% load calendar_extras %}
 
 {% block title %}{% trans 'Nueva Cotización' %}{% endblock %}
 
@@ -524,18 +525,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const detraccionElement = document.getElementById('detraccion');
         const totalFinalElement = document.getElementById('total-final');
         
-        if (totalElement) totalElement.textContent = 'S/ ' + total.toFixed(2);
+        if (totalElement) totalElement.textContent = 'S/ ' + (Math.ceil(total * 10) / 10).toFixed(1);
         
         const totalConIgv = total * 1.18;
-        if (totalIgvElement) totalIgvElement.textContent = 'S/ ' + totalConIgv.toFixed(2);
+        if (totalIgvElement) totalIgvElement.textContent = 'S/ ' + (Math.ceil(totalConIgv * 10) / 10).toFixed(1);
         
         // Calcular detracción (12% si total + IGV >= 700)
         const detraccion = totalConIgv >= 700 ? totalConIgv * 0.12 : 0;
-        if (detraccionElement) detraccionElement.textContent = 'S/ ' + detraccion.toFixed(2);
+        if (detraccionElement) detraccionElement.textContent = 'S/ ' + (Math.ceil(detraccion * 10) / 10).toFixed(1);
         
         // Calcular total final
         const totalFinal = totalConIgv + detraccion;
-        if (totalFinalElement) totalFinalElement.textContent = 'S/ ' + totalFinal.toFixed(2);
+        if (totalFinalElement) totalFinalElement.textContent = 'S/ ' + (Math.ceil(totalFinal * 10) / 10).toFixed(1);
         
         // Actualizar forma de pago si existe la función
         if (typeof actualizarCamposPago === 'function') {

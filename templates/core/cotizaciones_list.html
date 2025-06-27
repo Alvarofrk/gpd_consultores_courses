@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load i18n %}
 {% load static %}
+{% load calendar_extras %}
 
 {% block title %}{% trans 'Cotizaciones' %} | {% trans 'Sistema de gestión de aprendizaje' %}{% endblock title %}
 
@@ -69,9 +70,9 @@
                         </span>
                     {% endif %}
                 </td>
-                <td>S/ {{ cotizacion.monto_total|floatformat:2 }}</td>
-                <td>S/ {{ cotizacion.total_con_igv|floatformat:2 }}</td>
-                <td>S/ {{ cotizacion.total_con_detraccion|floatformat:2 }}</td>
+                <td>S/ {{ cotizacion.monto_total|ceil1|floatformat:2 }}</td>
+                <td>S/ {{ cotizacion.total_con_igv|ceil1|floatformat:2 }}</td>
+                <td>S/ {{ cotizacion.total_con_detraccion|ceil1|floatformat:2 }}</td>
                 <td>
                     <a href="{% url 'cotizacion_detail' pk=cotizacion.pk %}" class="btn btn-info btn-sm">
                         <i class="fas fa-eye"></i>

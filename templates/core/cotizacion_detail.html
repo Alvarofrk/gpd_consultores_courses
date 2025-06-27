@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load i18n %}
 {% load quiz_tags %}
+{% load calendar_extras %}
 {% block title %}{% trans 'Detalles de Cotización' %} | {% trans 'Sistema de gestión de aprendizaje' %}{% endblock title %}
 
 {% block content %}
@@ -296,15 +297,15 @@
                     </tr>
                     <tr>
                         <td colspan="4" class="text-end"><strong>{% trans 'Total + IGV (18%):' %}</strong></td>
-                        <td><strong>S/ {{ cotizacion.total_con_igv|floatformat:2 }}</strong></td>
+                        <td><strong>S/ {{ cotizacion.total_con_igv|ceil1|floatformat:2 }}</strong></td>
                     </tr>
                     <tr>
                         <td colspan="4" class="text-end"><strong>{% trans '12% Detracción - Banco de la Nación:' %}</strong></td>
-                        <td><strong>S/ {{ cotizacion.detraccion|floatformat:2 }}</strong></td>
+                        <td><strong>S/ {{ cotizacion.detraccion|ceil1|floatformat:2 }}</strong></td>
                     </tr>
                     <tr class="table-success">
                         <td colspan="4" class="text-end"><strong>{% trans 'INVERSIÓN TOTAL A DEPOSITAR:' %}</strong></td>
-                        <td><strong>S/ {{ cotizacion.total_con_detraccion|floatformat:2 }}</strong></td>
+                        <td><strong>S/ {{ cotizacion.total_con_detraccion|ceil1|floatformat:2 }}</strong></td>
                     </tr>
                 </tfoot>
             </table>
