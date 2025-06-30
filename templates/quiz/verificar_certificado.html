@@ -1,13 +1,108 @@
-{% extends 'base.html' %}
-{% block content %}
-<div class="container mt-5">
-    <div class="card shadow p-4">
-        <h2 class="mb-4 text-success">Certificado Válido</h2>
-        <p><strong>Nombre:</strong> {{ nombre }}</p>
-        <p><strong>Curso:</strong> {{ curso }}</p>
-        <p><strong>Nota:</strong> {{ nota }}%</p>
-        <p><strong>Fecha de Aprobación:</strong> {{ fecha|date:'d/m/Y' }}</p>
-        <p><strong>Código de Certificado:</strong> {{ codigo }}</p>
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificación de Certificado</title>
+    <link rel="icon" href="{% static 'img/favicon2.png' %}" type="image/png">
+    <style>
+        body {
+            background: #f5f6fa;
+            margin: 0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #1a237e;
+        }
+        .container {
+            max-width: 480px;
+            margin: 40px auto 0 auto;
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 4px 24px rgba(26,35,126,0.10);
+            padding: 32px 24px 24px 24px;
+            text-align: center;
+        }
+        .logo-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+        .logo-row img {
+            height: 48px;
+            object-fit: contain;
+        }
+        .logo-row img.logo3 {
+            filter: grayscale(1) brightness(0.1);
+        }
+        .cert-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #bfa13a;
+        }
+        .cert-info {
+            background: #f0f4ff;
+            border-radius: 10px;
+            padding: 18px 10px;
+            margin-bottom: 18px;
+            color: #1a237e;
+        }
+        .cert-info strong {
+            color: #bfa13a;
+        }
+        .valid {
+            color: #388e3c;
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+        .footer {
+            margin-top: 24px;
+            font-size: 0.95em;
+            color: #888;
+        }
+        .btn-main {
+            background: #1a237e;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 24px;
+            font-size: 1em;
+            cursor: pointer;
+            margin-top: 10px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-main:hover {
+            background: #bfa13a;
+            color: #1a237e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo-row">
+            <img src="{% static 'img/logo1.jpg' %}" alt="Logo principal">
+            <img src="{% static 'img/logoaniversario.png' %}" alt="Logo aniversario">
+            <img src="{% static 'img/logo2.png' %}" alt="Logo 2">
+            <img src="{% static 'img/logo3.png' %}" class="logo3" alt="Logo 3 negro">
+        </div>
+        <div class="cert-title">Certificado válido</div>
+        <div class="cert-info">
+            <div><strong>Nombre:</strong> {{ nombre }}</div>
+            <div><strong>Curso:</strong> {{ curso }}</div>
+            <div><strong>Nota:</strong> {{ nota }}</div>
+            <div><strong>Fecha de aprobación:</strong> {{ fecha|date:'d \d\e F \d\e Y' }}</div>
+            <div><strong>Código:</strong> {{ codigo }}</div>
+        </div>
+        <div class="valid">✔ Certificado verificado correctamente</div>
+        <a href="/" class="btn-main">Ir a la página principal</a>
+        <div class="footer">
+            Plataforma de Certificados GPD Consultores<br>
+            &copy; {{ now|date:'Y' }}
+        </div>
     </div>
-</div>
-{% endblock %} 
+</body>
+</html> 

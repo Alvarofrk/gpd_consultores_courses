@@ -791,7 +791,6 @@ def verificar_certificado(request, codigo):
             'codigo': codigo,
             'tipo': 'plataforma'
         })
-    
     # Buscar en certificados manuales
     manual_cert = ManualCertificate.objects.filter(certificate_code=codigo, activo=True).first()
     if manual_cert:
@@ -804,7 +803,6 @@ def verificar_certificado(request, codigo):
             'codigo': codigo,
             'tipo': 'manual'
         })
-    
     # No encontrado
     return render(request, 'quiz/certificado_no_encontrado.html', {'codigo': codigo})
 
@@ -818,12 +816,10 @@ def generar_certificado_manual(request):
             certificate = form.save(commit=False)
             certificate.generado_por = request.user
             certificate.save()
-            
             # Generar PDF inmediatamente
-            return generar_pdf_certificado_manual(certificate, form.cleaned_data['plantilla'])
+            return generar_pdf_certificado_manual(request, certificate, form.cleaned_data['plantilla'])
     else:
         form = ManualCertificateForm()
-    
     return render(request, 'quiz/generar_certificado_manual.html', {
         'form': form,
         'title': 'Generar Certificado Manual'
@@ -867,17 +863,14 @@ def listar_certificados_manuales(request):
 def descargar_certificado_manual(request, cert_id):
     """Vista para descargar certificado manual"""
     certificate = get_object_or_404(ManualCertificate, id=cert_id)
-    
     # Usar la plantilla por defecto del curso o la plantilla template
     plantilla = f"{certificate.curso.code}.pdf"
     plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', plantilla)
-    
     if not os.path.exists(plantilla_path):
         plantilla = 'certificado_template.pdf'
-    
-    return generar_pdf_certificado_manual(certificate, plantilla)
+    return generar_pdf_certificado_manual(request, certificate, plantilla)
 
-def generar_pdf_certificado_manual(certificate, plantilla_nombre):
+def generar_pdf_certificado_manual(request, certificate, plantilla_nombre):
     """Función para generar PDF de certificado manual"""
     # Datos del certificado
     nombre_estudiante = certificate.nombre_completo
@@ -887,7 +880,6 @@ def generar_pdf_certificado_manual(certificate, plantilla_nombre):
     fecha_vencimiento_str = certificate.fecha_vencimiento.strftime("%d/%m/%Y")
     dni = certificate.dni
     certificate_code = certificate.certificate_code
-    
     # Usar las posiciones del curso o las por defecto
     codigo = certificate.curso.code
     posiciones = POSICIONES_CERTIFICADOS.get(codigo, {
@@ -900,58 +892,48 @@ def generar_pdf_certificado_manual(certificate, plantilla_nombre):
         "pos_codigo": (679, 466),
         "pos_qr": (500, 50),
     })
-    
     # Crear buffer para el contenido
     buffer = io.BytesIO()
     p = canvas.Canvas(buffer, pagesize=landscape(A4))
     ancho_pagina, alto_pagina = landscape(A4)
-    
     # Aplicar contenido con las mismas posiciones y estilos
     p.setFont("Helvetica-Bold", 24)
     p.setFillColorRGB(0.85, 0.64, 0.13)  # Color dorado
     p.drawCentredString(posiciones["pos_nombre"][0], posiciones["pos_nombre"][1], nombre_estudiante)
-    
     # Puntaje
     p.setFillColorRGB(0.051, 0.231, 0.4)  # Color azul
     p.setFont("Helvetica-Bold", 14)
     p.drawString(posiciones["pos_puntaje"][0], posiciones["pos_puntaje"][1], f"{puntaje}")
-    
     # Fechas
     p.setFont("Helvetica", 12)
     p.setFillColorRGB(0, 0, 0)  # Negro
     p.drawString(posiciones["pos_fecha_aprobacion"][0], posiciones["pos_fecha_aprobacion"][1], f"{fecha_aprobacion_larga}")  # Formato largo
     p.drawString(posiciones["pos_fecha_aprobacion2"][0], posiciones["pos_fecha_aprobacion2"][1], f"Aprobado: {fecha_aprobacion_str}")  # Formato corto
     p.drawString(posiciones["pos_fecha_vencimiento"][0], posiciones["pos_fecha_vencimiento"][1], f"Vence: {fecha_vencimiento_str}")  # Formato corto
-    
     # DNI
     p.setFont("Helvetica", 16)
     p.setFillColorRGB(0.051, 0.231, 0.4)  # Color azul
     p.drawString(posiciones["pos_usuario"][0], posiciones["pos_usuario"][1], f"{dni}")
-    
     # Código del certificado
     p.setFont("Helvetica-Bold", 12)
     p.setFillColorRGB(0, 0, 0)  # Negro
     p.drawString(posiciones["pos_codigo"][0], posiciones["pos_codigo"][1], f"{certificate_code}")
-    
-    # Generar QR
-    url_verificacion = f"/quiz/verificar-certificado/{certificate_code}/"
+    # Generar QR con dominio completo
+    url_verificacion = request.build_absolute_uri(f"/quiz/verificar-certificado/{certificate_code}/")
     qr = qrcode.make(url_verificacion)
     qr_buffer = io.BytesIO()
     qr.save(qr_buffer, format='PNG')
     qr_buffer.seek(0)
     qr_img = ImageReader(qr_buffer)
     p.drawImage(qr_img, posiciones["pos_qr"][0], posiciones["pos_qr"][1], width=65, height=65)
-    
     # Finalizar contenido
     p.showPage()
     p.save()
     buffer.seek(0)
-    
     # Cargar plantilla seleccionada
     plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', plantilla_nombre)
     if not os.path.exists(plantilla_path):
         plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_template.pdf')
-    
     # Crear PDF final
     contenido_pdf = PdfReader(buffer)
     writer = PdfWriter()
@@ -959,11 +941,9 @@ def generar_pdf_certificado_manual(certificate, plantilla_nombre):
     pagina_plantilla = plantilla_pdf.pages[0]
     pagina_plantilla.merge_page(contenido_pdf.pages[0])
     writer.add_page(pagina_plantilla)
-    
     resultado = io.BytesIO()
     writer.write(resultado)
     resultado.seek(0)
-    
     return FileResponse(
         resultado, 
         as_attachment=True, 
