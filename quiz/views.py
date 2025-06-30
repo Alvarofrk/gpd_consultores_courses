@@ -22,7 +22,7 @@ from babel.dates import format_datetime
 from .models import Sitting 
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from .forms import AnexoForm
+from .forms import AnexoForm, ManualCertificateForm
 from django.views.generic import (
     CreateView,
     DetailView,
@@ -32,13 +32,14 @@ from django.views.generic import (
     UpdateView,
 )
 
-from accounts.decorators import lecturer_required
+from accounts.decorators import lecturer_required, admin_required
 from .forms import (
     EssayForm,
     MCQuestionForm,
     MCQuestionFormSet,
     QuestionForm,
     QuizAddForm,
+    ManualCertificateForm,
 )
 from .models import (
     Course,
@@ -48,123 +49,89 @@ from .models import (
     Question,
     Quiz,
     Sitting,
+    ManualCertificate,
 )
 from django.views.decorators.csrf import csrf_exempt
 import qrcode
 from reportlab.lib.utils import ImageReader
+from django.db.models import Q
 
+# Diccionario de posiciones por código de curso (disponible para todas las funciones)
+POSICIONES_CERTIFICADOS = {
+    "C01-IPERC":    {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
+    "C02-PA":       {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
+    "C04-EC":      {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
+    "C05-TC":      {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
+    "C06-BE":      {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
+    "C07-MI":      {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
+    "C07-MPI":     {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
+    "C07-MPII":    {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
+    "C07-MPIII":   {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
+    "C7-MPIII":    {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
+    "C12-HS":      {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
+    "C15-SE":      {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
+    "C16-LI":      {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
+    "C17-SEI":     {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
+    "C19-TED":     {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
+    "C63-UHP":     {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
+    "C70-RTA":     {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
+}
 
-# ########################################################
-# Quiz Views 
-# ########################################################
-# def generar_certificado(request, sitting_id):
-#     # Ruta de la plantilla de certificado en la carpeta `static/pdfs`
-#     plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_template.pdf')
-
-#     # Obtener el examen y validar que el usuario tiene permiso
-#     sitting = get_object_or_404(Sitting, id=sitting_id, user=request.user)
+def formatear_fecha_larga(fecha):
+    """Formatea una fecha en formato '30 de Julio del 2025'"""
+    meses = {
+        1: "enero",
+        2: "febrero", 
+        3: "marzo",
+        4: "abril",
+        5: "mayo",
+        6: "junio",
+        7: "julio",
+        8: "agosto",
+        9: "septiembre",
+        10: "octubre",
+        11: "noviembre",
+        12: "diciembre"
+    }
     
-#     # Verifica la puntuación antes de continuar
-#     if sitting.get_percent_correct <= 80:
-#         raise Http404("No se puede generar el certificado, la puntuación es menor al 80%.")
-
-#     # Crear un buffer de memoria para el contenido que vamos a superponer
-#     buffer = io.BytesIO()
-#     p = canvas.Canvas(buffer, pagesize=landscape(A4))
-#     ancho_pagina, alto_pagina = landscape(A4)
-#     # Añadir el contenido de texto sobre la plantilla
-#     # Ajusta la fuente, tamaño y color del texto
-#     p.setFont("Helvetica-Bold", 30)  # Aumenta el tamaño de la fuente
-#     p.setFillColorRGB(0.85, 0.64, 0.13)  # Color dorado en RGB
-
-
-#     # Ajusta la posición del texto más abajo y centra el texto
-#     p.drawCentredString(ancho_pagina / 2, 315, f"{request.user.first_name} {request.user.last_name}")
-#     #p.drawCentredString(300, 370, f"Título del Examen: {sitting.quiz.title}")
-#     p.setFillColorRGB(0.051, 0.231, 0.4)
-#     p.setFont("Helvetica-Bold", 14)
-#     p.drawCentredString(479, 198, f"{int(sitting.get_percent_correct / 5)}")
+    dia = fecha.day
+    mes = meses[fecha.month]
+    año = fecha.year
     
-#     #locale.setlocale(locale.LC_TIME, 'es_ES.utf8')
-#     #fecha_actual = datetime.now().strftime("%d de %B del %Y")
-#     fecha_actual = format_datetime(
-#         datetime.now(),
-#         "d 'de' MMMM 'del' y",
-#         locale='es'
-#     )
-#      # Formato dd/mm/yyyy
-#     p.drawString(585, 220, f"{fecha_actual}")  # Ajusta la posición según sea necesario
-
-#     p.setFont("Helvetica", 16)
-#     p.setFillColorRGB(0.051, 0.231, 0.4)  # Color negro
-#     p.drawString(485, 273, f"{request.user.username}")  
-
-#     # Finalizar el contenido del buffer
-#     p.showPage()
-#     p.save()
-#     buffer.seek(0)
-
-#     # Cargar la plantilla de certificado
-#     plantilla_pdf = PdfReader(plantilla_path)
-#     pagina_plantilla = plantilla_pdf.pages[0]
-
-#     # Crear un nuevo PDF con la plantilla y el contenido superpuesto
-#     contenido_pdf = PdfReader(buffer)
-#     writer = PdfWriter()
-    
-#     # Superponer la plantilla y el contenido nuevo
-#     pagina_plantilla.merge_page(contenido_pdf.pages[0])
-#     writer.add_page(pagina_plantilla)
-
-#     # Guardar el PDF combinado en un nuevo buffer
-#     resultado = io.BytesIO()
-#     writer.write(resultado)
-#     resultado.seek(0)
-
-#     # Devolver el PDF combinado como respuesta
-#     return FileResponse(resultado, as_attachment=True, filename='certificado.pdf')
-
-# views.py
-
-# views.py
-
-# views.py
+    return f"{dia} de {mes} del {año}"
 
 def generar_certificado(request, sitting_id):
     # Obtener el examen y validar que el usuario tiene permiso
     sitting = get_object_or_404(Sitting, id=sitting_id, user=request.user)
 
-    # Datos comunes
-    nombre_estudiante = f"{request.user.first_name} {request.user.last_name}"
-    puntaje = int(sitting.get_percent_correct / 5)
-    fecha_aprobacion_dt = sitting.fecha_aprobacion or datetime.now()
-    fecha_aprobacion_str = fecha_aprobacion_dt.strftime("%d/%m/%Y")
-    fecha_vencimiento_dt = fecha_aprobacion_dt + timedelta(days=365)
-    fecha_vencimiento_str = fecha_vencimiento_dt.strftime("%d/%m/%Y")
-    nombre_usuario = request.user.username
-    certificate_code = sitting.certificate_code
+    # Verificar que el examen esté completo y aprobado
+    if not sitting.complete or sitting.get_percent_correct < 80:
+        messages.error(request, "El examen debe estar completo y aprobado para generar el certificado.")
+        return redirect('quiz_start', slug=sitting.quiz.url)
 
-    # Diccionario de posiciones por código de curso
-    POSICIONES_CERTIFICADOS = {
-        "C01-IPERC":    {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
-        "C02-PA":       {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
-        "C04-EC":      {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
-        "C05-TC":      {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
-        "C06-BE":      {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
-        "C07-MI":      {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
-        "C07-MPI":     {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
-        "C07-MPII":    {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
-        "C07-MPIII":   {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
-        "C7-MPIII":    {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
-        "C12-HS":      {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
-        "C15-SE":      {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
-        "C16-LI":      {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
-        "C17-SEI":     {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
-        "C19-TED":     {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
-        "C63-UHP":     {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
-        "C70-RTA":     {"pos_nombre": (0, 0), "pos_puntaje": (0, 0), "pos_fecha": (0, 0), "pos_usuario": (0, 0), "pos_codigo": (0, 0), "pos_qr": (0, 0)},
-    }
+    # Obtener datos del certificado
+    nombre_usuario = f"{sitting.user.first_name} {sitting.user.last_name}"
+    puntaje = sitting.get_percent_correct
+    fecha_aprobacion = sitting.fecha_aprobacion
+    fecha_vencimiento = fecha_aprobacion + timedelta(days=365)
+    
+    # Formatear fechas
+    fecha_aprobacion_larga = formatear_fecha_larga(fecha_aprobacion)  # Nueva función para formato largo
+    fecha_aprobacion_str = fecha_aprobacion.strftime("%d/%m/%Y")  # Formato corto para "Aprobado:" y "Vence:"
+    fecha_vencimiento_str = fecha_vencimiento.strftime("%d/%m/%Y")
+    
+    # Generar código único del certificado
+    certificate_code = f"{sitting.quiz.course.code}-{sitting.quiz.course.last_cert_code:04d}"
+    
+    # Incrementar el contador de certificados del curso
+    sitting.quiz.course.last_cert_code += 1
+    sitting.quiz.course.save()
+    
+    # Asignar el código al examen
+    sitting.certificate_code = certificate_code
+    sitting.save()
 
+    # Usar las posiciones específicas del curso o las por defecto
     codigo = sitting.quiz.course.code
     posiciones = POSICIONES_CERTIFICADOS.get(codigo, {
         "pos_nombre": (305, 305),
@@ -177,29 +144,27 @@ def generar_certificado(request, sitting_id):
         "pos_qr": (500, 50),
     })
 
-    # Crear un buffer de memoria para el contenido que vamos a superponer
+    # Crear buffer para el contenido
     buffer = io.BytesIO()
     p = canvas.Canvas(buffer, pagesize=landscape(A4))
     ancho_pagina, alto_pagina = landscape(A4)
 
-    # Mantenemos los mismos colores y valores que usas en tu plantilla original
-    p.setFont("Helvetica-Bold", 30)
-    p.setFillColorRGB(0.85, 0.64, 0.13)  # Color dorado (como en tu plantilla original)
-    
-    # Centrar el nombre del estudiante en el eje X
-    p.drawCentredString(posiciones["pos_nombre"][0], posiciones["pos_nombre"][1], nombre_estudiante)
+    # Aplicar contenido con las posiciones específicas
+    p.setFont("Helvetica-Bold", 24)
+    p.setFillColorRGB(0.85, 0.64, 0.13)  # Color dorado
+    p.drawCentredString(posiciones["pos_nombre"][0], posiciones["pos_nombre"][1], nombre_usuario)
 
-    # Puntaje, fecha y nombre de usuario con posiciones fijas en ambos ejes
-    p.setFillColorRGB(0.051, 0.231, 0.4)  # Color azul (como en tu plantilla original)
+    # Puntaje
+    p.setFillColorRGB(0.051, 0.231, 0.4)  # Color azul
     p.setFont("Helvetica-Bold", 14)
     p.drawString(posiciones["pos_puntaje"][0], posiciones["pos_puntaje"][1], f"{puntaje}")
 
     # Fechas (aprobación y vencimiento) en tamaño más pequeño y color negro
     p.setFont("Helvetica", 12)
     p.setFillColorRGB(0, 0, 0)  # Negro
-    p.drawString(posiciones["pos_fecha_aprobacion"][0], posiciones["pos_fecha_aprobacion"][1], f"{fecha_aprobacion_str}")
-    p.drawString(posiciones["pos_fecha_aprobacion2"][0], posiciones["pos_fecha_aprobacion2"][1], f"Aprobado: {fecha_aprobacion_str}")
-    p.drawString(posiciones["pos_fecha_vencimiento"][0], posiciones["pos_fecha_vencimiento"][1], f"Vence: {fecha_vencimiento_str}")
+    p.drawString(posiciones["pos_fecha_aprobacion"][0], posiciones["pos_fecha_aprobacion"][1], f"{fecha_aprobacion_larga}")  # Formato largo
+    p.drawString(posiciones["pos_fecha_aprobacion2"][0], posiciones["pos_fecha_aprobacion2"][1], f"Aprobado: {fecha_aprobacion_str}")  # Formato corto
+    p.drawString(posiciones["pos_fecha_vencimiento"][0], posiciones["pos_fecha_vencimiento"][1], f"Vence: {fecha_vencimiento_str}")  # Formato corto
 
     # Nombre de usuario
     p.setFont("Helvetica", 16)
@@ -813,14 +778,194 @@ class QuizTake(FormView):
 
 @csrf_exempt
 def verificar_certificado(request, codigo):
+    """Vista unificada para verificar certificados (plataforma y manuales)"""
+    # Buscar en certificados de plataforma
     sitting = Sitting.objects.filter(certificate_code=codigo, complete=True).first()
-    if not sitting:
-        return render(request, 'quiz/certificado_no_encontrado.html', {'codigo': codigo})
-    return render(request, 'quiz/verificar_certificado.html', {
-        'sitting': sitting,
-        'nombre': f"{sitting.user.first_name} {sitting.user.last_name}",
-        'curso': sitting.course.title,
-        'nota': sitting.get_percent_correct,
-        'fecha': sitting.fecha_aprobacion,
-        'codigo': codigo,
+    if sitting:
+        return render(request, 'quiz/verificar_certificado.html', {
+            'sitting': sitting,
+            'nombre': f"{sitting.user.first_name} {sitting.user.last_name}",
+            'curso': sitting.course.title,
+            'nota': sitting.get_percent_correct,
+            'fecha': sitting.fecha_aprobacion,
+            'codigo': codigo,
+            'tipo': 'plataforma'
+        })
+    
+    # Buscar en certificados manuales
+    manual_cert = ManualCertificate.objects.filter(certificate_code=codigo, activo=True).first()
+    if manual_cert:
+        return render(request, 'quiz/verificar_certificado_manual.html', {
+            'certificate': manual_cert,
+            'nombre': manual_cert.nombre_completo,
+            'curso': manual_cert.curso.title,
+            'nota': manual_cert.puntaje,
+            'fecha': manual_cert.fecha_aprobacion,
+            'codigo': codigo,
+            'tipo': 'manual'
+        })
+    
+    # No encontrado
+    return render(request, 'quiz/certificado_no_encontrado.html', {'codigo': codigo})
+
+@login_required
+@admin_required
+def generar_certificado_manual(request):
+    """Vista para generar certificados manuales"""
+    if request.method == 'POST':
+        form = ManualCertificateForm(request.POST)
+        if form.is_valid():
+            certificate = form.save(commit=False)
+            certificate.generado_por = request.user
+            certificate.save()
+            
+            # Generar PDF inmediatamente
+            return generar_pdf_certificado_manual(certificate, form.cleaned_data['plantilla'])
+    else:
+        form = ManualCertificateForm()
+    
+    return render(request, 'quiz/generar_certificado_manual.html', {
+        'form': form,
+        'title': 'Generar Certificado Manual'
     })
+
+@login_required
+@admin_required
+def listar_certificados_manuales(request):
+    """Vista para listar todos los certificados manuales"""
+    certificados = ManualCertificate.objects.all()
+    
+    # Filtros
+    curso_filter = request.GET.get('curso')
+    if curso_filter:
+        certificados = certificados.filter(curso__code=curso_filter)
+    
+    estado_filter = request.GET.get('estado')
+    if estado_filter == 'activos':
+        certificados = certificados.filter(activo=True)
+    elif estado_filter == 'vencidos':
+        from datetime import date
+        certificados = certificados.filter(fecha_vencimiento__lt=date.today())
+    
+    # Búsqueda
+    search = request.GET.get('search')
+    if search:
+        certificados = certificados.filter(
+            Q(nombre_completo__icontains=search) |
+            Q(dni__icontains=search) |
+            Q(certificate_code__icontains=search)
+        )
+    
+    return render(request, 'quiz/listar_certificados_manuales.html', {
+        'certificados': certificados,
+        'cursos': Course.objects.all(),
+        'title': 'Certificados Manuales'
+    })
+
+@login_required
+@admin_required
+def descargar_certificado_manual(request, cert_id):
+    """Vista para descargar certificado manual"""
+    certificate = get_object_or_404(ManualCertificate, id=cert_id)
+    
+    # Usar la plantilla por defecto del curso o la plantilla template
+    plantilla = f"{certificate.curso.code}.pdf"
+    plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', plantilla)
+    
+    if not os.path.exists(plantilla_path):
+        plantilla = 'certificado_template.pdf'
+    
+    return generar_pdf_certificado_manual(certificate, plantilla)
+
+def generar_pdf_certificado_manual(certificate, plantilla_nombre):
+    """Función para generar PDF de certificado manual"""
+    # Datos del certificado
+    nombre_estudiante = certificate.nombre_completo
+    puntaje = certificate.puntaje
+    fecha_aprobacion_larga = formatear_fecha_larga(certificate.fecha_aprobacion)  # Formato largo
+    fecha_aprobacion_str = certificate.fecha_aprobacion.strftime("%d/%m/%Y")  # Formato corto
+    fecha_vencimiento_str = certificate.fecha_vencimiento.strftime("%d/%m/%Y")
+    dni = certificate.dni
+    certificate_code = certificate.certificate_code
+    
+    # Usar las posiciones del curso o las por defecto
+    codigo = certificate.curso.code
+    posiciones = POSICIONES_CERTIFICADOS.get(codigo, {
+        "pos_nombre": (305, 305),
+        "pos_puntaje": (479, 198),
+        "pos_fecha_aprobacion": (585, 220),
+        "pos_fecha_aprobacion2": (585, 180),
+        "pos_fecha_vencimiento": (585, 195),
+        "pos_usuario": (485, 273),
+        "pos_codigo": (679, 466),
+        "pos_qr": (500, 50),
+    })
+    
+    # Crear buffer para el contenido
+    buffer = io.BytesIO()
+    p = canvas.Canvas(buffer, pagesize=landscape(A4))
+    ancho_pagina, alto_pagina = landscape(A4)
+    
+    # Aplicar contenido con las mismas posiciones y estilos
+    p.setFont("Helvetica-Bold", 24)
+    p.setFillColorRGB(0.85, 0.64, 0.13)  # Color dorado
+    p.drawCentredString(posiciones["pos_nombre"][0], posiciones["pos_nombre"][1], nombre_estudiante)
+    
+    # Puntaje
+    p.setFillColorRGB(0.051, 0.231, 0.4)  # Color azul
+    p.setFont("Helvetica-Bold", 14)
+    p.drawString(posiciones["pos_puntaje"][0], posiciones["pos_puntaje"][1], f"{puntaje}")
+    
+    # Fechas
+    p.setFont("Helvetica", 12)
+    p.setFillColorRGB(0, 0, 0)  # Negro
+    p.drawString(posiciones["pos_fecha_aprobacion"][0], posiciones["pos_fecha_aprobacion"][1], f"{fecha_aprobacion_larga}")  # Formato largo
+    p.drawString(posiciones["pos_fecha_aprobacion2"][0], posiciones["pos_fecha_aprobacion2"][1], f"Aprobado: {fecha_aprobacion_str}")  # Formato corto
+    p.drawString(posiciones["pos_fecha_vencimiento"][0], posiciones["pos_fecha_vencimiento"][1], f"Vence: {fecha_vencimiento_str}")  # Formato corto
+    
+    # DNI
+    p.setFont("Helvetica", 16)
+    p.setFillColorRGB(0.051, 0.231, 0.4)  # Color azul
+    p.drawString(posiciones["pos_usuario"][0], posiciones["pos_usuario"][1], f"{dni}")
+    
+    # Código del certificado
+    p.setFont("Helvetica-Bold", 12)
+    p.setFillColorRGB(0, 0, 0)  # Negro
+    p.drawString(posiciones["pos_codigo"][0], posiciones["pos_codigo"][1], f"{certificate_code}")
+    
+    # Generar QR
+    url_verificacion = f"/quiz/verificar-certificado/{certificate_code}/"
+    qr = qrcode.make(url_verificacion)
+    qr_buffer = io.BytesIO()
+    qr.save(qr_buffer, format='PNG')
+    qr_buffer.seek(0)
+    qr_img = ImageReader(qr_buffer)
+    p.drawImage(qr_img, posiciones["pos_qr"][0], posiciones["pos_qr"][1], width=65, height=65)
+    
+    # Finalizar contenido
+    p.showPage()
+    p.save()
+    buffer.seek(0)
+    
+    # Cargar plantilla seleccionada
+    plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', plantilla_nombre)
+    if not os.path.exists(plantilla_path):
+        plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_template.pdf')
+    
+    # Crear PDF final
+    contenido_pdf = PdfReader(buffer)
+    writer = PdfWriter()
+    plantilla_pdf = PdfReader(plantilla_path)
+    pagina_plantilla = plantilla_pdf.pages[0]
+    pagina_plantilla.merge_page(contenido_pdf.pages[0])
+    writer.add_page(pagina_plantilla)
+    
+    resultado = io.BytesIO()
+    writer.write(resultado)
+    resultado.seek(0)
+    
+    return FileResponse(
+        resultado, 
+        as_attachment=True, 
+        filename=f'certificado_{certificate_code}.pdf'
+    )

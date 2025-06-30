@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}Certificados Manuales{% endblock %}
+
+{% block content %}
+<nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
+        <li class="breadcrumb-item active">Certificados Manuales</li>
+    </ol>
+</nav>
+
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-certificate me-2"></i>
+                        Certificados Manuales
+                    </h4>
+                    <a href="{% url 'generar_certificado_manual' %}" class="btn btn-light">
+                        <i class="fas fa-plus me-1"></i>Nuevo Certificado
+                    </a>
+                </div>
+                <div class="card-body">
+                    <!-- Filtros y búsqueda -->
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <form method="get" class="row g-2">
+                                <div class="col-md-3">
+                                    <input type="text" name="search" class="form-control" placeholder="Buscar por nombre, DNI o código" value="{{ request.GET.search }}">
+                                </div>
+                                <div class="col-md-3">
+                                    <select name="curso" class="form-control">
+                                        <option value="">Todos los cursos</option>
+                                        {% for curso in cursos %}
+                                            <option value="{{ curso.code }}" {% if request.GET.curso == curso.code %}selected{% endif %}>
+                                                {{ curso.title }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <select name="estado" class="form-control">
+                                        <option value="">Todos los estados</option>
+                                        <option value="activos" {% if request.GET.estado == 'activos' %}selected{% endif %}>Activos</option>
+                                        <option value="vencidos" {% if request.GET.estado == 'vencidos' %}selected{% endif %}>Vencidos</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="submit" class="btn btn-primary me-2">
+                                        <i class="fas fa-search"></i> Filtrar
+                                    </button>
+                                    <a href="{% url 'listar_certificados_manuales' %}" class="btn btn-secondary">
+                                        <i class="fas fa-times"></i> Limpiar
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de certificados -->
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Nombre Completo</th>
+                                    <th>DNI</th>
+                                    <th>Curso</th>
+                                    <th>Puntaje</th>
+                                    <th>Fecha Aprobación</th>
+                                    <th>Fecha Vencimiento</th>
+                                    <th>Código</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for certificado in certificados %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ certificado.nombre_completo }}</td>
+                                    <td>{{ certificado.dni }}</td>
+                                    <td>{{ certificado.curso.title }}</td>
+                                    <td>
+                                        <span class="badge {% if certificado.puntaje >= 14 %}bg-success{% elif certificado.puntaje >= 11 %}bg-warning{% else %}bg-danger{% endif %}">
+                                            {{ certificado.puntaje }}/20
+                                        </span>
+                                    </td>
+                                    <td>{{ certificado.fecha_aprobacion|date:"d/m/Y" }}</td>
+                                    <td>
+                                        <span class="{% if certificado.esta_vencido %}text-danger{% else %}text-success{% endif %}">
+                                            {{ certificado.fecha_vencimiento|date:"d/m/Y" }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <code>{{ certificado.certificate_code }}</code>
+                                    </td>
+                                    <td>
+                                        {% if certificado.esta_vencido %}
+                                            <span class="badge bg-danger">Vencido</span>
+                                        {% elif certificado.activo %}
+                                            <span class="badge bg-success">Activo</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Inactivo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{% url 'descargar_certificado_manual' certificado.id %}" 
+                                               class="btn btn-sm btn-primary" 
+                                               title="Descargar Certificado">
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                            <a href="/quiz/verificar-certificado/{{ certificado.certificate_code }}/" 
+                                               class="btn btn-sm btn-info" 
+                                               target="_blank"
+                                               title="Verificar Certificado">
+                                                <i class="fas fa-search"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="10" class="text-center py-4">
+                                        <div class="text-muted">
+                                            <i class="fas fa-inbox fa-3x mb-3"></i>
+                                            <p>No se encontraron certificados manuales.</p>
+                                            <a href="{% url 'generar_certificado_manual' %}" class="btn btn-primary">
+                                                <i class="fas fa-plus me-1"></i>Crear Primer Certificado
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Estadísticas -->
+                    {% if certificados %}
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <div class="row text-center">
+                                        <div class="col-md-3">
+                                            <h5 class="text-primary">{{ certificados.count }}</h5>
+                                            <small class="text-muted">Total Certificados</small>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <h5 class="text-success">{{ certificados|length }}</h5>
+                                            <small class="text-muted">Activos</small>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <h5 class="text-warning">{{ certificados|length }}</h5>
+                                            <small class="text-muted">Por Vencer</small>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <h5 class="text-danger">{{ certificados|length }}</h5>
+                                            <small class="text-muted">Vencidos</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

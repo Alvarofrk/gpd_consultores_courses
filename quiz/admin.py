@@ -13,6 +13,7 @@ from .models import (
     Choice,
     EssayQuestion,
     Sitting,
+    ManualCertificate,
 )
 
 
@@ -92,6 +93,46 @@ class EssayQuestionAdmin(admin.ModelAdmin):
     )
     search_fields = ("content", "explanation")
     filter_horizontal = ("quiz",)
+
+
+@admin.register(ManualCertificate)
+class ManualCertificateAdmin(admin.ModelAdmin):
+    list_display = [
+        'nombre_completo', 
+        'dni', 
+        'curso', 
+        'puntaje', 
+        'fecha_aprobacion', 
+        'certificate_code', 
+        'activo', 
+        'generado_por'
+    ]
+    list_filter = ['curso', 'activo', 'fecha_aprobacion', 'fecha_generacion']
+    search_fields = ['nombre_completo', 'dni', 'certificate_code']
+    readonly_fields = ['certificate_code', 'fecha_vencimiento', 'fecha_generacion']
+    ordering = ['-fecha_generacion']
+    
+    fieldsets = (
+        ('Información del Estudiante', {
+            'fields': ('nombre_completo', 'dni')
+        }),
+        ('Información del Curso', {
+            'fields': ('curso', 'puntaje', 'fecha_aprobacion')
+        }),
+        ('Información del Certificado', {
+            'fields': ('certificate_code', 'fecha_vencimiento', 'activo'),
+            'classes': ('collapse',)
+        }),
+        ('Metadatos', {
+            'fields': ('generado_por', 'fecha_generacion'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def save_model(self, request, obj, form, change):
+        if not change:  # Si es un nuevo registro
+            obj.generado_por = request.user
+        super().save_model(request, obj, form, change)
 
 
 admin.site.register(Quiz, QuizAdmin)

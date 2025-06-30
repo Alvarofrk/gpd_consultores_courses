@@ -3,7 +3,11 @@ from django.forms.widgets import RadioSelect, Textarea
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.utils.translation import gettext_lazy as _
 from django.forms.models import inlineformset_factory
-from .models import Question, Quiz, MCQuestion, Choice
+from .models import Question, Quiz, MCQuestion, Choice, ManualCertificate
+import os
+from django.conf import settings
+from django.core.validators import ValidationError
+import re
 
 
 class QuestionForm(forms.Form):
@@ -147,3 +151,49 @@ MCQuestionFormSet = inlineformset_factory(
     can_delete=True,
     extra=5,
 )
+
+class ManualCertificateForm(forms.ModelForm):
+    plantilla = forms.ChoiceField(
+        choices=[],
+        required=True,
+        help_text="Seleccione la plantilla que desea usar para el certificado"
+    )
+    
+    class Meta:
+        model = ManualCertificate
+        fields = ['nombre_completo', 'dni', 'curso', 'puntaje', 'fecha_aprobacion', 'plantilla']
+        widgets = {
+            'nombre_completo': forms.TextInput(attrs={'class': 'form-control'}),
+            'dni': forms.TextInput(attrs={'class': 'form-control'}),
+            'curso': forms.Select(attrs={'class': 'form-control'}),
+            'puntaje': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'max': 20}),
+            'fecha_aprobacion': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['plantilla'].choices = self.get_plantillas_disponibles()
+    
+    def get_plantillas_disponibles(self):
+        plantillas = []
+        pdfs_dir = os.path.join(settings.BASE_DIR, 'static', 'pdfs')
+        patron = re.compile(r'^C\d+-.*\.pdf$', re.IGNORECASE)
+        if os.path.exists(pdfs_dir):
+            for archivo in os.listdir(pdfs_dir):
+                if patron.match(archivo):
+                    nombre = archivo.replace('.pdf', '')
+                    plantillas.append((archivo, nombre))
+        plantillas.sort(key=lambda x: x[1])
+        return plantillas
+    
+    def clean_puntaje(self):
+        puntaje = self.cleaned_data.get('puntaje')
+        if puntaje < 0 or puntaje > 20:
+            raise ValidationError("El puntaje debe estar entre 0 y 20")
+        return puntaje
+    
+    def clean_dni(self):
+        dni = self.cleaned_data.get('dni')
+        if ManualCertificate.objects.filter(dni=dni).exists():
+            raise ValidationError("Ya existe un certificado con este DNI")
+        return dni

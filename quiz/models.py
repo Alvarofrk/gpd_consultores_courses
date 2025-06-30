@@ -6,6 +6,7 @@ from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.validators import (
     MaxValueValidator,
     validate_comma_separated_integer_list,
+    MinValueValidator,
 )
 from django.db import models
 from django.db.models import Q
@@ -15,6 +16,7 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from django.dispatch import receiver
 from model_utils.managers import InheritanceManager
+from datetime import timedelta
 
 from course.models import Course
 from core.utils import unique_slug_generator
@@ -523,3 +525,47 @@ class EssayQuestion(Question):
 
     def answer_choice_to_string(self, guess):
         return str(guess)
+
+
+class ManualCertificate(models.Model):
+    nombre_completo = models.CharField(max_length=200, verbose_name="Nombre Completo")
+    dni = models.CharField(max_length=20, unique=True, verbose_name="DNI")
+    curso = models.ForeignKey('course.Course', on_delete=models.CASCADE, verbose_name="Curso")
+    puntaje = models.IntegerField(
+        help_text="Puntaje en escala de 20",
+        validators=[MinValueValidator(0), MaxValueValidator(20)],
+        verbose_name="Puntaje"
+    )
+    fecha_aprobacion = models.DateField(verbose_name="Fecha de Aprobación")
+    fecha_vencimiento = models.DateField(editable=False, verbose_name="Fecha de Vencimiento")
+    certificate_code = models.CharField(max_length=10, unique=True, editable=False, verbose_name="Código del Certificado")
+    fecha_generacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Generación")
+    generado_por = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.CASCADE,
+        verbose_name="Generado por"
+    )
+    activo = models.BooleanField(default=True, verbose_name="Activo")
+
+    class Meta:
+        verbose_name = "Certificado Manual"
+        verbose_name_plural = "Certificados Manuales"
+        ordering = ['-fecha_generacion']
+
+    def __str__(self):
+        return f"{self.nombre_completo} - {self.curso.code} - {self.certificate_code}"
+
+    def save(self, *args, **kwargs):
+        if not self.certificate_code:
+            new_code = self.curso.last_cert_code + 1
+            self.certificate_code = str(new_code).zfill(3)
+            self.curso.last_cert_code = new_code
+            self.curso.save()
+        if not self.fecha_vencimiento:
+            self.fecha_vencimiento = self.fecha_aprobacion + timedelta(days=365)
+        super().save(*args, **kwargs)
+
+    @property
+    def esta_vencido(self):
+        from datetime import date
+        return date.today() > self.fecha_vencimiento
