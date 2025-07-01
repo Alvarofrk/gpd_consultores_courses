@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verificación de Certificado</title>
-    <link rel="icon" href="{% static 'img/favicon2.png' %}" type="image/png">
+    <link rel="icon" href="{% static 'img/pesatañaico.jpg' %}" type="image/jpeg">
+    <!-- <link rel="icon" href="{% static 'img/favicon2.png' %}" type="image/png"> -->
     <style>
         body {
             background: #f5f6fa;
@@ -22,18 +23,35 @@
             padding: 32px 24px 24px 24px;
             text-align: center;
         }
-        .logo-row {
+        .logo-main-row {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 16px;
+            gap: 24px;
             margin-bottom: 18px;
         }
-        .logo-row img {
-            height: 48px;
-            object-fit: contain;
+        .logo-main-row img.logo1 {
+            height: 110px;
+            max-width: 240px;
         }
-        .logo-row img.logo3 {
+        .logo-main-row img.logoaniversario {
+            height: 85px;
+            max-width: 170px;
+        }
+        .logo-secondary-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 32px;
+            margin: 28px 0 0 0;
+        }
+        .logo-secondary-row img {
+            height: 80px;
+            max-width: 170px;
+        }
+        .logo-secondary-row img.logo3 {
+            height: 56px;
+            max-width: 120px;
             filter: grayscale(1) brightness(0.1);
         }
         .cert-title {
@@ -59,9 +77,11 @@
             margin-bottom: 10px;
         }
         .footer {
-            margin-top: 24px;
-            font-size: 0.95em;
-            color: #888;
+            margin-top: 32px;
+            font-size: 1.1em;
+            color: #1a237e;
+            font-weight: bold;
+            letter-spacing: 1px;
         }
         .btn-main {
             background: #1a237e;
@@ -83,11 +103,9 @@
 </head>
 <body>
     <div class="container">
-        <div class="logo-row">
-            <img src="{% static 'img/logo1.jpg' %}" alt="Logo principal">
-            <img src="{% static 'img/logoaniversario.png' %}" alt="Logo aniversario">
-            <img src="{% static 'img/logo2.png' %}" alt="Logo 2">
-            <img src="{% static 'img/logo3.png' %}" class="logo3" alt="Logo 3 negro">
+        <div class="logo-main-row">
+            <img src="{% static 'img/logo1.jpg' %}" class="logo1" alt="Logo principal">
+            <img src="{% static 'img/logoaniversario.png' %}" class="logoaniversario" alt="Logo aniversario">
         </div>
         <div class="cert-title">Certificado válido</div>
         <div class="cert-info">
@@ -99,9 +117,12 @@
         </div>
         <div class="valid">✔ Certificado verificado correctamente</div>
         <a href="/" class="btn-main">Ir a la página principal</a>
+        <div class="logo-secondary-row">
+            <img src="{% static 'img/logo2.png' %}" alt="Logo 2">
+            <img src="{% static 'img/logo3.png' %}" class="logo3" alt="Logo 3 negro">
+        </div>
         <div class="footer">
-            Plataforma de Certificados GPD Consultores<br>
-            &copy; {{ now|date:'Y' }}
+            GPD CONSULTORES
         </div>
     </div>
 </body>

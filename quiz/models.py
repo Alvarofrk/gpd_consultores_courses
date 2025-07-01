@@ -288,7 +288,7 @@ class Sitting(models.Model):
     start = models.DateTimeField(auto_now_add=True, verbose_name=_("Start"))
     end = models.DateTimeField(null=True, blank=True, verbose_name=_("End"))
     fecha_aprobacion = models.DateTimeField(null=True, blank=True, verbose_name=_("Fecha de Aprobación"))  # Nuevo campo
-    certificate_code = models.CharField(max_length=10, blank=True, null=True)  # Nuevo campo para el código del certificado
+    certificate_code = models.CharField(max_length=32, blank=True, null=True)  # Nuevo campo para el código del certificado
     
     objects = SittingManager()
 
@@ -296,9 +296,13 @@ class Sitting(models.Model):
         permissions = (("view_sittings", _("Can see completed exams.")),)
 
     def save(self, *args, **kwargs):
-        # Si no tiene un código de certificado asignado, generarlo
-        if not self.certificate_code:
+        # Si no tiene un código de certificado asignado Y ha aprobado el examen, generarlo
+        if not self.certificate_code and self.complete and self.check_if_passed:
             # Obtener el último código de certificado generado para el curso
+            # IMPORTANTE: La numeración correlativa es individual por curso
+            # Cada curso tiene su propia secuencia de certificados (automáticos y manuales)
+            # El certificate_code almacena solo el número correlativo (ej: "001", "002")
+            # El código completo mostrado en PDF es: <código_curso>-<correlativo> (ej: "C01-001")
             new_code = self.course.last_cert_code + 1  # Incrementar el último código
             # Generar un código con 3 dígitos
             certificate_code = str(new_code).zfill(3)
@@ -538,7 +542,7 @@ class ManualCertificate(models.Model):
     )
     fecha_aprobacion = models.DateField(verbose_name="Fecha de Aprobación")
     fecha_vencimiento = models.DateField(editable=False, verbose_name="Fecha de Vencimiento")
-    certificate_code = models.CharField(max_length=10, unique=True, editable=False, verbose_name="Código del Certificado")
+    certificate_code = models.CharField(max_length=32, unique=True, editable=False, verbose_name="Código del Certificado")
     fecha_generacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Generación")
     generado_por = models.ForeignKey(
         'accounts.User',
@@ -557,6 +561,10 @@ class ManualCertificate(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.certificate_code:
+            # IMPORTANTE: La numeración correlativa es individual por curso
+            # Cada curso tiene su propia secuencia de certificados (automáticos y manuales)
+            # El certificate_code almacena solo el número correlativo (ej: "001", "002")
+            # El código completo mostrado en PDF es: <código_curso>-<correlativo> (ej: "C01-001")
             new_code = self.curso.last_cert_code + 1
             self.certificate_code = str(new_code).zfill(3)
             self.curso.last_cert_code = new_code

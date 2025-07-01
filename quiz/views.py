@@ -111,7 +111,9 @@ def generar_certificado(request, sitting_id):
 
     # Obtener datos del certificado
     nombre_usuario = f"{sitting.user.first_name} {sitting.user.last_name}"
-    puntaje = sitting.get_percent_correct
+    # Convertir porcentaje a nota sobre 20 (igual que certificados manuales)
+    porcentaje = sitting.get_percent_correct
+    puntaje = round((porcentaje * 20) / 100)
     fecha_aprobacion = sitting.fecha_aprobacion
     fecha_vencimiento = fecha_aprobacion + timedelta(days=365)
     
@@ -120,16 +122,10 @@ def generar_certificado(request, sitting_id):
     fecha_aprobacion_str = fecha_aprobacion.strftime("%d/%m/%Y")  # Formato corto para "Aprobado:" y "Vence:"
     fecha_vencimiento_str = fecha_vencimiento.strftime("%d/%m/%Y")
     
-    # Generar código único del certificado
-    certificate_code = f"{sitting.quiz.course.code}-{sitting.quiz.course.last_cert_code:04d}"
-    
-    # Incrementar el contador de certificados del curso
-    sitting.quiz.course.last_cert_code += 1
-    sitting.quiz.course.save()
-    
-    # Asignar el código al examen
-    sitting.certificate_code = certificate_code
-    sitting.save()
+    # IMPORTANTE: El certificate_code ya está asignado permanentemente en el modelo
+    # No debe incrementarse cada vez que se descarga el certificado
+    # El código completo para verificación es: <código_curso>-<correlativo>
+    certificate_code = f"{sitting.quiz.course.code}-{sitting.certificate_code}"
 
     # Usar las posiciones específicas del curso o las por defecto
     codigo = sitting.quiz.course.code
@@ -166,15 +162,15 @@ def generar_certificado(request, sitting_id):
     p.drawString(posiciones["pos_fecha_aprobacion2"][0], posiciones["pos_fecha_aprobacion2"][1], f"Aprobado: {fecha_aprobacion_str}")  # Formato corto
     p.drawString(posiciones["pos_fecha_vencimiento"][0], posiciones["pos_fecha_vencimiento"][1], f"Vence: {fecha_vencimiento_str}")  # Formato corto
 
-    # Nombre de usuario
+    # Username/DNI (no el nombre completo)
     p.setFont("Helvetica", 16)
     p.setFillColorRGB(0.051, 0.231, 0.4)  # Color azul (como en tu plantilla original)
-    p.drawString(posiciones["pos_usuario"][0], posiciones["pos_usuario"][1], f"{nombre_usuario}")
+    p.drawString(posiciones["pos_usuario"][0], posiciones["pos_usuario"][1], f"{sitting.user.username}")
 
-    # Código del certificado más pequeño y negro
+    # Código del certificado (solo el correlativo)
     p.setFont("Helvetica-Bold", 12)
     p.setFillColorRGB(0, 0, 0)  # Negro
-    p.drawString(posiciones["pos_codigo"][0], posiciones["pos_codigo"][1], f"{certificate_code}")
+    p.drawString(posiciones["pos_codigo"][0], posiciones["pos_codigo"][1], f"{sitting.certificate_code}")
 
     # Generar la URL de verificación con el prefijo correcto
     url_verificacion = request.build_absolute_uri(
@@ -779,30 +775,41 @@ class QuizTake(FormView):
 @csrf_exempt
 def verificar_certificado(request, codigo):
     """Vista unificada para verificar certificados (plataforma y manuales)"""
-    # Buscar en certificados de plataforma
-    sitting = Sitting.objects.filter(certificate_code=codigo, complete=True).first()
-    if sitting:
-        return render(request, 'quiz/verificar_certificado.html', {
-            'sitting': sitting,
-            'nombre': f"{sitting.user.first_name} {sitting.user.last_name}",
-            'curso': sitting.course.title,
-            'nota': sitting.get_percent_correct,
-            'fecha': sitting.fecha_aprobacion,
-            'codigo': codigo,
-            'tipo': 'plataforma'
-        })
-    # Buscar en certificados manuales
-    manual_cert = ManualCertificate.objects.filter(certificate_code=codigo, activo=True).first()
-    if manual_cert:
-        return render(request, 'quiz/verificar_certificado_manual.html', {
-            'certificate': manual_cert,
-            'nombre': manual_cert.nombre_completo,
-            'curso': manual_cert.curso.title,
-            'nota': manual_cert.puntaje,
-            'fecha': manual_cert.fecha_aprobacion,
-            'codigo': codigo,
-            'tipo': 'manual'
-        })
+    # Buscar en certificados de plataforma por código completo
+    sittings = Sitting.objects.filter(complete=True)
+    for sitting in sittings:
+        # Construir el código completo para comparar
+        codigo_completo = f"{sitting.course.code}-{sitting.certificate_code}"
+        if codigo_completo == codigo:
+            # Convertir porcentaje a nota sobre 20 (igual que certificados manuales)
+            porcentaje = sitting.get_percent_correct
+            nota_sobre_20 = round((porcentaje * 20) / 100)
+            
+            return render(request, 'quiz/verificar_certificado.html', {
+                'sitting': sitting,
+                'nombre': f"{sitting.user.first_name} {sitting.user.last_name}",
+                'curso': sitting.course.title,
+                'nota': nota_sobre_20,
+                'fecha': sitting.fecha_aprobacion,
+                'codigo': codigo,
+                'tipo': 'plataforma'
+            })
+    
+    # Buscar en certificados manuales por código completo
+    manual_certs = ManualCertificate.objects.filter(activo=True)
+    for manual_cert in manual_certs:
+        codigo_completo = f"{manual_cert.curso.code}-{manual_cert.certificate_code}"
+        if codigo_completo == codigo:
+            return render(request, 'quiz/verificar_certificado.html', {
+                'certificate': manual_cert,
+                'nombre': manual_cert.nombre_completo,
+                'curso': manual_cert.curso.title,
+                'nota': manual_cert.puntaje,
+                'fecha': manual_cert.fecha_aprobacion,
+                'codigo': codigo,
+                'tipo': 'manual'
+            })
+    
     # No encontrado
     return render(request, 'quiz/certificado_no_encontrado.html', {'codigo': codigo})
 
@@ -879,7 +886,11 @@ def generar_pdf_certificado_manual(request, certificate, plantilla_nombre):
     fecha_aprobacion_str = certificate.fecha_aprobacion.strftime("%d/%m/%Y")  # Formato corto
     fecha_vencimiento_str = certificate.fecha_vencimiento.strftime("%d/%m/%Y")
     dni = certificate.dni
-    certificate_code = certificate.certificate_code
+    # Generar código único del certificado
+    # IMPORTANTE: La numeración correlativa es individual por curso
+    # El certificate_code almacena solo el número correlativo (ej: "001", "002")
+    # El código completo mostrado en PDF es: <código_curso>-<correlativo> (ej: "C01-001")
+    certificate_code = f"{certificate.curso.code}-{certificate.certificate_code}"
     # Usar las posiciones del curso o las por defecto
     codigo = certificate.curso.code
     posiciones = POSICIONES_CERTIFICADOS.get(codigo, {
@@ -910,14 +921,14 @@ def generar_pdf_certificado_manual(request, certificate, plantilla_nombre):
     p.drawString(posiciones["pos_fecha_aprobacion"][0], posiciones["pos_fecha_aprobacion"][1], f"{fecha_aprobacion_larga}")  # Formato largo
     p.drawString(posiciones["pos_fecha_aprobacion2"][0], posiciones["pos_fecha_aprobacion2"][1], f"Aprobado: {fecha_aprobacion_str}")  # Formato corto
     p.drawString(posiciones["pos_fecha_vencimiento"][0], posiciones["pos_fecha_vencimiento"][1], f"Vence: {fecha_vencimiento_str}")  # Formato corto
-    # DNI
+    # DNI (no el nombre completo)
     p.setFont("Helvetica", 16)
     p.setFillColorRGB(0.051, 0.231, 0.4)  # Color azul
     p.drawString(posiciones["pos_usuario"][0], posiciones["pos_usuario"][1], f"{dni}")
-    # Código del certificado
+    # Código del certificado (solo el correlativo)
     p.setFont("Helvetica-Bold", 12)
     p.setFillColorRGB(0, 0, 0)  # Negro
-    p.drawString(posiciones["pos_codigo"][0], posiciones["pos_codigo"][1], f"{certificate_code}")
+    p.drawString(posiciones["pos_codigo"][0], posiciones["pos_codigo"][1], f"{certificate.certificate_code}")
     # Generar QR con dominio completo
     url_verificacion = request.build_absolute_uri(f"/quiz/verificar-certificado/{certificate_code}/")
     qr = qrcode.make(url_verificacion)

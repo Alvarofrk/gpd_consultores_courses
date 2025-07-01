@@ -97,7 +97,7 @@
                                         </span>
                                     </td>
                                     <td>
-                                        <code>{{ certificado.certificate_code }}</code>
+                                        <code>{{ certificado.curso.code }}-{{ certificado.certificate_code }}</code>
                                     </td>
                                     <td>
                                         {% if certificado.esta_vencido %}
@@ -115,7 +115,7 @@
                                                title="Descargar Certificado">
                                                 <i class="fas fa-download"></i>
                                             </a>
-                                            <a href="/quiz/verificar-certificado/{{ certificado.certificate_code }}/" 
+                                            <a href="/quiz/verificar-certificado/{{ certificado.curso.code }}-{{ certificado.certificate_code }}/" 
                                                class="btn btn-sm btn-info" 
                                                target="_blank"
                                                title="Verificar Certificado">
