@@ -31,7 +31,6 @@ from accounts.decorators import admin_required, lecturer_required
 from accounts.models import User, Student
 from .forms import SessionForm, SemesterForm, NewsAndEventsForm, CotizacionForm, ItemCotizacionFormSet, EventoForm, FiltroEventoForm
 from .models import NewsAndEvents, ActivityLog, Session, Semester, Cotizacion, ItemCotizacion, HistorialEstado, Evento, LogRecordatorio
-from reportlab.lib.utils import ImageReader
 
 
 # ########################################################
@@ -739,26 +738,6 @@ def cotizacion_download_pdf(request, pk):
     return response
 
 
-def generate_qr_code(data, size=150, format='PNG'):
-    """Genera un código QR y retorna un objeto PIL Image"""
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=10,
-        border=4,
-    )
-    qr.add_data(data)
-    qr.make(fit=True)
-    
-    qr_image = qr.make_image(fill_color="black", back_color="white")
-    
-    # Redimensionar si es necesario
-    if size != 150:  # 150 es el tamaño por defecto
-        qr_image = qr_image.resize((size, size), Image.Resampling.LANCZOS)
-    
-    return qr_image
-
-
 @login_required
 @admin_required
 def generate_qr_view(request):
@@ -814,14 +793,8 @@ def generate_qr_view(request):
                 p.setLineWidth(2)
                 p.rect(qr_x - 10, qr_y - 10, qr_width + 20, qr_height + 20)
                 
-                # Convertir el QR a un formato que ReportLab pueda usar
-                qr_buffer = io.BytesIO()
-                qr_img.save(qr_buffer, format='PNG')
-                qr_buffer.seek(0)
-                qr_img_reportlab = ImageReader(qr_buffer)
-                
                 # Dibujar el QR
-                p.drawImage(qr_img_reportlab, qr_x, qr_y, width=qr_width, height=qr_height)
+                p.drawImage(qr_img, qr_x, qr_y, width=qr_width, height=qr_height)
                 
                 # Instrucciones
                 p.setFont("Helvetica", 10)
@@ -851,7 +824,7 @@ def generate_qr_view(request):
 def calendario_view(request):
     """Vista principal del calendario"""
     print("=== VISTA CALENDARIO EJECUTÁNDOSE ===")
-    from datetime import date
+    from datetime import datetime, date
     import calendar
     
     # Obtener mes y año de los parámetros o usar actual

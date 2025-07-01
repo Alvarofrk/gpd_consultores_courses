@@ -42,11 +42,6 @@
                     
                     <th> {% trans 'Nombre del Curso' %} </th>
                     <th> {% trans 'Código del Curso' %} </th>
-                    <th> {% trans 'Créditos' %} </th>
-                    <th> {% trans 'Nivel' %} </th>
-                    <th> {% trans 'Año' %} </th>
-                    <th> {% trans 'Grupo' %} </th>
-                    <th> {% trans 'Grupo Actual' %} </th>
                     {% if request.user.is_superuser %}
                     <th>{% trans 'Acción' %}</th>
                     {% endif %}
@@ -59,17 +54,6 @@
                     <td><a href="{{ course.get_absolute_url }}">
                             {{ course.title }}</a></td>
                     <td>{{ course.code }}</td>
-                    <td>{{ course.credit }}</td>
-                    <td>{{ course.level }}</td>
-                    <td>{{ course.year }}</td>
-                    <td>{{ course.semester }}</td>
-                    <th>
-                        {% if course.is_current_semester == False %}
-                        <i class="fas fa-times-circle fa-1-5x danger"></i>
-                        {% elif course.is_current_semester == True %}
-                        <i class="fas fa-check-circle fa-1-5x"></i>
-                        {% endif %}
-                    </th>
                     {% if request.user.is_superuser %}
                     <td>
                         <div class="dropstart">
@@ -91,7 +75,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                  <td colspan="9">
+                  <td colspan="3">
                   <span class="text-danger">
                     {% trans 'No hay cursos para este programa.' %}
                     {% if request.user.is_superuser %}
@@ -109,6 +93,8 @@
         </table>
     </div>
 </div>
+
+
 
 {% if courses.paginator.page_range|length > 1 %}
 <div class="content-center">

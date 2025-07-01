@@ -46,10 +46,10 @@
                                 <th>{% trans 'Seleccionar' %}</th>
                                 <th>{% trans 'Código del curso' %}</th>
                                 <th>{% trans 'Título del curso' %}</th>
-                                <th>{% trans 'Créditos' %}</th>
+                                <!-- <th>{% trans 'Créditos' %}</th>
                                 <th>{% trans 'Año' %}</th>
                                 <th>{% trans 'Clasificación' %}</th>
-                                <th>{% trans 'Grupo de electivas' %}</th>
+                                <th>{% trans 'Grupo de electivas' %}</th> -->
                             </tr>
                         </thead>
                         <tbody>
@@ -61,14 +61,14 @@
                                 </th>
                                 <td>{{ course.code }}</td>
                                 <td>{{ course.title }}</td>
-                                <td>{{ course.credit }}</td>
+                                <!-- <td>{{ course.credit }}</td>
                                 <td>{{ course.year }}</td>
                                 {% if course.is_elective %}
                                 <td>{% trans 'Electiva' %}</td>
                                 {% else %}
                                 <td>{% trans 'Obligatoria' %}</td>
                                 {% endif %}
-                                <th>-</th>
+                                <th>-</th> -->
                             </tr>
                             {% endif %}
                             {% empty %}

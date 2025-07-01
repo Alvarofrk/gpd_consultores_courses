@@ -63,7 +63,7 @@ class CourseManager(models.Manager):
 
 
 class Course(models.Model):
-    slug = models.SlugField(unique=True, blank=True)
+    slug = models.SlugField(unique=True, blank=True, max_length=200)
     title = models.CharField(max_length=200)
     code = models.CharField(max_length=200, unique=True)
     credit = models.IntegerField(default=0)

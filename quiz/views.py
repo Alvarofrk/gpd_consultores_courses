@@ -55,26 +55,28 @@ from django.views.decorators.csrf import csrf_exempt
 import qrcode
 from reportlab.lib.utils import ImageReader
 from django.db.models import Q
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.urls import reverse
 
 # Diccionario de posiciones por código de curso (disponible para todas las funciones)
 POSICIONES_CERTIFICADOS = {
     "C01-IPERC":    {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
-    "C02-PA":       {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
-    "C04-EC":      {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
-    "C05-TC":      {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
-    "C06-BE":      {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
-    "C07-MI":      {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
-    "C07-MPI":     {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
-    "C07-MPII":    {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
-    "C07-MPIII":   {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
-    "C7-MPIII":    {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
-    "C12-HS":      {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
-    "C15-SE":      {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
-    "C16-LI":      {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
-    "C17-SEI":     {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
-    "C19-TED":     {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
-    "C63-UHP":     {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
-    "C70-RTA":     {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (464, 232), "pos_fecha_vencimiento": (630, 232), "pos_usuario": (555, 357), "pos_codigo": (815,335 ), "pos_qr": (750, 370)},
+    "C02-PA":       {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (592, 205), "pos_fecha_aprobacion2": (490, 240), "pos_fecha_vencimiento": (660, 240), "pos_usuario": (555, 357), "pos_codigo": (806, 335), "pos_qr": (750, 370)},
+    "C04-EC":      {"pos_nombre": (490, 401), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 219), "pos_fecha_aprobacion2": (464, 252), "pos_fecha_vencimiento": (630, 252), "pos_usuario": (555, 372), "pos_codigo": (803,335.5 ), "pos_qr": (750, 370)},
+    "C05-TC":      {"pos_nombre": (490, 402), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 220), "pos_fecha_aprobacion2": (464, 256), "pos_fecha_vencimiento": (630, 256), "pos_usuario": (555, 372), "pos_codigo": (802,335 ), "pos_qr": (750, 370)},
+    "C06-BE":      {"pos_nombre": (490, 402), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 219), "pos_fecha_aprobacion2": (467, 255), "pos_fecha_vencimiento": (635, 255), "pos_usuario": (555, 372), "pos_codigo": (802,335.4 ), "pos_qr": (750, 370)},
+    "C07-MI":      {"pos_nombre": (490, 437), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 211.5), "pos_fecha_aprobacion2": (470, 245), "pos_fecha_vencimiento": (633, 245), "pos_usuario": (555, 405.5), "pos_codigo": (802.5,280 ), "pos_qr": (758.5, 320)},
+    "C07-MPI":     {"pos_nombre": (490, 437), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 211.5), "pos_fecha_aprobacion2": (470, 243.5), "pos_fecha_vencimiento": (633, 243.5), "pos_usuario": (555, 405.5), "pos_codigo": (804,273.5 ), "pos_qr": (757, 320)},
+    "C07-MII":    {"pos_nombre": (490, 437), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 211.5), "pos_fecha_aprobacion2": (470, 243.5), "pos_fecha_vencimiento": (633, 243.5), "pos_usuario": (555, 405.5), "pos_codigo": (807,279 ), "pos_qr": (757, 320)},
+    "C07-MPII":   {"pos_nombre": (490, 437), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 211.5), "pos_fecha_aprobacion2": (470, 243.5), "pos_fecha_vencimiento": (633, 243.5), "pos_usuario": (555, 405.5), "pos_codigo": (809.5,279.5 ), "pos_qr": (757, 320)},
+    "C07-MPIII":    {"pos_nombre": (490, 437), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 211.5), "pos_fecha_aprobacion2": (470, 243.5), "pos_fecha_vencimiento": (633, 243.5), "pos_usuario": (555, 405.5), "pos_codigo": (805.5,279.5 ), "pos_qr": (757, 320)},
+    "C12-HS":      {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 200), "pos_fecha_aprobacion2": (468, 232), "pos_fecha_vencimiento": (632, 232), "pos_usuario": (555, 357), "pos_codigo": (802,335 ), "pos_qr": (750, 370)},
+    "C15-SE":      {"pos_nombre": (490, 401), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (582, 209), "pos_fecha_aprobacion2": (469, 236.5), "pos_fecha_vencimiento": (630, 236.5), "pos_usuario": (555, 373), "pos_codigo": (798,335.3 ), "pos_qr": (750, 370)},
+    "C16-LI":      {"pos_nombre": (490, 385), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 205), "pos_fecha_aprobacion2": (471, 237), "pos_fecha_vencimiento": (630, 237), "pos_usuario": (555, 357), "pos_codigo": (797.5,335 ), "pos_qr": (750, 370)},
+    "C17-SEI":     {"pos_nombre": (490, 401), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 224), "pos_fecha_aprobacion2": (464, 259.5), "pos_fecha_vencimiento": (630, 259.5), "pos_usuario": (555, 371), "pos_codigo": (800,335 ), "pos_qr": (750, 370)},
+    "C19-TED":     {"pos_nombre": (490, 401), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (584, 215.5), "pos_fecha_aprobacion2": (466, 250.5), "pos_fecha_vencimiento": (630, 250.5), "pos_usuario": (555, 371), "pos_codigo": (809,335 ), "pos_qr": (750, 370)},
+    "C63-UHP":     {"pos_nombre": (490, 401), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (588, 223.5), "pos_fecha_aprobacion2": (464, 261), "pos_fecha_vencimiento": (630, 261), "pos_usuario": (555, 371), "pos_codigo": (809,335.4 ), "pos_qr": (750, 370)},
+    "C70-RTA":     {"pos_nombre": (490, 401), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (583, 223.5), "pos_fecha_aprobacion2": (464, 258.5), "pos_fecha_vencimiento": (630, 258.5), "pos_usuario": (555, 372), "pos_codigo": (805,335 ), "pos_qr": (750, 370)},
 }
 
 def formatear_fecha_larga(fecha):
@@ -823,8 +825,8 @@ def generar_certificado_manual(request):
             certificate = form.save(commit=False)
             certificate.generado_por = request.user
             certificate.save()
-            # Generar PDF inmediatamente
-            return generar_pdf_certificado_manual(request, certificate, form.cleaned_data['plantilla'])
+            # Redirigir a la lista de certificados manuales en vez de descargar el PDF
+            return redirect(reverse('listar_certificados_manuales'))
     else:
         form = ManualCertificateForm()
     return render(request, 'quiz/generar_certificado_manual.html', {
@@ -859,10 +861,23 @@ def listar_certificados_manuales(request):
             Q(certificate_code__icontains=search)
         )
     
+    # Paginación
+    paginator = Paginator(certificados, 10)  # 10 certificados por página
+    page = request.GET.get('page')
+    try:
+        certificados_page = paginator.page(page)
+    except PageNotAnInteger:
+        certificados_page = paginator.page(1)
+    except EmptyPage:
+        certificados_page = paginator.page(paginator.num_pages)
+    
     return render(request, 'quiz/listar_certificados_manuales.html', {
-        'certificados': certificados,
+        'certificados': certificados_page,
         'cursos': Course.objects.all(),
-        'title': 'Certificados Manuales'
+        'title': 'Certificados Manuales',
+        'paginator': paginator,
+        'page_obj': certificados_page,
+        'is_paginated': certificados_page.has_other_pages(),
     })
 
 @login_required

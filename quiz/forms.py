@@ -194,6 +194,10 @@ class ManualCertificateForm(forms.ModelForm):
     
     def clean_dni(self):
         dni = self.cleaned_data.get('dni')
-        if ManualCertificate.objects.filter(dni=dni).exists():
-            raise ValidationError("Ya existe un certificado con este DNI")
+        curso = self.cleaned_data.get('curso')
+        
+        # Verificar si ya existe un certificado con el mismo DNI Y curso
+        if ManualCertificate.objects.filter(dni=dni, curso=curso).exists():
+            raise ValidationError(f"Ya existe un certificado para {dni} en el curso {curso.title}")
+        
         return dni

@@ -294,6 +294,7 @@ class Sitting(models.Model):
 
     class Meta:
         permissions = (("view_sittings", _("Can see completed exams.")),)
+        unique_together = ['course', 'certificate_code']
 
     def save(self, *args, **kwargs):
         # Si no tiene un código de certificado asignado Y ha aprobado el examen, generarlo
@@ -533,7 +534,7 @@ class EssayQuestion(Question):
 
 class ManualCertificate(models.Model):
     nombre_completo = models.CharField(max_length=200, verbose_name="Nombre Completo")
-    dni = models.CharField(max_length=20, unique=True, verbose_name="DNI")
+    dni = models.CharField(max_length=20, verbose_name="DNI")
     curso = models.ForeignKey('course.Course', on_delete=models.CASCADE, verbose_name="Curso")
     puntaje = models.IntegerField(
         help_text="Puntaje en escala de 20",
@@ -542,7 +543,7 @@ class ManualCertificate(models.Model):
     )
     fecha_aprobacion = models.DateField(verbose_name="Fecha de Aprobación")
     fecha_vencimiento = models.DateField(editable=False, verbose_name="Fecha de Vencimiento")
-    certificate_code = models.CharField(max_length=32, unique=True, editable=False, verbose_name="Código del Certificado")
+    certificate_code = models.CharField(max_length=32, editable=False, verbose_name="Código del Certificado")
     fecha_generacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Generación")
     generado_por = models.ForeignKey(
         'accounts.User',
@@ -555,6 +556,7 @@ class ManualCertificate(models.Model):
         verbose_name = "Certificado Manual"
         verbose_name_plural = "Certificados Manuales"
         ordering = ['-fecha_generacion']
+        unique_together = ['dni', 'curso', 'certificate_code']
 
     def __str__(self):
         return f"{self.nombre_completo} - {self.curso.code} - {self.certificate_code}"
