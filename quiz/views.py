@@ -975,3 +975,13 @@ def generar_pdf_certificado_manual(request, certificate, plantilla_nombre):
         as_attachment=True, 
         filename=f'certificado_{certificate_code}.pdf'
     )
+
+class ManualCertificateUpdateView(UpdateView):
+    model = ManualCertificate
+    form_class = ManualCertificateForm
+    template_name = 'quiz/editar_certificado_manual.html'
+    context_object_name = 'certificate'
+
+    def get_success_url(self):
+        from django.urls import reverse
+        return reverse('listar_certificados_manuales')

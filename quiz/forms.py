@@ -153,15 +153,9 @@ MCQuestionFormSet = inlineformset_factory(
 )
 
 class ManualCertificateForm(forms.ModelForm):
-    plantilla = forms.ChoiceField(
-        choices=[],
-        required=True,
-        help_text="Seleccione la plantilla que desea usar para el certificado"
-    )
-    
     class Meta:
         model = ManualCertificate
-        fields = ['nombre_completo', 'dni', 'curso', 'puntaje', 'fecha_aprobacion', 'plantilla']
+        fields = ['nombre_completo', 'dni', 'curso', 'puntaje', 'fecha_aprobacion']
         widgets = {
             'nombre_completo': forms.TextInput(attrs={'class': 'form-control'}),
             'dni': forms.TextInput(attrs={'class': 'form-control'}),
@@ -172,19 +166,8 @@ class ManualCertificateForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['plantilla'].choices = self.get_plantillas_disponibles()
-    
-    def get_plantillas_disponibles(self):
-        plantillas = []
-        pdfs_dir = os.path.join(settings.BASE_DIR, 'static', 'pdfs')
-        patron = re.compile(r'^C\d+-.*\.pdf$', re.IGNORECASE)
-        if os.path.exists(pdfs_dir):
-            for archivo in os.listdir(pdfs_dir):
-                if patron.match(archivo):
-                    nombre = archivo.replace('.pdf', '')
-                    plantillas.append((archivo, nombre))
-        plantillas.sort(key=lambda x: x[1])
-        return plantillas
+        if self.instance and self.instance.pk and self.instance.fecha_aprobacion:
+            self.initial['fecha_aprobacion'] = self.instance.fecha_aprobacion.strftime('%Y-%m-%d')
     
     def clean_puntaje(self):
         puntaje = self.cleaned_data.get('puntaje')
@@ -195,9 +178,7 @@ class ManualCertificateForm(forms.ModelForm):
     def clean_dni(self):
         dni = self.cleaned_data.get('dni')
         curso = self.cleaned_data.get('curso')
-        
         # Verificar si ya existe un certificado con el mismo DNI Y curso
         if ManualCertificate.objects.filter(dni=dni, curso=curso).exists():
             raise ValidationError(f"Ya existe un certificado para {dni} en el curso {curso.title}")
-        
         return dni

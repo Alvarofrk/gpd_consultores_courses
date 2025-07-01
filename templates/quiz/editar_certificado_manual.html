@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% load i18n %}
 
-{% block title %}Generar Certificado Manual{% endblock %}
+{% block title %}Editar Certificado Manual{% endblock %}
 
 {% block content %}
 <nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
         <li class="breadcrumb-item"><a href="{% url 'listar_certificados_manuales' %}">Certificados Manuales</a></li>
-        <li class="breadcrumb-item active">Generar Certificado</li>
+        <li class="breadcrumb-item active">Editar Certificado</li>
     </ol>
 </nav>
 
@@ -16,16 +16,15 @@
     <div class="row justify-content-center">
         <div class="col-md-8">
             <div class="card shadow">
-                <div class="card-header bg-primary text-white">
+                <div class="card-header bg-warning text-dark">
                     <h4 class="mb-0">
-                        <i class="fas fa-certificate me-2"></i>
-                        Generar Certificado Manual
+                        <i class="fas fa-edit me-2"></i>
+                        Editar Certificado Manual
                     </h4>
                 </div>
                 <div class="card-body">
                     <form method="post">
                         {% csrf_token %}
-                        
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
@@ -50,7 +49,6 @@
                                 </div>
                             </div>
                         </div>
-                        
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
@@ -69,14 +67,12 @@
                                         {{ form.puntaje.label }}
                                     </label>
                                     {{ form.puntaje }}
-                                    <small class="form-text text-muted">{{ form.puntaje.help_text }}</small>
                                     {% if form.puntaje.errors %}
                                         <div class="text-danger">{{ form.puntaje.errors }}</div>
                                     {% endif %}
                                 </div>
                             </div>
                         </div>
-                        
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
@@ -90,13 +86,12 @@
                                 </div>
                             </div>
                         </div>
-                        
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                             <a href="{% url 'listar_certificados_manuales' %}" class="btn btn-secondary me-md-2">
                                 <i class="fas fa-arrow-left me-1"></i>Cancelar
                             </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-download me-1"></i>Generar y Descargar
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-save me-1"></i>Guardar Cambios
                             </button>
                         </div>
                     </form>

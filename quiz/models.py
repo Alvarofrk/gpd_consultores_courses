@@ -571,7 +571,8 @@ class ManualCertificate(models.Model):
             self.certificate_code = str(new_code).zfill(3)
             self.curso.last_cert_code = new_code
             self.curso.save()
-        if not self.fecha_vencimiento:
+        # Actualizar siempre la fecha de vencimiento en base a la fecha de aprobación
+        if self.fecha_aprobacion:
             self.fecha_vencimiento = self.fecha_aprobacion + timedelta(days=365)
         super().save(*args, **kwargs)
 
