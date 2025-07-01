@@ -144,27 +144,26 @@
                         </table>
                     </div>
 
-                    <!-- Estadísticas -->
-                    {% if certificados %}
+                    <!-- Estadísticas globales -->
                     <div class="row mt-3">
                         <div class="col-md-12">
                             <div class="card bg-light">
                                 <div class="card-body">
                                     <div class="row text-center">
                                         <div class="col-md-3">
-                                            <h5 class="text-primary">{{ certificados.count }}</h5>
+                                            <h5 class="text-primary">{{ total_certificados }}</h5>
                                             <small class="text-muted">Total Certificados</small>
                                         </div>
                                         <div class="col-md-3">
-                                            <h5 class="text-success">{{ certificados|length }}</h5>
+                                            <h5 class="text-success">{{ activos }}</h5>
                                             <small class="text-muted">Activos</small>
                                         </div>
                                         <div class="col-md-3">
-                                            <h5 class="text-warning">{{ certificados|length }}</h5>
-                                            <small class="text-muted">Por Vencer</small>
+                                            <h5 class="text-warning">{{ por_vencer }}</h5>
+                                            <small class="text-muted">Por Vencer (30 días)</small>
                                         </div>
                                         <div class="col-md-3">
-                                            <h5 class="text-danger">{{ certificados|length }}</h5>
+                                            <h5 class="text-danger">{{ vencidos }}</h5>
                                             <small class="text-muted">Vencidos</small>
                                         </div>
                                     </div>
@@ -172,7 +171,6 @@
                             </div>
                         </div>
                     </div>
-                    {% endif %}
 
                     <!-- Paginación -->
                     {% if is_paginated %}

@@ -1,7 +1,7 @@
 import os 
 import io
 import locale
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from PyPDF2 import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import landscape,A4
@@ -840,6 +840,14 @@ def listar_certificados_manuales(request):
     """Vista para listar todos los certificados manuales"""
     certificados = ManualCertificate.objects.all()
     
+    # Conteos globales
+    hoy = date.today()
+    en_30_dias = hoy + timedelta(days=30)
+    total_certificados = certificados.count()
+    activos = certificados.filter(activo=True, fecha_vencimiento__gte=hoy).count()
+    por_vencer = certificados.filter(activo=True, fecha_vencimiento__gt=hoy, fecha_vencimiento__lte=en_30_dias).count()
+    vencidos = certificados.filter(fecha_vencimiento__lt=hoy).count()
+    
     # Filtros
     curso_filter = request.GET.get('curso')
     if curso_filter:
@@ -849,8 +857,7 @@ def listar_certificados_manuales(request):
     if estado_filter == 'activos':
         certificados = certificados.filter(activo=True)
     elif estado_filter == 'vencidos':
-        from datetime import date
-        certificados = certificados.filter(fecha_vencimiento__lt=date.today())
+        certificados = certificados.filter(fecha_vencimiento__lt=hoy)
     
     # Búsqueda
     search = request.GET.get('search')
@@ -878,6 +885,10 @@ def listar_certificados_manuales(request):
         'paginator': paginator,
         'page_obj': certificados_page,
         'is_paginated': certificados_page.has_other_pages(),
+        'total_certificados': total_certificados,
+        'activos': activos,
+        'por_vencer': por_vencer,
+        'vencidos': vencidos,
     })
 
 @login_required
