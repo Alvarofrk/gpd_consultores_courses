@@ -39,6 +39,7 @@ if DEBUG:
         '127.0.0.1',
         '0.0.0.0',
         '::1',
+        '*',
     ]
     CSRF_TRUSTED_ORIGINS = [
         'http://localhost:8000',
