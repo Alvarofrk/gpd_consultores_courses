@@ -14,18 +14,15 @@ import os
 from decouple import config
 from django.utils.translation import gettext_lazy as _
 import psycopg2
-import dj_database_url
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
+
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config(
-    "SECRET_KEY", default="o!ld8nrt4vc*h1zoey*wj48x*q0#ss12h=+zh)kk^6b3aygg=!"
-)
+# SECRET_KEY
+SECRET_KEY = config("SECRET_KEY")
 
 
 
@@ -34,16 +31,29 @@ SECRET_KEY = config(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", default=True, cast=bool)
 
-CSRF_TRUSTED_ORIGINS = [
-    'https://8c76-2800-200-fe60-513-81ae-df6a-53df-cef0.ngrok-free.app',
-    'https://*.ngrok-free.app',
-    'https://seguridadteckperu.ngrok.app',
-    'https://seguridadteckperu-409461866393.us-central1.run.app',
-    'https://teckperu.onrender.com/',
-    # Puedes agregar más URLs de Ngrok si es necesario
-]
-# ALLOWED_HOSTS = ["127.0.0.1", "adilmohak1.pythonanywhere.com"]
-ALLOWED_HOSTS=['*']
+# Configuración dinámica según el entorno
+if DEBUG:
+    # Configuración para desarrollo local
+    ALLOWED_HOSTS = [
+        'localhost',
+        '127.0.0.1',
+        '0.0.0.0',
+        '::1',
+    ]
+    CSRF_TRUSTED_ORIGINS = [
+        'http://localhost:8000',
+        'http://127.0.0.1:8000',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+    ]
+else:
+    # Configuración para producción
+    ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="gpd-consultores-courses.onrender.com").split(",")
+    CSRF_TRUSTED_ORIGINS = [
+        'https://gpd-consultores-courses.onrender.com',
+        # Agrega aquí otros dominios de producción si los necesitas
+    ]
+
 
 # change the default user models to our custom model
 AUTH_USER_MODEL = "accounts.User"
@@ -124,22 +134,6 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
 
-#if DEBUG:
-#    DATABASES = {
-#        "default": {
-#            "ENGINE": "django.db.backends.sqlite3",
-#            "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
-#        }
-#    }
-#else:
-#    DATABASES = {
-#        'default': dj_database_url.config(
-#            default=os.getenv('DATABASE_URL'),
-#            conn_max_age=600,
-#            conn_health_checks=True,
-#        )
-#    }
-
 DATABASES = {
     'default': {
         'ENGINE': config('DATABASE_ENGINE', default='django.db.backends.postgresql'),
@@ -150,40 +144,6 @@ DATABASES = {
         'PORT': config('DATABASE_PORT', cast=int),
      }
 }
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': config('DATABASE_ENGINE'),
-#         'NAME': config('DATABASE_NAME'),
-#         'USER': config('DATABASE_USER'),
-#         'PASSWORD': config('DATABASE_PASSWORD'),
-#         'HOST': config('DATABASE_HOST'),
-#         'PORT': config('DATABASE_PORT'),
-#     }
-# }
-
-
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'db_seguridadteckperu',
-#         'USER': 'user_teck',  # Puedes usar el usuario predeterminado o uno que crees en tu base de datos
-#         'PASSWORD': '1798',  # La contraseña de la base de datos
-#         'HOST': '/cloudsql/seguridadteckperu:us-central1-a:dbseguridadteckperu', # Usando el nombre de tu instancia de Cloud SQL
-#         'PORT': '5432',
-#     }
-# }
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'db_seguridadteckperu',  # Nombre de la base de datos
-#         'USER': 'user_teck',  # Usuario
-#         'PASSWORD': '1798',  # Contraseña
-#         'HOST': '/cloudsql/seguridadteckperu:us-central1-a:dbseguridadteckperu',  # Ruta del socket de Cloud SQL
-#         'PORT': '5432',
-#     }
-# }
 
 
 # https://docs.djangoproject.com/en/stable/ref/settings/#std:setting-DEFAULT_AUTO_FIELD
@@ -357,4 +317,3 @@ else:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    ALLOWED_HOSTS = ['.onrender.com', 'localhost', '127.0.0.1']

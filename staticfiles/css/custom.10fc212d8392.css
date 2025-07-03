@@ -1,0 +1,68 @@
+/* Estilos personalizados para el logo del sidebar */
+
+.logo-sidebar-wrapper {
+    background: transparent !important;
+    /* Quitar el fondo blanco */
+    border-radius: 12px;
+    box-shadow: none !important;
+    /* Quitar la sombra */
+    padding: 8px 4px 8px 4px;
+    margin: 10px 10px 10px 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 70px;
+}
+
+.logo-sidebar-img {
+    max-width: 210px;
+    max-height: 110px;
+    width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+    object-fit: contain;
+    transition: max-width 0.2s, max-height 0.2s;
+}
+
+/* Estilos para la paginación */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 20px 0;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.pagination a {
+    display: inline-block;
+    padding: 8px 12px;
+    margin: 0 4px;
+    text-decoration: none;
+    color: #033b80;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.pagination a:hover {
+    background: #033b80;
+    color: white;
+    border-color: #033b80;
+}
+
+.pagination .pagination-active {
+    background: #033b80;
+    color: white;
+    border-color: #033b80;
+    font-weight: bold;
+}
+
+.content-center {
+    text-align: center;
+    margin: 20px 0;
+}
