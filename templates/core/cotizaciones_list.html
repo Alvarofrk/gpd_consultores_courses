@@ -42,7 +42,7 @@
         <tbody>
             {% for cotizacion in cotizaciones %}
             <tr>
-                <td>{{ forloop.counter }}.</td>
+                <td>{{ forloop.counter0|add:cotizaciones.start_index }}.</td>
                 <td>{{ cotizacion.cotizacion }}</td>
                 <td>{{ cotizacion.dirigido_a }}</td>
                 <td>{{ cotizacion.empresa }}</td>
@@ -98,6 +98,80 @@
         </tbody>
     </table>
 </div>
+
+<!-- Paginación -->
+{% if cotizaciones.has_other_pages %}
+<nav aria-label="Navegación de páginas" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if cotizaciones.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1" aria-label="Primera página">
+                    <i class="fas fa-angle-double-left"></i>
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ cotizaciones.previous_page_number }}" aria-label="Página anterior">
+                    <i class="fas fa-angle-left"></i>
+                </a>
+            </li>
+        {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">
+                    <i class="fas fa-angle-double-left"></i>
+                </span>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">
+                    <i class="fas fa-angle-left"></i>
+                </span>
+            </li>
+        {% endif %}
+
+        {% for num in cotizaciones.paginator.page_range %}
+            {% if cotizaciones.number == num %}
+                <li class="page-item active">
+                    <span class="page-link">{{ num }}</span>
+                </li>
+            {% elif num > cotizaciones.number|add:'-3' and num < cotizaciones.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                </li>
+            {% endif %}
+        {% endfor %}
+
+        {% if cotizaciones.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ cotizaciones.next_page_number }}" aria-label="Página siguiente">
+                    <i class="fas fa-angle-right"></i>
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ cotizaciones.paginator.num_pages }}" aria-label="Última página">
+                    <i class="fas fa-angle-double-right"></i>
+                </a>
+            </li>
+        {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">
+                    <i class="fas fa-angle-right"></i>
+                </span>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">
+                    <i class="fas fa-angle-double-right"></i>
+                </span>
+            </li>
+        {% endif %}
+    </ul>
+    
+    <div class="text-center mt-2">
+        <small class="text-muted">
+            Página {{ cotizaciones.number }} de {{ cotizaciones.paginator.num_pages }} 
+            ({{ cotizaciones.paginator.count }} cotizaciones en total)
+        </small>
+    </div>
+</nav>
+{% endif %}
 
 {% endblock content %}
 

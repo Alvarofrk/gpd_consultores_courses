@@ -592,16 +592,33 @@ def cotizacion_download_pdf(request, pk):
 
     # SERVICIO
     y_serv = y_datos-70
+    # Solo dibujar la etiqueta Servicio aquí, el resto se dibuja después del bloque
     p.setFont("Helvetica-Bold", 9)
     p.drawString(35, y_serv, "Servicio:")
-    p.drawString(35, y_serv-15, "Modalidad:")
-    p.drawString(35, y_serv-30, "Sede del servicio:")
-    p.drawString(35, y_serv-45, "Fecha del servicio:")
+
+    # Mostrar el campo servicio completo y con saltos de línea, con letra más pequeña
+    styles = getSampleStyleSheet()
+    styleN = styles["Normal"].clone('servicioSmall')
+    styleN.fontSize = 7  # Letra más pequeña
+    styleN.leading = 8   # Espaciado entre líneas
+    servicio_texto = cotizacion.servicio or "-"
+    servicio_texto = servicio_texto.replace('\n', '<br/>')
+    parrafo_servicio = Paragraph(servicio_texto, styleN)
+    ancho_max = width - 130  # Usar casi todo el ancho de la hoja
+    alto_max = 100  # Permitir más altura
+    w, h = parrafo_servicio.wrap(ancho_max, alto_max)
+    parrafo_servicio.drawOn(p, 35, y_serv-h-5)  # Debajo de la etiqueta
+    
+    # Ajustar la posición de los siguientes campos según la altura del Paragraph
+    y_siguiente = y_serv - h - 20  # 20 de margen
+    p.setFont("Helvetica-Bold", 9)
+    p.drawString(35, y_siguiente, "Modalidad:")
+    p.drawString(35, y_siguiente-15, "Sede del servicio:")
+    p.drawString(35, y_siguiente-30, "Fecha del servicio:")
     p.setFont("Helvetica", 9)
-    p.drawString(100, y_serv, (cotizacion.servicio or "-")[:60])
-    p.drawString(100, y_serv-15, cotizacion.get_modalidad_display() or "-")
-    p.drawString(120, y_serv-30, cotizacion.sede_servicio or "-")
-    p.drawString(120, y_serv-45, cotizacion.fecha_servicio.strftime('%d/%m/%Y') if cotizacion.fecha_servicio else "-")
+    p.drawString(120, y_siguiente, cotizacion.get_modalidad_display() or "-")
+    p.drawString(120, y_siguiente-15, cotizacion.sede_servicio or "-")
+    p.drawString(120, y_siguiente-30, cotizacion.fecha_servicio.strftime('%d/%m/%Y') if cotizacion.fecha_servicio else "-")
 
     # TABLA DE ÍTEMS (solo una vez, con altura dinámica)
     styles = getSampleStyleSheet()
@@ -629,11 +646,11 @@ def cotizacion_download_pdf(request, pk):
         ('TEXTCOLOR', (0,0), (-1,0), colors.white),
         ('ALIGN', (0,0), (-1,-1), 'CENTER'),
         ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0), (-1,0), 9),
+        ('FONTSIZE', (0,0), (-1,0), 7),
         ('BOTTOMPADDING', (0,0), (-1,0), 8),
         ('GRID', (0,0), (-1,-1), 0.5, colors.black),
         ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
-        ('FONTSIZE', (0,1), (-1,-1), 8),
+        ('FONTSIZE', (0,1), (-1,-1), 7),
     ]))
     table_width, table_height = table.wrap(width-60, height)
     # Calcular la altura del encabezado (primera fila)
@@ -643,13 +660,14 @@ def cotizacion_download_pdf(request, pk):
         ('TEXTCOLOR', (0,0), (-1,0), colors.white),
         ('ALIGN', (0,0), (-1,-1), 'CENTER'),
         ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0), (-1,0), 9),
+        ('FONTSIZE', (0,0), (-1,0), 7),
         ('BOTTOMPADDING', (0,0), (-1,0), 8),
     ]))
     _, header_height = header_table.wrap(width-60, height)
     # Ubicar la tabla justo después de los datos generales, dejando margen suficiente
-    y_tabla = y_serv - 30 - header_height - table_height
-    table.drawOn(p, 30, y_tabla)
+    y_tabla = y_siguiente - 30 - 20 - table_height  # y_siguiente-30 es la última etiqueta, -20 de margen
+    x_tabla = (width - table_width) // 2  # Centrar la tabla
+    table.drawOn(p, x_tabla, y_tabla)
 
     # TOTALES (justo debajo de la tabla)
     y_tot = y_tabla - 30

@@ -1,110 +1,132 @@
-# GPD Consultores - Sistema de Gestión de Cursos y Certificaciones
+# 🎓 Proyecto Educativo Seguridad TECK Perú - by AFCR
+
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Django](https://img.shields.io/badge/Django-4.2.10-green.svg)](https://www.djangoproject.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-13+-blue.svg)](https://www.postgresql.org/)
+[![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3.2-purple.svg)](https://getbootstrap.com/)
+[![License](https://img.shields.io/badge/License-Propietaria-red.svg)](LICENSE.md)
+
+**Desarrollado por:** Alvaro Franco Cerna Ramos  
+**En colaboración con:** G.P.D. CONSULTORES S.A.C.
 
 ## 📋 Descripción
 
-Sistema de gestión integral para cursos de capacitación y certificaciones profesionales desarrollado en Django. Permite la administración de estudiantes, instructores, cursos, evaluaciones, pagos y generación de certificados.
+Este repositorio contiene el código fuente de la **plataforma educativa** desarrollada por **Alvaro Franco Cerna Ramos** para el proyecto TECK, en colaboración con **G.P.D. CONSULTORES S.A.C.**
 
-## 🚀 Características Principales
+Sistema de capacitación online para cumplimiento de formación interna en seguridad por parte de la empresa TECK. Permite la administración completa de cursos de capacitación, gestión de estudiantes, generación automática de certificados, sistema de pagos múltiples y seguimiento de resultados.
 
-- **Gestión de Usuarios**: Estudiantes, instructores, padres y jefes de departamento
-- **Gestión de Cursos**: Programas, cursos, materiales y videos
-- **Sistema de Evaluaciones**: Quizzes, exámenes y seguimiento de progreso
-- **Sistema de Pagos**: Integración con múltiples pasarelas de pago
-- **Certificados**: Generación automática de certificados de aprobación
-- **Multilingüe**: Soporte para español, inglés, francés y ruso
-- **Panel de Administración**: Interfaz personalizada con Django Jet
-- **Gestión de Cotizaciones**: Sistema completo de cotizaciones para servicios
+## ✨ Características Principales
 
-## 🛠️ Tecnologías Utilizadas
+### 🎯 **Gestión de Usuarios**
+- **Sistema de roles**: Administradores, Docentes, Estudiantes
+- **Autenticación personalizada** con modelo de usuario extendido
+- **Gestión de perfiles** con información detallada
+- **Sistema de permisos** granular por rol
+
+### 📚 **Gestión de Cursos**
+- **Creación y administración** de cursos y programas
+- **Asignación de docentes** a cursos específicos
+- **Sistema de inscripciones** y matrículas
+- **Gestión de contenido**: archivos PDF, videos, documentación
+- **Seguimiento de progreso** de estudiantes
+
+### 🧪 **Sistema de Evaluaciones**
+- **Creación de exámenes** con preguntas múltiples y ensayos
+- **Configuración de parámetros**: tiempo límite, intentos, nota mínima
+- **Evaluación automática** de respuestas
+- **Sistema de calificaciones** con diferentes componentes
+
+### 🏆 **Certificados Profesionales**
+- **Generación automática** de certificados al aprobar exámenes
+- **Certificados manuales** para casos especiales
+- **Códigos únicos** de verificación con QR
+- **Plantillas personalizadas** por tipo de curso
+- **Verificación online** de autenticidad
+
+### 💳 **Sistema de Pagos**
+- **Múltiples pasarelas**: Stripe, PayPal, Coinbase, Paylike
+- **Gestión de facturas** y transacciones
+- **Seguimiento de pagos** y estados
+- **Integración completa** con el sistema
+
+### 📊 **Reportes y Analytics**
+- **Dashboard administrativo** con métricas clave
+- **Reportes de resultados** por estudiante y curso
+- **Exportación a PDF** de certificados y reportes
+- **Estadísticas de rendimiento** académico
+
+### 🌐 **Características Técnicas**
+- **Interfaz responsiva** con Bootstrap 5
+- **Soporte multilingüe** (Español, Inglés, Francés, Ruso)
+- **API REST** para integraciones externas
+- **Sistema de búsqueda** avanzado
+- **Paginación** y filtros dinámicos
+
+## 🏗️ Arquitectura del Sistema
+
+### **Aplicaciones Django**
+
+| Aplicación | Descripción |
+|------------|-------------|
+| **accounts** | Gestión de usuarios, autenticación y perfiles |
+| **course** | Administración de cursos, programas y contenido |
+| **quiz** | Sistema de exámenes y certificaciones |
+| **result** | Gestión de calificaciones y resultados |
+| **payments** | Sistema de pagos y facturación |
+| **core** | Funcionalidades centrales y cotizaciones |
+| **search** | Motor de búsqueda global |
+
+### **Tecnologías Utilizadas**
 
 - **Backend**: Django 4.2.10 (LTS)
 - **Base de Datos**: PostgreSQL
 - **Frontend**: Bootstrap 5, jQuery, FontAwesome
-- **Autenticación**: Django Auth con modelo de usuario personalizado
-- **Archivos**: WhiteNoise para servir archivos estáticos
+- **Panel Admin**: Django Jet Reboot
+- **Archivos**: WhiteNoise para archivos estáticos
 - **PDF**: ReportLab para generación de certificados
 - **Pagos**: Stripe, PayPal, Coinbase, Paylike
 - **Traducciones**: Django Modeltranslation
 
-## 📦 Requisitos del Sistema
+## 🚀 Instalación
 
-- Python 3.9+ (recomendado: Python 3.11 o 3.12 para mejor compatibilidad)
-- PostgreSQL 12+
-- pip
-- virtualenv (recomendado)
+### **Prerrequisitos**
 
-## 🔧 Instalación
+- Python 3.11 o superior
+- PostgreSQL 13 o superior
+- pip (gestor de paquetes de Python)
+- Git
 
-### 1. Clonar el Repositorio
+### **1. Clonar el Repositorio**
 
 ```bash
 git clone <url-del-repositorio>
 cd gpd_consultores_courses
 ```
 
-### 2. Crear Entorno Virtual
+### **2. Crear Entorno Virtual**
 
 ```bash
-# Windows
 python -m venv venv
-venv\Scripts\activate
-
-# Linux/Mac
-python3 -m venv venv
-source venv/bin/activate
+source venv/bin/activate  # Linux/Mac
+# o
+venv\Scripts\activate     # Windows
 ```
 
-### 3. Instalar Dependencias
+### **3. Instalar Dependencias**
 
 ```bash
-# Instalar todas las dependencias
-pip install -r requirements.txt
-```
-
-**Nota**: Si tienes problemas con Python 3.13, puedes instalar las dependencias una por una:
-
-```bash
-# Instalar Pillow primero (versión compatible con Python 3.13)
+# Instalar Pillow primero (para Python 3.13+)
 pip install Pillow==10.4.0
 
-# Luego instalar el resto
+# Instalar el resto de dependencias
 pip install -r requirements.txt
 ```
 
-### 4. Configurar Variables de Entorno
-
-Crear un archivo `.env` en la raíz del proyecto:
-
-```env
-# Configuración de Django
-SECRET_KEY=tu_clave_secreta_aqui
-DEBUG=True
-
-# Configuración de Base de Datos
-DATABASE_ENGINE=django.db.backends.postgresql
-DATABASE_NAME=nombre_base_datos
-DATABASE_USER=usuario_base_datos
-DATABASE_PASSWORD=contraseña_base_datos
-DATABASE_HOST=localhost
-DATABASE_PORT=5432
-
-# Configuración de Pagos (opcional)
-STRIPE_PUBLISHABLE_KEY=tu_stripe_public_key
-STRIPE_SECRET_KEY=tu_stripe_secret_key
-
-# Configuración de Email (opcional)
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USE_TLS=True
-EMAIL_HOST_USER=tu_email@gmail.com
-EMAIL_HOST_PASSWORD=tu_contraseña_app
-```
-
-### 5. Configurar Base de Datos
+### **4. Configurar Base de Datos**
 
 ```bash
 # Crear base de datos PostgreSQL
-createdb nombre_base_datos
+createdb gpd_consultores_db
 
 # Aplicar migraciones
 python manage.py migrate
@@ -113,309 +135,300 @@ python manage.py migrate
 python manage.py createsuperuser
 ```
 
-### 6. Recolectar Archivos Estáticos
+### **5. Configurar Variables de Entorno**
+
+Crear archivo `.env` en la raíz del proyecto:
+
+```env
+# Configuración de Django
+SECRET_KEY=tu_clave_secreta_muy_larga_y_compleja_aqui
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
+
+# Base de Datos
+DATABASE_ENGINE=django.db.backends.postgresql
+DATABASE_NAME=gpd_consultores_db
+DATABASE_USER=tu_usuario
+DATABASE_PASSWORD=tu_contraseña
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+
+# Email (Gmail)
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=tu_email@gmail.com
+EMAIL_HOST_PASSWORD=tu_contraseña_de_aplicacion
+EMAIL_FROM_ADDRESS=tu_email@gmail.com
+
+# Pagos (Stripe)
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_PUBLISHABLE_KEY=pk_test_...
+
+# Prefijos de ID
+STUDENT_ID_PREFIX=ugr
+LECTURER_ID_PREFIX=lec
+```
+
+### **6. Recolectar Archivos Estáticos**
 
 ```bash
 python manage.py collectstatic
 ```
 
-### 7. Ejecutar el Servidor
+### **7. Ejecutar el Servidor**
 
 ```bash
 python manage.py runserver
 ```
 
-El proyecto estará disponible en `http://127.0.0.1:8000/`
+Acceder a: http://127.0.0.1:8000
 
-## 📁 Estructura del Proyecto
+## 📖 Guía de Uso
 
+### **Administradores**
+
+1. **Gestión de Usuarios**
+   - Crear y gestionar cuentas de docentes y estudiantes
+   - Asignar roles y permisos
+   - Administrar perfiles de usuario
+
+2. **Gestión de Cursos**
+   - Crear programas y cursos
+   - Asignar docentes a cursos
+   - Gestionar contenido multimedia
+
+3. **Sistema de Certificaciones**
+   - Configurar parámetros de exámenes
+   - Generar certificados manuales
+   - Verificar autenticidad de certificados
+
+4. **Reportes y Analytics**
+   - Acceder al dashboard administrativo
+   - Generar reportes de rendimiento
+   - Monitorear métricas del sistema
+
+### **Docentes**
+
+1. **Gestión de Cursos Asignados**
+   - Ver cursos asignados
+   - Subir contenido (PDFs, videos)
+   - Gestionar inscripciones
+
+2. **Sistema de Evaluaciones**
+   - Crear exámenes y preguntas
+   - Configurar parámetros de evaluación
+   - Revisar resultados de estudiantes
+
+3. **Calificaciones**
+   - Ingresar calificaciones por componente
+   - Generar reportes de rendimiento
+   - Seguimiento de progreso estudiantil
+
+### **Estudiantes**
+
+1. **Inscripción a Cursos**
+   - Ver cursos disponibles
+   - Inscribirse en cursos
+   - Acceder a contenido multimedia
+
+2. **Evaluaciones**
+   - Tomar exámenes en línea
+   - Ver resultados y retroalimentación
+   - Descargar certificados aprobados
+
+3. **Seguimiento Académico**
+   - Ver calificaciones y progreso
+   - Acceder a historial de certificados
+   - Descargar reportes consolidados
+
+## 🔧 Configuración Avanzada
+
+### **Configuración de Pagos**
+
+#### **Stripe**
+```python
+# settings.py
+STRIPE_SECRET_KEY = 'sk_test_...'
+STRIPE_PUBLISHABLE_KEY = 'pk_test_...'
 ```
-gpd_consultores_courses/
-├── accounts/                 # Gestión de usuarios y autenticación
-├── core/                     # Modelos base y funcionalidades centrales
-├── course/                   # Gestión de cursos y programas
-├── quiz/                     # Sistema de evaluaciones y quizzes
-├── payments/                 # Integración de pasarelas de pago
-├── result/                   # Gestión de resultados y certificados
-├── search/                   # Funcionalidad de búsqueda
-├── config/                   # Configuración de Django
-├── templates/                # Plantillas HTML
-├── static/                   # Archivos estáticos (CSS, JS, imágenes)
-├── media/                    # Archivos subidos por usuarios
-├── requirements.txt          # Dependencias del proyecto
-└── scripts/                  # Scripts de utilidad
+
+#### **PayPal**
+```python
+# Configurar en templates/payments/payment_gateways.html
+PAYPAL_CLIENT_ID = 'tu_client_id'
 ```
 
-## 👥 Tipos de Usuarios
+### **Configuración de Email**
 
-### 1. Superusuario
-- Acceso completo al sistema
-- Gestión de todos los módulos
-
-### 2. Jefe de Departamento
-- Gestión de programas y cursos
-- Asignación de instructores
-- Creación de cotizaciones
-
-### 3. Instructor
-- Gestión de cursos asignados
-- Subida de materiales
-- Creación de evaluaciones
-- Seguimiento de estudiantes
-
-### 4. Estudiante
-- Acceso a cursos inscritos
-- Realización de evaluaciones
-- Visualización de progreso
-- Descarga de certificados
-
-### 5. Padre/Tutor
-- Seguimiento del progreso de estudiantes
-- Acceso limitado a información
-
-## 🎓 Gestión de Cursos
-
-### Programas
-- Creación de programas de estudio
-- Organización jerárquica de cursos
-- Gestión de niveles (Bachelor, Master)
-
-### Cursos
-- Creación y edición de cursos
-- Asignación de instructores
-- Subida de materiales (PDF, videos)
-- Configuración de evaluaciones
-
-### Materiales
-- Soporte para múltiples formatos
-- Organización por curso
-- Control de acceso
-
-## 📝 Sistema de Evaluaciones
-
-### Tipos de Preguntas
-- **Opción Múltiple**: Preguntas con múltiples opciones
-- **Ensayo**: Preguntas de desarrollo
-
-### Características
-- Configuración de puntaje mínimo para aprobar
-- Múltiples intentos (configurable)
-- Orden aleatorio de preguntas
-- Explicaciones post-evaluación
-
-### Seguimiento
-- Registro de intentos
-- Historial de evaluaciones
-- Generación automática de certificados
-
-## 💳 Sistema de Pagos
-
-### Pasarelas Soportadas
-- **Stripe**: Pagos con tarjeta de crédito
-- **PayPal**: Pagos internacionales
-- **Coinbase**: Pagos con criptomonedas
-- **Paylike**: Pagos alternativos
-
-### Funcionalidades
-- Creación de facturas
-- Seguimiento de pagos
-- Integración con cursos
-
-## 📊 Gestión de Resultados
-
-### Certificados
-- Generación automática al aprobar
-- Códigos únicos de certificado
-- Plantillas personalizables
-- Exportación en PDF
-
-### Reportes
-- Historial de evaluaciones
-- Estadísticas de rendimiento
-- Reportes por estudiante/curso
-
-## 🏢 Sistema de Cotizaciones
-
-### Características
-- Creación de cotizaciones detalladas
-- Gestión de estados (pendiente, aceptado, rechazado)
-- Cálculo automático de montos
-- Historial de cambios
-- Múltiples modalidades de pago
-
-## 🌐 Configuración Multilingüe
-
-El sistema soporta múltiples idiomas:
-- Español (predeterminado)
-- Inglés
-- Francés
-- Ruso
-
-### Configuración de Idiomas
-
-```bash
-# Compilar archivos de traducción
-python manage.py compilemessages
-
-# Crear archivos de traducción
-python manage.py makemessages -l es
-python manage.py makemessages -l en
-python manage.py makemessages -l fr
-python manage.py makemessages -l ru
+```python
+# settings.py
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'tu_email@gmail.com'
+EMAIL_HOST_PASSWORD = 'tu_contraseña_de_aplicacion'
 ```
+
+### **Configuración de Certificados**
+
+Los certificados se generan automáticamente cuando un estudiante aprueba un examen con 80% o más. Las plantillas se encuentran en `static/pdfs/` y deben seguir el formato `{código_curso}.pdf`.
 
 ## 🚀 Despliegue
 
-### Despliegue Local
+### **Render (Recomendado)**
+
+1. **Conectar repositorio** a Render
+2. **Configurar variables de entorno** en el dashboard
+3. **Especificar comando de build**: `./build.sh`
+4. **Configurar base de datos** PostgreSQL
+
+### **Google Cloud Platform**
+
+1. **Configurar Cloud SQL** para PostgreSQL
+2. **Desplegar con Cloud Run** usando el Dockerfile
+3. **Configurar variables de entorno** en Cloud Run
+
+### **Docker**
 
 ```bash
-# Configurar para producción
-export DEBUG=False
-export DJANGO_SETTINGS_MODULE=config.settings
+# Construir imagen
+docker build -t gpd-consultores .
 
-# Recolectar archivos estáticos
-python manage.py collectstatic --noinput
+# Ejecutar contenedor
+docker run -p 8080:8080 gpd-consultores
+```
+
+## 📊 Estructura de Base de Datos
+
+### **Modelos Principales**
+
+- **User**: Usuarios del sistema (estudiantes, docentes, administradores)
+- **Course**: Cursos y programas educativos
+- **Quiz**: Exámenes y evaluaciones
+- **Sitting**: Intentos de examen y resultados
+- **Certificate**: Certificados generados
+- **Payment**: Transacciones de pago
+- **Cotizacion**: Sistema de cotizaciones
+
+## 🔒 Seguridad
+
+### **Configuraciones Implementadas**
+
+- **CSRF Protection**: Habilitado en todas las vistas
+- **XSS Protection**: Headers de seguridad configurados
+- **SQL Injection**: ORM de Django con parámetros seguros
+- **File Upload Security**: Validación de tipos y tamaños
+- **Authentication**: Sistema robusto de autenticación
+
+### **Variables de Entorno Críticas**
+
+```env
+SECRET_KEY=clave_secreta_muy_larga_y_compleja
+DEBUG=False  # En producción
+ALLOWED_HOSTS=tu-dominio.com
+DATABASE_PASSWORD=contraseña_fuerte
+```
+
+## 🧪 Testing
+
+```bash
+# Ejecutar tests
+python manage.py test
+
+# Tests específicos
+python manage.py test accounts
+python manage.py test quiz
+python manage.py test course
+```
+
+## 📝 Scripts de Datos
+
+### **Generar Datos de Prueba**
+
+```bash
+# Generar usuarios de prueba
+python scripts/generate_fake_accounts_data.py
+
+# Generar datos del sistema
+python scripts/generate_fake_core_data.py
+```
+
+## 🔄 Mantenimiento
+
+### **Backup de Base de Datos**
+
+```bash
+# Backup
+pg_dump gpd_consultores_db > backup.sql
+
+# Restore
+psql gpd_consultores_db < backup.sql
+```
+
+### **Actualizaciones**
+
+```bash
+# Actualizar dependencias
+pip install -r requirements.txt --upgrade
 
 # Aplicar migraciones
 python manage.py migrate
 
-# Ejecutar con Gunicorn
-gunicorn config.wsgi:application
+# Recolectar estáticos
+python manage.py collectstatic
 ```
-
-### Despliegue en Google Cloud Platform
-
-El proyecto incluye configuración para GCP:
-
-```bash
-# Usar app.yaml para configuración
-gcloud app deploy
-
-# Configurar Cloud SQL
-gcloud sql connect instance-name
-```
-
-### Variables de Entorno para Producción
-
-```env
-DEBUG=False
-SECRET_KEY=clave_secreta_produccion
-DATABASE_URL=postgresql://usuario:contraseña@host:puerto/base_datos
-ALLOWED_HOSTS=tu-dominio.com,www.tu-dominio.com
-```
-
-## 📋 Scripts de Utilidad
-
-### Generación de Datos de Prueba
-
-```bash
-# Generar datos de cuentas
-python scripts/generate_fake_accounts_data.py
-
-# Generar datos del core
-python scripts/generate_fake_core_data.py
-```
-
-### Limpieza de Base de Datos
-
-```bash
-# Limpiar estudiantes
-python clean_students.py
-
-# Limpiar base de datos
-python clean_db.py
-```
-
-## 🔒 Seguridad
-
-### Configuraciones de Seguridad
-- CSRF protection habilitado
-- Validación de archivos subidos
-- Autenticación requerida para vistas sensibles
-- Permisos granulares por tipo de usuario
-
-### Recomendaciones
-- Cambiar SECRET_KEY en producción
-- Usar HTTPS en producción
-- Configurar firewall de base de datos
-- Realizar backups regulares
-
-## 🐛 Solución de Problemas
-
-### Errores Comunes
-
-1. **Error de migraciones**
-   ```bash
-   python manage.py makemigrations
-   python manage.py migrate
-   ```
-
-2. **Error de archivos estáticos**
-   ```bash
-   python manage.py collectstatic --clear
-   ```
-
-3. **Error de base de datos**
-   - Verificar configuración en `.env`
-   - Comprobar conexión a PostgreSQL
-
-4. **Error con Pillow en Python 3.13**
-   ```bash
-   # Solución 1: Instalar Pillow manualmente primero
-   pip install Pillow==10.4.0
-   pip install -r requirements.txt
-   
-   # Solución 2: Usar una versión anterior de Python (3.11 o 3.12)
-   ```
-
-5. **Error de dependencias incompatibles**
-   ```bash
-   # Limpiar cache de pip
-   pip cache purge
-   
-   # Reinstalar dependencias
-   pip uninstall -r requirements.txt -y
-   pip install -r requirements.txt
-   ```
-
-6. **Error de permisos en Windows**
-   ```bash
-   # Ejecutar PowerShell como administrador
-   Set-ExecutionPolicy RemoteSigned
-   ```
-
-### Logs
-Los logs se encuentran en:
-- Django logs: `logs/django.log`
-- Error logs: `logs/error.log`
-
-### Compatibilidad de Python
-
-| Versión de Python | Estado | Recomendación |
-|-------------------|--------|---------------|
-| Python 3.9-3.10   | ✅ Compatible | Recomendado |
-| Python 3.11-3.12  | ✅ Compatible | Óptimo |
-| Python 3.13       | ⚠️ Compatible con limitaciones | Instalar Pillow manualmente |
 
 ## 📞 Soporte
 
-Para soporte técnico o consultas:
-- Email: soporte@gpdconsultores.com
-- Documentación: [URL de documentación]
-- Issues: [URL del repositorio de issues]
+### **Contacto**
+- **Email**: alvaro.cerna.fr@gmail.com
+- **Documentación**: [Wiki del proyecto]
+- **Issues**: [GitHub Issues]
 
-## 📄 Licencia
+### **Comunidad**
+- **Foro**: [Foro de la comunidad]
+- **Discord**: [Servidor de Discord]
 
-Este proyecto está bajo la licencia [TIPO DE LICENCIA]. Ver el archivo `LICENSE` para más detalles.
+## 🔐 Licencia de Uso Limitada
 
-## 🤝 Contribución
+Este software ha sido entregado bajo **licencia de uso limitada** a **G.P.D. CONSULTORES S.A.C.** exclusivamente para:
+
+1. **El proyecto educativo de seguridad con TECK Perú**
+2. **La gestión interna educativa de GPD CONSULTORES**
+
+### ⚠️ Limitaciones de esta licencia:
+
+- **Uso restringido** a los fines acordados
+- **Prohibida su venta, redistribución o adaptación externa**
+- **No implica cesión de propiedad intelectual**
+
+**Todos los derechos reservados** conforme a la Ley sobre el Derecho de Autor del Perú (D.L. N.º 822).
+
+Ver el archivo `LICENSE.md` para detalles completos.
+
+## 🤝 Contribuciones
+
+Las contribuciones son bienvenidas. Por favor:
 
 1. Fork el proyecto
-2. Crear una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
 3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
 4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abrir un Pull Request
+5. Abre un Pull Request
+
+## 🙏 Agradecimientos
+
+- **Django Community** por el framework
+- **Bootstrap** por el diseño responsivo
+- **FontAwesome** por los iconos
+- **ReportLab** por la generación de PDFs
+- **Stripe** por la integración de pagos
 
 ---
 
-**Desarrollado por GPD Consultores** - Sistema de Gestión de Cursos y Certificaciones
+**Desarrollado por Alvaro Franco Cerna Ramos**
+
+
