@@ -656,23 +656,19 @@ def cotizacion_download_pdf(request, pk):
     p.setFont("Helvetica-Bold", 9)
     p.drawString(width-300, y_tot, "TOTAL, S/:")
     p.setFont("Helvetica", 9)
-    p.drawString(width-80, y_tot, f"S/ {math.ceil(float(cotizacion.total_con_detraccion) * 10) / 10:.2f}")
+    p.drawString(width-80, y_tot, f"S/ {math.ceil(float(cotizacion.total_con_igv) * 10) / 10:.2f}")
     p.setFont("Helvetica-Bold", 8)
     p.drawString(width-300, y_tot-15, "SUBTOTAL")
     p.setFont("Helvetica", 8)
     p.drawString(width-80, y_tot-15, f"S/ {cotizacion.monto_total:.2f}")
     p.setFont("Helvetica-Bold", 8)
-    p.drawString(width-300, y_tot-30, "SUBTOTAL + IGV")
+    p.drawString(width-300, y_tot-30, "IGV")
     p.setFont("Helvetica", 8)
-    p.drawString(width-80, y_tot-30, f"S/ {math.ceil(float(cotizacion.total_con_igv) * 10) / 10:.2f}")
+    p.drawString(width-80, y_tot-30, f"S/ {math.ceil(float(cotizacion.igv) * 10) / 10:.2f}")
     p.setFont("Helvetica-Bold", 8)
-    p.drawString(width-300, y_tot-45, "12% DE DETRACCIÓN - Banco de la Nación*")
-    p.setFont("Helvetica", 8)
-    p.drawString(width-80, y_tot-45, f"S/ {math.ceil(float(cotizacion.detraccion) * 10) / 10:.2f}")
-    p.setFont("Helvetica-Bold", 8)
-    p.drawString(width-300, y_tot-60, "INVERSIÓN TOTAL A DEPOSITAR")
+    p.drawString(width-300, y_tot-45, "INVERSIÓN TOTAL A DEPOSITAR")
     p.setFont("Helvetica", 9)
-    p.drawString(width-80, y_tot-60, f"S/ {math.ceil(float(cotizacion.total_con_detraccion) * 10) / 10:.2f}")
+    p.drawString(width-80, y_tot-45, f"S/ {math.ceil(float(cotizacion.total_con_igv) * 10) / 10:.2f}")
 
     # MEDIOS DE PAGO (justo debajo de totales)
     y_pago = y_tot-90
@@ -764,9 +760,11 @@ def cotizacion_download_pdf(request, pk):
     p.drawString(180, y_pago_txt-30, "00221519508802100123")
     p.drawString(35, y_pago_txt-40, "CUENTA de detracciones Banco de la Nación-SOLES:")
     p.drawString(280, y_pago_txt-40, "00-113-039019")
+    p.drawString(35, y_pago_txt-50, "12% DE DETRACCIÓN - Banco de la Nación*:")
+    p.drawString(280, y_pago_txt-50, f"S/ {math.ceil(float(cotizacion.detraccion) * 10) / 10:.2f}")
 
     # CONSIDERACIONES GENERALES (justo debajo de medios de pago)
-    y_cons = y_pago_txt-60
+    y_cons = y_pago_txt-70
     p.setFont("Helvetica-BoldOblique", 8)
     p.drawString(35, y_cons, u"Consideraciones generales del servicio")
     p.setFont("Helvetica", 7)
@@ -800,7 +798,17 @@ def cotizacion_download_pdf(request, pk):
     p.save()
     buffer.seek(0)
     response = HttpResponse(buffer, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="cotizacion_{cotizacion.pk}.pdf"'
+    
+    # Generar nombre del archivo usando el nombre de la cotización
+    if cotizacion.cotizacion:
+        # Limpiar el nombre de caracteres especiales para el nombre del archivo
+        nombre_archivo = cotizacion.cotizacion.replace('/', '_').replace('\\', '_').replace(':', '_').replace('*', '_').replace('?', '_').replace('"', '_').replace('<', '_').replace('>', '_').replace('|', '_')
+        filename = f"cotizacion_{nombre_archivo}.pdf"
+    else:
+        # Si no hay nombre de cotización, usar el ID como respaldo
+        filename = f"cotizacion_{cotizacion.pk}.pdf"
+    
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
 
 
