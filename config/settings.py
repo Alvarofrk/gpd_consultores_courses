@@ -84,9 +84,9 @@ THIRD_PARTY_APPS = [
 
 # Custom apps
 PROJECT_APPS = [
+    "core.apps.CoreConfig",
+    "course.apps.CourseConfig",
     "accounts.apps.AccountsConfig",
-    # "core.apps.CoreConfig",
-    # "course.apps.CourseConfig",
     # "result.apps.ResultConfig",
     # "search.apps.SearchConfig",
     # "quiz.apps.QuizConfig",
