@@ -1,4 +1,5 @@
 from django.urls import path
+from django.http import HttpResponse
 
 from .views import (
     home_view,
@@ -30,6 +31,10 @@ from .views import (
     logs_recordatorios_view,
     enviar_recordatorios_manual_view,
 )
+
+
+def test_public_view(request):
+    return HttpResponse("¡Funciona en producción!")
 
 
 urlpatterns = [
@@ -66,4 +71,5 @@ urlpatterns = [
     path("calendario/evento/<int:pk>/", evento_detail_view, name="evento_detail"),
     path("calendario/logs/", logs_recordatorios_view, name="logs_recordatorios"),
     path("calendario/enviar-recordatorios/", enviar_recordatorios_manual_view, name="enviar_recordatorios_manual"),
+    path("test-public/", test_public_view),
 ]
