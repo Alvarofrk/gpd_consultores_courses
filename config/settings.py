@@ -83,18 +83,18 @@ THIRD_PARTY_APPS = [
 ]
 
 # Custom apps
-PROJECT_APPS = [
-    "core.apps.CoreConfig",
-    "accounts.apps.AccountsConfig",
-    "course.apps.CourseConfig",
-    "result.apps.ResultConfig",
-    "search.apps.SearchConfig",
-    "quiz.apps.QuizConfig",
-    "payments.apps.PaymentsConfig",
-]
+# PROJECT_APPS = [
+#     "core.apps.CoreConfig",
+#     "accounts.apps.AccountsConfig",
+#     "course.apps.CourseConfig",
+#     "result.apps.ResultConfig",
+#     "search.apps.SearchConfig",
+#     "quiz.apps.QuizConfig",
+#     "payments.apps.PaymentsConfig",
+# ]
 
 # Combine all apps
-INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + PROJECT_APPS
+INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
