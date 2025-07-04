@@ -14,7 +14,6 @@ admin.site.site_header = "SkyLearn Admin"
 
 urlpatterns = [
     path("health-check/", health_check),
-    path("admin/", admin.site.urls),
     path("i18n/", include("django.conf.urls.i18n")),
     path("jsi18n/", JavaScriptCatalog.as_view(), name="javascript-catalog"),
     path("", include("core.urls")),
@@ -27,6 +26,9 @@ urlpatterns = [
     path("quiz/", include("quiz.urls")),
     path("payments/", include("payments.urls")),
 ]
+
+if settings.DEBUG:
+    urlpatterns += [path("admin/", admin.site.urls)]
 
 urlpatterns += i18n_patterns(
     path("jsi18n/", JavaScriptCatalog.as_view(), name="javascript-catalog"),
