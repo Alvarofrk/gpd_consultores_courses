@@ -5,10 +5,15 @@ from django.conf.urls.static import static
 from django.views import defaults as default_views
 from django.conf.urls.i18n import i18n_patterns
 from django.views.i18n import JavaScriptCatalog
+from django.http import HttpResponse
+
+def health_check(request):
+    return HttpResponse("OK")
 
 admin.site.site_header = "SkyLearn Admin"
 
 urlpatterns = [
+    path("health-check/", health_check),
     path("admin/", admin.site.urls),
     path("i18n/", include("django.conf.urls.i18n")),
 ]

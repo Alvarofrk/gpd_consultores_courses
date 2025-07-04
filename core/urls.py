@@ -33,10 +33,6 @@ from .views import (
 )
 
 
-def test_public_view(request):
-    return HttpResponse("¡Funciona en producción!")
-
-
 urlpatterns = [
     # Accounts url
     path("", home_view, name="home"),
@@ -71,5 +67,4 @@ urlpatterns = [
     path("calendario/evento/<int:pk>/", evento_detail_view, name="evento_detail"),
     path("calendario/logs/", logs_recordatorios_view, name="logs_recordatorios"),
     path("calendario/enviar-recordatorios/", enviar_recordatorios_manual_view, name="enviar_recordatorios_manual"),
-    path("test-public/", test_public_view),
 ]

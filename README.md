@@ -370,12 +370,12 @@ psql gpd_consultores_db < backup.sql
 
 ### **Actualizaciones**
 
-```bash
+   ```bash
 # Actualizar dependencias
 pip install -r requirements.txt --upgrade
 
 # Aplicar migraciones
-python manage.py migrate
+   python manage.py migrate
 
 # Recolectar estáticos
 python manage.py collectstatic
