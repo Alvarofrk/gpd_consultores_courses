@@ -368,7 +368,6 @@ class ProfileUpdateForm(UserChangeForm):
             "email",
             "phone",
             "address",
-            "picture",
         ]
 
 

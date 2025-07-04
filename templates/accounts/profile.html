@@ -22,7 +22,9 @@
     <div class="col-md-3 mx-auto">
         <div class="card  p-2">
             <div class="text-center">
-                <img src="{{ user.picture.url }}" class="w-100">
+                <div class="avatar-inicial" style="width:80px;height:80px;border-radius:50%;background:#007bff;color:white;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:bold;">
+                    {{ user.first_name|default:user.username|first|upper }}
+                </div>
                 <ul class="px-2 list-unstyled">
                     <li>{{ user.get_full_name|title }}</li>
                     <li><strong>{% trans 'Último inicio de sesión:' %} </strong>{{ user.last_login|date }}</li>

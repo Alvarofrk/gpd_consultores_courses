@@ -735,11 +735,11 @@ def course_registration_form(request):
     setattr(im_logo, "_offs_y", 480)
     Story.append(im_logo)
 
-    picture = settings.BASE_DIR + request.user.get_picture()
-    im = Image(picture, 1.0 * inch, 1.0 * inch)
-    setattr(im, "_offs_x", 218)
-    setattr(im, "_offs_y", 550)
-    Story.append(im)
+    # picture = settings.BASE_DIR + request.user.get_picture()
+    # im = Image(picture, 1.0 * inch, 1.0 * inch)
+    # setattr(im, "_offs_x", 218)
+    # setattr(im, "_offs_y", 550)
+    # Story.append(im)
 
     doc.build(Story)
     fs = FileSystemStorage(settings.MEDIA_ROOT + "/registration_form")
