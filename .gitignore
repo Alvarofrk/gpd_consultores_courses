@@ -22,7 +22,7 @@ venv/
 # Archivos temporales
 *.log
 *.pot
-*.mo
+# *.mo  # Comentado para permitir archivos de traducción compilados
 *.swp
 *.swo
 .DS_Store
