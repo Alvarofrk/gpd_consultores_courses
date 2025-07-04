@@ -90,7 +90,7 @@ PROJECT_APPS = [
     "result.apps.ResultConfig",
     "search.apps.SearchConfig",
     "quiz.apps.QuizConfig",
-    # "payments.apps.PaymentsConfig",
+    "payments.apps.PaymentsConfig",
 ]
 
 # Combine all apps
