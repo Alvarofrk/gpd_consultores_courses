@@ -8,19 +8,22 @@
 
 ## 📋 TÉRMINOS DE LA LICENCIA
 
-Este software ha sido entregado bajo **licencia de uso limitada** a **G.P.D. CONSULTORES S.A.C.** exclusivamente para los siguientes fines:
+Este software ha sido desarrollado por **Alvaro Franco Cerna Ramos** y entregado bajo **licencia de uso limitada** a **G.P.D. CONSULTORES S.A.C.** exclusivamente para los siguientes fines:
 
 ### ✅ **USOS PERMITIDOS**
 
-1. **Proyecto Educativo de Seguridad con TECK Perú**
+1. **Plataforma Educativa GPD CONSULTORES**
    - Implementación y operación de la plataforma educativa
-   - Gestión de cursos de capacitación en seguridad
+   - Gestión de cursos de capacitación
    - Administración de estudiantes y certificaciones
 
 2. **Gestión Interna Educativa de GPD CONSULTORES**
    - Uso interno para capacitaciones corporativas
    - Gestión de recursos educativos propios
    - Administración de certificaciones internas
+3. **Gestión Interna de GPD CONSULTORES**
+   - Gestión de cotizaciones
+   - Gestión de servicios
 
 ---
 
@@ -49,16 +52,17 @@ Este software ha sido entregado bajo **licencia de uso limitada** a **G.P.D. CON
 
 ### **Desarrollador:**
 - **Nombre:** Alvaro Franco Cerna Ramos
-- **Rol:** Desarrollador principal del software
+- **Rol:** Desarrollador Fullstack - Propietario del software
 - **Derechos:** Propiedad intelectual completa
 
-### **Licenciatario:**
+### **Cliente/Licenciatario:**
 - **Entidad:** G.P.D. CONSULTORES S.A.C.
-- **Rol:** Usuario autorizado bajo licencia limitada
-- **Alcance:** Uso específico para proyectos acordados
+- **Rol:** Cliente autorizado bajo licencia limitada
+- **Alcance:** Uso específico para gestión educativa interna
 
 ### **Proyecto:**
-- **Nombre:** Proyecto Educativo y de Gestión GPD CONSULTORES by afcr
+- **Nombre:** Plataforma Educativa GPD CONSULTORES S.A.C.
+- **Tipo:** Desarrollo a medida
 
 ---
 

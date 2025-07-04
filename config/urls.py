@@ -17,8 +17,6 @@ urlpatterns = [
     path("i18n/", include("django.conf.urls.i18n")),
     path("jsi18n/", JavaScriptCatalog.as_view(), name="javascript-catalog"),
     path("", include("core.urls")),
-    path("jet/", include("jet.urls", "jet")),
-    path("jet/dashboard/", include("jet.dashboard.urls", "jet-dashboard")),
     path("accounts/", include("accounts.urls")),
     path("programs/", include("course.urls")),
     path("result/", include("result.urls")),

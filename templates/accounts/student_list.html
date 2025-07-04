@@ -40,7 +40,7 @@
             </tr>
         </thead>
         <tbody>
-            {% for student in filter.qs %}
+            {% for student in page_obj %}
             <tr>
                 <td>{{ student.student.username }}</td>
                 <td><a href="{% url 'profile_single' student.student.id %}">{{ student.student.get_full_name }}</a></td>
@@ -86,4 +86,61 @@
         </tbody>
     </table>
 </div>
+
+<!-- Paginación -->
+{% if page_obj.paginator.num_pages > 1 %}
+<div class="d-flex justify-content-center mt-4">
+    <nav aria-label="Navegación de páginas">
+        <ul class="pagination">
+            <!-- Botón Anterior -->
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?{% if request.GET %}{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}{% endif %}page={{ page_obj.previous_page_number }}" aria-label="Anterior">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link" aria-hidden="true">&laquo;</span>
+                </li>
+            {% endif %}
+
+            <!-- Números de página -->
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% if request.GET %}{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}{% endif %}page={{ num }}">{{ num }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+
+            <!-- Botón Siguiente -->
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?{% if request.GET %}{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}{% endif %}page={{ page_obj.next_page_number }}" aria-label="Siguiente">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link" aria-hidden="true">&raquo;</span>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+
+<!-- Información de paginación -->
+<div class="text-center mt-2">
+    <small class="text-muted">
+        Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+        ({{ page_obj.paginator.count }} participantes en total)
+    </small>
+</div>
+{% endif %}
+
 {% endblock content %}

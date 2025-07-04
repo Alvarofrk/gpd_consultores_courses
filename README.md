@@ -1,4 +1,4 @@
-# 🎓 Proyecto Educativo Seguridad TECK Perú - by AFCR
+# 🎓 Plataforma Educativa GPD CONSULTORES S.A.C.
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Django](https://img.shields.io/badge/Django-4.2.10-green.svg)](https://www.djangoproject.com/)
@@ -6,14 +6,15 @@
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3.2-purple.svg)](https://getbootstrap.com/)
 [![License](https://img.shields.io/badge/License-Propietaria-red.svg)](LICENSE.md)
 
-**Desarrollado por:** Alvaro Franco Cerna Ramos  
-**En colaboración con:** G.P.D. CONSULTORES S.A.C.
+**Desarrollado por:** Alvaro Franco Cerna Ramos - Desarrollador Fullstack  
+**Cliente:** G.P.D. CONSULTORES S.A.C.  
+**Tipo:** Plataforma a medida
 
 ## 📋 Descripción
 
-Este repositorio contiene el código fuente de la **plataforma educativa** desarrollada por **Alvaro Franco Cerna Ramos** para el proyecto TECK, en colaboración con **G.P.D. CONSULTORES S.A.C.**
+Este repositorio contiene el código fuente de la **plataforma educativa** desarrollada por **Alvaro Franco Cerna Ramos** para **G.P.D. CONSULTORES S.A.C.**
 
-Sistema de capacitación online para cumplimiento de formación interna en seguridad por parte de la empresa TECK. Permite la administración completa de cursos de capacitación, gestión de estudiantes, generación automática de certificados, sistema de pagos múltiples y seguimiento de resultados.
+Sistema de capacitación online para gestión de formación interna. Permite la administración completa de cursos de capacitación, gestión de estudiantes, generación automática de certificados, sistema de pagos múltiples y seguimiento de resultados.
 
 ## ✨ Características Principales
 
@@ -394,9 +395,9 @@ python manage.py collectstatic
 
 ## 🔐 Licencia de Uso Limitada
 
-Este software ha sido entregado bajo **licencia de uso limitada** a **G.P.D. CONSULTORES S.A.C.** exclusivamente para:
+Este software ha sido desarrollado por **Alvaro Franco Cerna Ramos** y entregado bajo **licencia de uso limitada** a **G.P.D. CONSULTORES S.A.C.** exclusivamente para:
 
-1. **El proyecto educativo de seguridad con TECK Perú**
+1. **La plataforma educativa de GPD CONSULTORES**
 2. **La gestión interna educativa de GPD CONSULTORES**
 
 ### ⚠️ Limitaciones de esta licencia:
@@ -429,6 +430,6 @@ Las contribuciones son bienvenidas. Por favor:
 
 ---
 
-**Desarrollado por Alvaro Franco Cerna Ramos**
+**Desarrollado por Álvaro Franco Cerna Ramos - Desarrollador Fullstack**
 
 

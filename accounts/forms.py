@@ -5,7 +5,7 @@ from django.contrib.auth.forms import (
     UserChangeForm,
 )
 from django.contrib.auth.forms import PasswordResetForm
-from course.models import Program
+from course.models import Program, Course
 from .models import User, Student, Parent, RELATION_SHIP, LEVEL, GENDERS
 
 
@@ -135,7 +135,7 @@ class StudentAddForm(UserCreationForm):
         widget=forms.TextInput(
             attrs={"type": "text", "class": "form-control", "id": "username_id"}
         ),
-        label="Username",
+        label="DNI",
         required=True,
     )
     address = forms.CharField(
@@ -146,7 +146,7 @@ class StudentAddForm(UserCreationForm):
                 "class": "form-control",
             }
         ),
-        label="Address",
+        label="Dirección",
     )
 
     phone = forms.CharField(
@@ -157,7 +157,7 @@ class StudentAddForm(UserCreationForm):
                 "class": "form-control",
             }
         ),
-        label="Mobile No.",
+        label="Teléfono móvil",
     )
 
     first_name = forms.CharField(
@@ -168,7 +168,7 @@ class StudentAddForm(UserCreationForm):
                 "class": "form-control",
             }
         ),
-        label="First name",
+        label="Nombres",
     )
 
     last_name = forms.CharField(
@@ -179,7 +179,7 @@ class StudentAddForm(UserCreationForm):
                 "class": "form-control",
             }
         ),
-        label="Last name",
+        label="Apellidos",
     )
 
     gender = forms.CharField(
@@ -189,6 +189,7 @@ class StudentAddForm(UserCreationForm):
                 "class": "browser-default custom-select form-control",
             },
         ),
+        label="Género",
     )
 
     cargo = forms.CharField(
@@ -202,7 +203,6 @@ class StudentAddForm(UserCreationForm):
         label="Cargo",
     )
 
-    # Campo 'empresa' que añadimos
     empresa = forms.CharField(
         max_length=100,
         widget=forms.TextInput(
@@ -215,12 +215,9 @@ class StudentAddForm(UserCreationForm):
     )
 
     level = forms.CharField(
-        widget=forms.Select(
-            choices=LEVEL,
-            attrs={
-                "class": "browser-default custom-select form-control",
-            },
-        ),
+        widget=forms.HiddenInput(),
+        initial="Bachelor",
+        required=False,
     )
 
     program = forms.ModelChoiceField(
@@ -228,7 +225,7 @@ class StudentAddForm(UserCreationForm):
         widget=forms.Select(
             attrs={"class": "browser-default custom-select form-control"}
         ),
-        label="Program",
+        label="Programa",
     )
 
     email = forms.EmailField(
@@ -238,7 +235,21 @@ class StudentAddForm(UserCreationForm):
                 "class": "form-control",
             }
         ),
-        label="Email Address",
+        label="Correo electrónico",
+    )
+
+    # Nuevo campo para selección de cursos
+    courses = forms.ModelMultipleChoiceField(
+        queryset=None,  # Se establecerá en __init__
+        widget=forms.CheckboxSelectMultiple(
+            attrs={
+                "class": "course-checkbox",
+                "id": "courses-selection"
+            }
+        ),
+        label="Cursos",
+        required=False,
+        help_text="Selecciona los cursos en los que se inscribirá el participante"
     )
 
     password1 = forms.CharField(
@@ -249,7 +260,7 @@ class StudentAddForm(UserCreationForm):
                 "class": "form-control",
             }
         ),
-        label="Password",
+        label="Contraseña",
         required=False,
     )
 
@@ -261,14 +272,20 @@ class StudentAddForm(UserCreationForm):
                 "class": "form-control",
             }
         ),
-        label="Password Confirmation",
+        label="Confirmar contraseña",
         required=False,
     )
 
-    # def validate_email(self):
-    #     email = self.cleaned_data['email']
-    #     if User.objects.filter(email__iexact=email, is_active=True).exists():
-    #         raise forms.ValidationError("Email has taken, try another email address. ")
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Importar Course aquí para evitar importación circular
+        self.fields['courses'].queryset = Course.objects.all().order_by('title')
+
+    def clean_email(self):
+        email = self.cleaned_data['email']
+        if User.objects.filter(email__iexact=email, is_active=True).exists():
+            raise forms.ValidationError("Este correo electrónico ya está en uso, por favor utiliza otro.")
+        return email
 
     class Meta(UserCreationForm.Meta):
         model = User
@@ -287,13 +304,30 @@ class StudentAddForm(UserCreationForm):
 
         if commit:
             user.save() 
-            Student.objects.create(
+            student = Student.objects.create(
                 student=user,
                 level=self.cleaned_data.get("level"),
                 cargo=self.cleaned_data.get("cargo"),
                 empresa=self.cleaned_data.get("empresa"),
                 program=self.cleaned_data.get("program"),
             )
+            
+            # Asignar los cursos seleccionados
+            courses = self.cleaned_data.get("courses")
+            if courses:
+                student.courses.set(courses)
+                
+                # Crear registros en TakenCourse para cada curso seleccionado
+                from result.models import TakenCourse
+                for course in courses:
+                    TakenCourse.objects.get_or_create(
+                        student=student,
+                        course=course,
+                        defaults={
+                            'grade': None,
+                            'comment': 'Curso asignado durante la creación del participante'
+                        }
+                    )
 
         return user
 
@@ -389,9 +423,9 @@ class EmailValidationOnForgotPassword(PasswordResetForm):
     def clean_email(self):
         email = self.cleaned_data["email"]
         if not User.objects.filter(email__iexact=email, is_active=True).exists():
-            msg = "There is no user registered with the specified E-mail address. "
+            msg = "No existe un usuario registrado con el correo electrónico especificado."
             self.add_error("email", msg)
-            return email
+        return email
 
 
 class ParentAddForm(UserCreationForm):

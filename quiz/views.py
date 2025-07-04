@@ -604,9 +604,10 @@ class QuizUserProgressView(TemplateView):
 class QuizMarkingList(ListView):
     model = Sitting
     template_name = "quiz/quiz_marking_list.html"
+    paginate_by = 20  # 20 exámenes por página
 
     def get_queryset(self):
-        queryset = Sitting.objects.filter(complete=True)
+        queryset = Sitting.objects.filter(complete=True).order_by('-end')  # Ordenar por fecha más reciente
         if not self.request.user.is_superuser:
             queryset = queryset.filter(
                 quiz__course__allocated_course__lecturer__pk=self.request.user.id
@@ -618,6 +619,13 @@ class QuizMarkingList(ListView):
         if user_filter:
             queryset = queryset.filter(user__username__icontains=user_filter)
         return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Agregar información adicional para el template
+        context['total_exams'] = self.get_queryset().count()
+        context['current_page'] = self.request.GET.get('page', 1)
+        return context
 
 
 @method_decorator([login_required, lecturer_required], name="dispatch")

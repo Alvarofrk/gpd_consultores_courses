@@ -4,56 +4,1080 @@
 {% load crispy_forms_tags %}
 {% load static %}
 
+{% block header %}
+<style>
+    /* Variables de colores de la plataforma */
+    :root {
+        --gpd-primary: #033b80;
+        --gpd-secondary: #042042;
+        --gpd-success: #28a745;
+        --gpd-warning: #ffc107;
+        --gpd-danger: #dc3545;
+        --gpd-light: #f8f9fa;
+        --gpd-white: #ffffff;
+        --gpd-gray: #6c757d;
+    }
+
+    /* Contenedor principal del wizard */
+    .wizard-container {
+        max-width: 1000px;
+        margin: 2rem auto;
+        background: var(--gpd-white);
+        border-radius: 15px;
+        box-shadow: 0 8px 32px rgba(3, 59, 128, 0.1);
+        overflow: hidden;
+        border: 1px solid rgba(3, 59, 128, 0.1);
+    }
+
+    /* Header del wizard */
+    .wizard-header {
+        background: linear-gradient(135deg, var(--gpd-primary) 0%, var(--gpd-secondary) 100%);
+        color: var(--gpd-white);
+        padding: 2.5rem;
+        text-align: center;
+    }
+
+    .wizard-header h2 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 2rem;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .wizard-header p {
+        margin: 0.75rem 0 0 0;
+        opacity: 0.95;
+        font-size: 1.1rem;
+    }
+
+    /* Barra de progreso */
+    .wizard-progress {
+        background: var(--gpd-light);
+        padding: 2rem;
+        position: relative;
+    }
+
+    .wizard-progress::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 2rem;
+        right: 2rem;
+        height: 4px;
+        background: #e9ecef;
+        transform: translateY(-50%);
+        z-index: 1;
+        border-radius: 2px;
+    }
+
+    .progress-steps {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+        z-index: 2;
+    }
+
+    .step-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .step-item:hover {
+        transform: translateY(-2px);
+    }
+
+    .step-circle {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: var(--gpd-white);
+        border: 4px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1.2rem;
+        color: var(--gpd-gray);
+        transition: all 0.3s ease;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .step-item.active .step-circle {
+        background: var(--gpd-primary);
+        border-color: var(--gpd-primary);
+        color: var(--gpd-white);
+        box-shadow: 0 0 0 6px rgba(3, 59, 128, 0.2);
+        transform: scale(1.1);
+    }
+
+    .step-item.completed .step-circle {
+        background: var(--gpd-success);
+        border-color: var(--gpd-success);
+        color: var(--gpd-white);
+        transform: scale(1.05);
+    }
+
+    .step-label {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--gpd-gray);
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+
+    .step-item.active .step-label {
+        color: var(--gpd-primary);
+        font-weight: 700;
+    }
+
+    .step-item.completed .step-label {
+        color: var(--gpd-success);
+    }
+
+    /* Contenido del wizard */
+    .wizard-content {
+        padding: 2.5rem;
+        min-height: 500px;
+    }
+
+    .step-content {
+        display: none;
+        animation: slideIn 0.4s ease-out;
+    }
+
+    .step-content.active {
+        display: block;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    /* Secciones del formulario */
+    .form-section {
+        background: var(--gpd-white);
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        margin-bottom: 2rem;
+        overflow: hidden;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .section-header {
+        background: linear-gradient(135deg, var(--gpd-primary) 0%, var(--gpd-secondary) 100%);
+        color: var(--gpd-white);
+        padding: 1.25rem 1.5rem;
+        font-weight: 600;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .section-header i {
+        margin-right: 0.75rem;
+        font-size: 1.2rem;
+    }
+
+    .section-body {
+        padding: 2rem;
+    }
+
+    /* Grid de cursos */
+    .courses-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1rem;
+        margin: 1.5rem 0;
+    }
+
+    .course-card {
+        background: var(--gpd-white);
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        padding: 1.25rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .course-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: var(--gpd-primary);
+        transform: scaleX(0);
+        transition: transform 0.3s ease;
+    }
+
+    .course-card:hover {
+        border-color: var(--gpd-primary);
+        box-shadow: 0 6px 20px rgba(3, 59, 128, 0.15);
+        transform: translateY(-3px);
+    }
+
+    .course-card:hover::before {
+        transform: scaleX(1);
+    }
+
+    .course-card.selected {
+        border-color: var(--gpd-success);
+        background: linear-gradient(135deg, #f8fff9 0%, #e8f5e8 100%);
+        transform: translateY(-2px);
+    }
+
+    .course-card.selected::before {
+        background: var(--gpd-success);
+        transform: scaleX(1);
+    }
+
+    /* Búsqueda de cursos */
+    .search-container {
+        margin-bottom: 2rem;
+    }
+
+    .search-container .input-group {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .search-container .form-control {
+        border: none;
+        padding: 1rem 1.25rem;
+        font-size: 1rem;
+        background: var(--gpd-white);
+    }
+
+    .search-container .input-group-text {
+        background: var(--gpd-primary);
+        color: var(--gpd-white);
+        border: none;
+        padding: 1rem 1.25rem;
+        font-size: 1.1rem;
+    }
+
+    /* Cursos seleccionados */
+    .selected-courses {
+        background: linear-gradient(135deg, #e8f5e8 0%, #f0f8f0 100%);
+        border: 2px solid var(--gpd-success);
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-top: 1.5rem;
+    }
+
+    .selected-course-item {
+        background: var(--gpd-white);
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        margin: 0.75rem 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+    }
+
+    .selected-course-item:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .remove-course {
+        color: var(--gpd-danger);
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 1.3rem;
+        transition: all 0.3s ease;
+        padding: 0.25rem;
+        border-radius: 50%;
+    }
+
+    .remove-course:hover {
+        background: var(--gpd-danger);
+        color: var(--gpd-white);
+        transform: scale(1.2);
+    }
+
+    /* Footer del wizard */
+    .wizard-footer {
+        padding: 2rem 2.5rem;
+        background: var(--gpd-light);
+        border-top: 1px solid #e9ecef;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .wizard-buttons {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+
+    .btn-wizard {
+        padding: 0.875rem 2rem;
+        border-radius: 25px;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        text-decoration: none;
+        min-width: 140px;
+        justify-content: center;
+    }
+
+    .btn-wizard:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        text-decoration: none;
+    }
+
+    .btn-wizard.btn-primary {
+        background: linear-gradient(135deg, var(--gpd-primary) 0%, var(--gpd-secondary) 100%);
+        color: var(--gpd-white);
+    }
+
+    .btn-wizard.btn-secondary {
+        background: var(--gpd-gray);
+        color: var(--gpd-white);
+    }
+
+    .btn-wizard.btn-success {
+        background: linear-gradient(135deg, var(--gpd-success) 0%, #20c997 100%);
+        color: var(--gpd-white);
+    }
+
+    .btn-wizard:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    /* Resumen de confirmación */
+    .summary-section {
+        background: var(--gpd-light);
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .summary-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 1rem 0;
+        border-bottom: 1px solid #e9ecef;
+        align-items: center;
+    }
+
+    .summary-item:last-child {
+        border-bottom: none;
+    }
+
+    .summary-label {
+        font-weight: 600;
+        color: var(--gpd-primary);
+        font-size: 1rem;
+    }
+
+    .summary-value {
+        color: var(--gpd-gray);
+        font-weight: 500;
+        text-align: right;
+        max-width: 60%;
+    }
+
+    /* Nota informativa */
+    .info-note {
+        background: linear-gradient(135deg, #e3f2fd 0%, #f3f8ff 100%);
+        border-left: 4px solid var(--gpd-primary);
+        padding: 1.25rem;
+        margin: 1.5rem 0;
+        border-radius: 0 10px 10px 0;
+        font-size: 1rem;
+    }
+
+    /* Estilos para la presentación de cursos en el resumen */
+    .selected-courses-summary {
+        background: linear-gradient(135deg, #f8fff9 0%, #e8f5e8 100%);
+        border: 1px solid var(--gpd-success);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-top: 0.5rem;
+    }
+
+    .courses-count {
+        display: block;
+        font-weight: 600;
+        color: var(--gpd-success);
+        font-size: 0.9rem;
+        margin-bottom: 0.75rem;
+        text-align: center;
+        background: var(--gpd-white);
+        padding: 0.5rem;
+        border-radius: 6px;
+        border: 1px solid var(--gpd-success);
+    }
+
+    .courses-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .courses-list li {
+        background: var(--gpd-white);
+        border: 1px solid #e9ecef;
+        border-radius: 6px;
+        padding: 0.75rem 1rem;
+        margin: 0.5rem 0;
+        font-size: 0.9rem;
+        color: var(--gpd-gray);
+        transition: all 0.3s ease;
+        position: relative;
+        padding-left: 2.5rem;
+    }
+
+    .courses-list li::before {
+        content: '✓';
+        position: absolute;
+        left: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--gpd-success);
+        font-weight: bold;
+        font-size: 1rem;
+    }
+
+    .courses-list li:hover {
+        background: #f8f9fa;
+        border-color: var(--gpd-success);
+        transform: translateX(3px);
+        box-shadow: 0 2px 8px rgba(40, 167, 69, 0.1);
+    }
+
+    /* Scrollbar personalizado para la lista de cursos */
+    .courses-list::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .courses-list::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+
+    .courses-list::-webkit-scrollbar-thumb {
+        background: var(--gpd-success);
+        border-radius: 3px;
+    }
+
+    .courses-list::-webkit-scrollbar-thumb:hover {
+        background: #1e7e34;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .wizard-container {
+            margin: 1rem;
+            border-radius: 10px;
+        }
+        
+        .wizard-header {
+            padding: 1.5rem;
+        }
+        
+        .wizard-header h2 {
+            font-size: 1.5rem;
+        }
+        
+        .wizard-progress {
+            padding: 1rem;
+        }
+        
+        .step-circle {
+            width: 50px;
+            height: 50px;
+            font-size: 1rem;
+        }
+        
+        .step-label {
+            font-size: 0.8rem;
+        }
+        
+        .wizard-content {
+            padding: 1.5rem;
+        }
+        
+        .courses-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .wizard-footer {
+            flex-direction: column;
+            gap: 1rem;
+            padding: 1.5rem;
+        }
+        
+        .wizard-buttons {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .btn-wizard {
+            width: 100%;
+            max-width: 200px;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 
 <nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
     <ol class="breadcrumb">
       <li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
       <li class="breadcrumb-item"><a href="{% url 'student_list' %}">{% trans 'Participantes' %}</a></li>
-      <li class="breadcrumb-item active" aria-current="page">{% trans 'Agregar' %}</li>
+      <li class="breadcrumb-item active" aria-current="page">{% trans 'Crear Participante' %}</li>
     </ol>
 </nav>
 
-<h4 class="mb-3 fw-bold"><i class="fas fa-user-tie me-2"></i>{% trans 'Formulario para agregar participante' %}</h4>
-
 {% include 'snippets/messages.html' %}
 
-<form action="" method="POST">{% csrf_token %}
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">{% trans 'Añadir Participante' %}</h3>
-                </div>
-                <div class="card-body">
-                    {{ form.username|as_crispy_field }}
-                    {{ form.first_name|as_crispy_field }}
-                    {{ form.last_name|as_crispy_field }}
-                    {{ form.gender|as_crispy_field }}
-                    {{ form.email|as_crispy_field }}
-                    {{ form.address|as_crispy_field }}
-                    {{ form.phone|as_crispy_field }}
-                </div>
-            </div>
-        </div>
+<div class="wizard-container">
+    <!-- Header del Wizard -->
+    <div class="wizard-header">
+        <h2><i class="fas fa-user-plus me-3"></i>{% trans 'Crear Nuevo Participante' %}</h2>
+        <p>{% trans 'Completa la información paso a paso para crear un nuevo participante' %}</p>
+    </div>
 
-        <div class="col-md-6 ms-auto">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">{% trans 'Otros' %}</h3>
-                </div>
-                <div class="card-body">
-                    {{ form.program|as_crispy_field }}
-                    {{ form.level|as_crispy_field }}
-                    <!-- Aquí agregamos los nuevos campos -->
-                    {{ form.cargo|as_crispy_field }}  <!-- Campo de Cargo -->
-                    {{ form.empresa|as_crispy_field }}  <!-- Campo de Empresa -->
-                </div>
+    <!-- Barra de Progreso -->
+    <div class="wizard-progress">
+        <div class="progress-steps">
+            <div class="step-item active" data-step="1">
+                <div class="step-circle">1</div>
+                <div class="step-label">{% trans 'Personal' %}</div>
+            </div>
+            <div class="step-item" data-step="2">
+                <div class="step-circle">2</div>
+                <div class="step-label">{% trans 'Laboral' %}</div>
+            </div>
+            <div class="step-item" data-step="3">
+                <div class="step-circle">3</div>
+                <div class="step-label">{% trans 'Cursos' %}</div>
+            </div>
+            <div class="step-item" data-step="4">
+                <div class="step-circle">4</div>
+                <div class="step-label">{% trans 'Confirmar' %}</div>
             </div>
         </div>
     </div>
 
-    <input class="btn btn-gpd" type="submit" value="{% trans 'Guardar' %}">
-</form>
+    <!-- Contenido del Wizard -->
+    <form action="" method="POST" id="wizard-form">{% csrf_token %}
+        <!-- Campo oculto para el nivel -->
+        {{ form.level }}
+        
+        <div class="wizard-content">
+            
+            <!-- Paso 1: Información Personal -->
+            <div class="step-content active" id="step-1">
+                <div class="form-section">
+                    <div class="section-header">
+                        <i class="fas fa-user"></i>
+                        {% trans 'Información Personal' %}
+                    </div>
+                    <div class="section-body">
+                        <div class="row">
+        <div class="col-md-6">
+                    {{ form.username|as_crispy_field }}
+                    {{ form.first_name|as_crispy_field }}
+                    {{ form.last_name|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                    {{ form.gender|as_crispy_field }}
+                    {{ form.email|as_crispy_field }}
+                                {{ form.phone|as_crispy_field }}
+                    {{ form.address|as_crispy_field }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-{% endblock content %}
+            <!-- Paso 2: Información Laboral -->
+            <div class="step-content" id="step-2">
+                <div class="form-section">
+                    <div class="section-header">
+                        <i class="fas fa-briefcase"></i>
+                        {% trans 'Información Laboral' %}
+                    </div>
+                    <div class="section-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.empresa|as_crispy_field }}
+                                {{ form.cargo|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.program|as_crispy_field }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Paso 3: Selección de Cursos -->
+            <div class="step-content" id="step-3">
+                <div class="form-section">
+                    <div class="section-header">
+                        <i class="fas fa-graduation-cap"></i>
+                        {% trans 'Selección de Cursos' %}
+                    </div>
+                    <div class="section-body">
+                        <!-- Búsqueda de cursos -->
+                        <div class="search-container">
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="text" id="course-search" class="form-control" 
+                                       placeholder="{% trans 'Buscar cursos...' %}" />
+                            </div>
+                        </div>
+
+                        <!-- Grid de cursos -->
+                        <div class="courses-grid" id="courses-container">
+                            {% for course in form.courses %}
+                            <div class="course-card" data-course-title="{{ course.choice_label|lower }}">
+                                <div class="form-check">
+                                    {{ course.tag }}
+                                    <label class="form-check-label" for="{{ course.id_for_label }}">
+                                        <strong>{{ course.choice_label }}</strong>
+                                    </label>
+                                </div>
+                            </div>
+                            {% endfor %}
+        </div>
+
+                        <!-- Cursos seleccionados -->
+                        <div class="selected-courses" id="selected-courses" style="display: none;">
+                            <h6 class="mb-3">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                {% trans 'Cursos Seleccionados' %} (<span id="selected-count">0</span>)
+                            </h6>
+                            <div id="selected-list"></div>
+                            <button type="button" class="btn btn-outline-danger btn-sm mt-3" id="clear-all">
+                                <i class="fas fa-trash me-1"></i>
+                                {% trans 'Quitar todos' %}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Paso 4: Confirmación -->
+            <div class="step-content" id="step-4">
+                <div class="form-section">
+                    <div class="section-header">
+                        <i class="fas fa-check-circle"></i>
+                        {% trans 'Confirmar Información' %}
+                    </div>
+                    <div class="section-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="summary-section">
+                                    <h6 class="text-primary mb-3 fw-bold">{% trans 'Información Personal' %}</h6>
+                                    <div class="summary-item">
+                                        <span class="summary-label">{% trans 'DNI:' %}</span>
+                                        <span class="summary-value" id="summary-dni"></span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span class="summary-label">{% trans 'Nombre:' %}</span>
+                                        <span class="summary-value" id="summary-name"></span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span class="summary-label">{% trans 'Email:' %}</span>
+                                        <span class="summary-value" id="summary-email"></span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span class="summary-label">{% trans 'Teléfono:' %}</span>
+                                        <span class="summary-value" id="summary-phone"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="summary-section">
+                                    <h6 class="text-primary mb-3 fw-bold">{% trans 'Información Laboral' %}</h6>
+                                    <div class="summary-item">
+                                        <span class="summary-label">{% trans 'Empresa:' %}</span>
+                                        <span class="summary-value" id="summary-empresa"></span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span class="summary-label">{% trans 'Cargo:' %}</span>
+                                        <span class="summary-value" id="summary-cargo"></span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span class="summary-label">{% trans 'Programa:' %}</span>
+                                        <span class="summary-value" id="summary-program"></span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span class="summary-label">{% trans 'Nivel:' %}</span>
+                                        <span class="summary-value" id="summary-level"></span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span class="summary-label">{% trans 'Cursos:' %}</span>
+                                        <span class="summary-value" id="summary-courses"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="info-note">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>{% trans 'Nota:' %}</strong> 
+                            {% trans 'La contraseña se generará automáticamente usando el DNI del participante.' %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer del Wizard -->
+        <div class="wizard-footer">
+            <button type="button" class="btn-wizard btn-secondary" id="btn-prev" style="display: none;">
+                <i class="fas fa-arrow-left"></i>
+                {% trans 'Anterior' %}
+            </button>
+            
+            <div class="wizard-buttons">
+                <a href="{% url 'student_list' %}" class="btn-wizard btn-secondary">
+                    <i class="fas fa-times"></i>
+                    {% trans 'Cancelar' %}
+                </a>
+                <button type="button" class="btn-wizard btn-primary" id="btn-next">
+                    {% trans 'Siguiente' %}
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+                <button type="submit" class="btn-wizard btn-success" id="btn-submit" style="display: none;">
+                    <i class="fas fa-save"></i>
+                    {% trans 'Crear Participante' %}
+                </button>
+            </div>
+        </div>
+    </form>
+    </div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM cargado, inicializando wizard...');
+    
+    let currentStep = 1;
+    const totalSteps = 4;
+    
+    // Elementos del wizard
+    const steps = document.querySelectorAll('.step-item');
+    const stepContents = document.querySelectorAll('.step-content');
+    const btnPrev = document.getElementById('btn-prev');
+    const btnNext = document.getElementById('btn-next');
+    const btnSubmit = document.getElementById('btn-submit');
+    const form = document.getElementById('wizard-form');
+    
+    console.log('Elementos encontrados:');
+    console.log('- Steps:', steps.length);
+    console.log('- Step contents:', stepContents.length);
+    console.log('- Botón prev:', btnPrev);
+    console.log('- Botón next:', btnNext);
+    console.log('- Botón submit:', btnSubmit);
+    console.log('- Form:', form);
+    
+    // Elementos de búsqueda de cursos
+    const courseSearch = document.getElementById('course-search');
+    const courseItems = document.querySelectorAll('.course-card');
+    const selectedCourses = document.getElementById('selected-courses');
+    const selectedList = document.getElementById('selected-list');
+    const selectedCount = document.getElementById('selected-count');
+    const clearAllBtn = document.getElementById('clear-all');
+    
+    // Verificar elementos del resumen
+    console.log('Verificando elementos del resumen:');
+    console.log('- summary-dni:', document.getElementById('summary-dni'));
+    console.log('- summary-name:', document.getElementById('summary-name'));
+    console.log('- summary-email:', document.getElementById('summary-email'));
+    console.log('- summary-phone:', document.getElementById('summary-phone'));
+    console.log('- summary-empresa:', document.getElementById('summary-empresa'));
+    console.log('- summary-cargo:', document.getElementById('summary-cargo'));
+    console.log('- summary-program:', document.getElementById('summary-program'));
+    console.log('- summary-courses:', document.getElementById('summary-courses'));
+    
+    // Verificar campos del formulario
+    console.log('Verificando campos del formulario:');
+    console.log('- username_id (DNI):', document.getElementById('username_id'));
+    console.log('- id_first_name:', document.getElementById('id_first_name'));
+    console.log('- id_last_name:', document.getElementById('id_last_name'));
+    console.log('- id_email:', document.getElementById('id_email'));
+    console.log('- id_phone:', document.getElementById('id_phone'));
+    console.log('- id_empresa:', document.getElementById('id_empresa'));
+    console.log('- id_cargo:', document.getElementById('id_cargo'));
+    console.log('- id_program:', document.getElementById('id_program'));
+
+    // Función para actualizar el progreso
+    function updateProgress() {
+        steps.forEach((step, index) => {
+            const stepNum = index + 1;
+            step.classList.remove('active', 'completed');
+            
+            if (stepNum === currentStep) {
+                step.classList.add('active');
+            } else if (stepNum < currentStep) {
+                step.classList.add('completed');
+            }
+        });
+    }
+
+    // Función para mostrar/ocultar pasos
+    function showStep(stepNumber) {
+        stepContents.forEach((content, index) => {
+            content.classList.remove('active');
+            if (index + 1 === stepNumber) {
+                content.classList.add('active');
+            }
+        });
+        
+        // Actualizar botones
+        btnPrev.style.display = stepNumber === 1 ? 'none' : 'inline-flex';
+        btnNext.style.display = stepNumber === totalSteps ? 'none' : 'inline-flex';
+        btnSubmit.style.display = stepNumber === totalSteps ? 'inline-flex' : 'none';
+    }
+
+    // Función para validar el paso actual
+    function validateStep(step) {
+        const currentContent = document.getElementById(`step-${step}`);
+        const requiredFields = currentContent.querySelectorAll('[required]');
+        let isValid = true;
+        
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                field.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+        
+        // Para el paso 3 (cursos), siempre es válido
+        if (step === 3) {
+            return true;
+        }
+        
+        return isValid;
+    }
+
+    // Función para actualizar el resumen
+    function updateSummary() {
+        // Función helper para obtener valor de campo de forma segura
+        function getFieldValue(fieldId) {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                return field.value || '-';
+            } else {
+                console.warn('Campo no encontrado:', fieldId);
+                return '-';
+            }
+        }
+        
+        // Función helper para obtener texto de select de forma segura
+        function getSelectText(fieldId) {
+            const select = document.getElementById(fieldId);
+            if (select && select.options && select.selectedIndex >= 0) {
+                return select.options[select.selectedIndex].text || '-';
+            } else {
+                console.warn('Select no encontrado o sin selección:', fieldId);
+                return '-';
+            }
+        }
+        
+        // Actualizar campos del resumen de forma segura
+        const summaryDni = document.getElementById('summary-dni');
+        const summaryName = document.getElementById('summary-name');
+        const summaryEmail = document.getElementById('summary-email');
+        const summaryPhone = document.getElementById('summary-phone');
+        const summaryEmpresa = document.getElementById('summary-empresa');
+        const summaryCargo = document.getElementById('summary-cargo');
+        const summaryProgram = document.getElementById('summary-program');
+        const summaryCourses = document.getElementById('summary-courses');
+        
+        if (summaryDni) summaryDni.textContent = getFieldValue('username_id');
+        if (summaryName) {
+            const firstName = getFieldValue('id_first_name');
+            const lastName = getFieldValue('id_last_name');
+            summaryName.textContent = `${firstName} ${lastName}`.trim() || '-';
+        }
+        if (summaryEmail) summaryEmail.textContent = getFieldValue('id_email');
+        if (summaryPhone) summaryPhone.textContent = getFieldValue('id_phone');
+        if (summaryEmpresa) summaryEmpresa.textContent = getFieldValue('id_empresa');
+        if (summaryCargo) summaryCargo.textContent = getFieldValue('id_cargo');
+        if (summaryProgram) summaryProgram.textContent = getSelectText('id_program');
+        
+        // Mostrar "Bachelor" como nivel por defecto
+        const summaryLevel = document.getElementById('summary-level');
+        if (summaryLevel) summaryLevel.textContent = 'Bachelor';
+        
+        // Actualizar cursos seleccionados
+        if (summaryCourses) {
+            const selectedCourses = document.querySelectorAll('#courses-container input[type="checkbox"]:checked');
+            const courseNames = Array.from(selectedCourses).map(cb => {
+                const card = cb.closest('.course-card');
+                if (card) {
+                    const label = card.querySelector('label');
+                    return label ? label.textContent.trim() : 'Curso sin nombre';
+                }
+                return 'Curso sin nombre';
+            });
+            
+            if (courseNames.length > 0) {
+                // Crear lista HTML para mejor presentación
+                const coursesList = courseNames.map(course => `<li>${course}</li>`).join('');
+                summaryCourses.innerHTML = `
+                    <div class="selected-courses-summary">
+                        <span class="courses-count">${courseNames.length} curso${courseNames.length > 1 ? 's' : ''} seleccionado${courseNames.length > 1 ? 's' : ''}</span>
+                        <ul class="courses-list">
+                            ${coursesList}
+                        </ul>
+                    </div>
+                `;
+            } else {
+                summaryCourses.textContent = 'Ninguno seleccionado';
+            }
+        }
+    }
+
+    // Navegación entre pasos
+    btnNext.addEventListener('click', function() {
+        if (validateStep(currentStep)) {
+            if (currentStep === 3) {
+                updateSummary();
+            }
+            currentStep++;
+            updateProgress();
+            showStep(currentStep);
+        }
+    });
+
+    btnPrev.addEventListener('click', function() {
+        currentStep--;
+        updateProgress();
+        showStep(currentStep);
+    });
+
+    // Búsqueda de cursos
+    courseSearch.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        
+        courseItems.forEach(item => {
+            const courseTitle = item.dataset.courseTitle;
+            if (courseTitle.includes(searchTerm)) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+
+    // Manejo de selección de cursos
+    courseItems.forEach(item => {
+        const checkbox = item.querySelector('input[type="checkbox"]');
+        
+        checkbox.addEventListener('change', function() {
+            if (this.checked) {
+                item.classList.add('selected');
+            } else {
+                item.classList.remove('selected');
+            }
+            updateSelectedCourses();
+        });
+    });
+
+    // Actualizar lista de cursos seleccionados
+    function updateSelectedCourses() {
+        const checkedBoxes = document.querySelectorAll('#courses-container input[type="checkbox"]:checked');
+        
+        if (checkedBoxes.length > 0) {
+            selectedCourses.style.display = 'block';
+            selectedCount.textContent = checkedBoxes.length;
+            
+            selectedList.innerHTML = '';
+            checkedBoxes.forEach(checkbox => {
+                const courseTitle = checkbox.closest('.course-card').querySelector('label').textContent;
+                const selectedItem = document.createElement('div');
+                selectedItem.className = 'selected-course-item';
+                selectedItem.innerHTML = `
+                    <span>${courseTitle}</span>
+                    <span class="remove-course" onclick="removeCourse('${checkbox.id}')">×</span>
+                `;
+                selectedList.appendChild(selectedItem);
+            });
+        } else {
+            selectedCourses.style.display = 'none';
+        }
+    }
+
+    // Quitar curso individual
+    window.removeCourse = function(checkboxId) {
+        const checkbox = document.getElementById(checkboxId);
+        checkbox.checked = false;
+        checkbox.closest('.course-card').classList.remove('selected');
+        updateSelectedCourses();
+    };
+
+    // Quitar todos los cursos
+    clearAllBtn.addEventListener('click', function() {
+        document.querySelectorAll('#courses-container input[type="checkbox"]').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        document.querySelectorAll('.course-card').forEach(item => {
+            item.classList.remove('selected');
+        });
+        updateSelectedCourses();
+    });
+
+    // Navegación por clic en pasos
+    steps.forEach((step, index) => {
+        step.addEventListener('click', function() {
+            const stepNumber = index + 1;
+            if (stepNumber <= currentStep) {
+                currentStep = stepNumber;
+                updateProgress();
+                showStep(currentStep);
+            }
+        });
+    });
+
+    // Inicializar
+    updateProgress();
+    updateSelectedCourses();
+});
+</script>
+{% endblock %}

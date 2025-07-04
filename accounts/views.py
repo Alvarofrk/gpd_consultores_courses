@@ -15,6 +15,10 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from datetime import datetime
 from io import BytesIO
+import os
+from reportlab.lib.units import inch
+from reportlab.platypus import Image
+from django.conf import settings
 
 from accounts.decorators import admin_required
 from accounts.filters import LecturerFilter, StudentFilter
@@ -277,42 +281,119 @@ class LecturerFilterView(FilterView):
 @login_required
 @admin_required
 def lecturer_list_pdf(request):
-    lecturers = User.objects.filter(is_lecturer=True)
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="lista_instructores.pdf"'
+    lecturers = User.objects.filter(is_lecturer=True).order_by('first_name', 'last_name')
     
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    # Crear el PDF
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'filename="lista_instructores_gpd.pdf"'
+    
+    # Crear el documento PDF en landscape para mejor aprovechamiento del espacio
+    doc = SimpleDocTemplate(response, pagesize=landscape(letter), 
+                           topMargin=0.3*inch,  # Margen superior reducido
+                           bottomMargin=0.5*inch,
+                           leftMargin=0.5*inch,
+                           rightMargin=0.5*inch)
     elements = []
     
-    # Estilos
+    # Estilos modernos
     styles = getSampleStyleSheet()
+    
+    # Estilo para el título principal
     title_style = ParagraphStyle(
-        'CustomTitle',
+        'ModernTitle',
         parent=styles['Heading1'],
-        fontSize=24,
+        fontSize=28,
         spaceAfter=30,
-        textColor=colors.HexColor('#1a237e'),
-        alignment=1
+        textColor=colors.HexColor('#033b80'),  # Azul GPD
+        alignment=1,  # Centrado
+        fontName='Helvetica-Bold',
+        leading=32
     )
     
-    # Título
-    title = Paragraph("LISTA DE INSTRUCTORES", title_style)
-    elements.append(title)
-    
-    # Información del sistema
-    system_info = Paragraph(
-        f"Generado el: {datetime.now().strftime('%d/%m/%Y %H:%M')}",
-        styles['Normal']
+    # Estilo para información del sistema
+    info_style = ParagraphStyle(
+        'SystemInfo',
+        parent=styles['Normal'],
+        fontSize=10,
+        spaceAfter=15,
+        textColor=colors.HexColor('#6c757d'),
+        alignment=2,  # Derecha
+        fontName='Helvetica'
     )
-    elements.append(system_info)
+    
+    # Estilo para el pie de página
+    footer_style = ParagraphStyle(
+        'Footer',
+        parent=styles['Normal'],
+        fontSize=8,
+        textColor=colors.HexColor('#6c757d'),
+        alignment=1,
+        fontName='Helvetica'
+    )
+    
+    # ENCABEZADO: Agregar logos arriba de todo
+    try:
+        logo1_path = settings.STATICFILES_DIRS[0] + "/img/logo1.jpg"
+        logoaniversario_path = settings.STATICFILES_DIRS[0] + "/img/logoaniversario.png"
+        
+        # Crear tabla para los logos (2 columnas)
+        logo_data = []
+        logo_row = []
+        
+        # Logo 1 (tamaño normal)
+        if os.path.exists(logo1_path):
+            logo1 = Image(logo1_path, width=2*inch, height=1.5*inch)
+            logo_row.append(logo1)
+        else:
+            logo_row.append("")
+        
+        # Logo aniversario (más pequeño)
+        if os.path.exists(logoaniversario_path):
+            logoaniversario = Image(logoaniversario_path, width=1.5*inch, height=1.125*inch)  # 25% más pequeño
+            logo_row.append(logoaniversario)
+        else:
+            logo_row.append("")
+        
+        logo_data.append(logo_row)
+        
+        # Crear tabla con los logos
+        logo_table = Table(logo_data, colWidths=[3*inch, 3*inch])
+        logo_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+            ('TOPPADDING', (0, 0), (-1, -1), 0),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+        ]))
+        
+        elements.append(logo_table)
+        elements.append(Spacer(1, 20))
+    except:
+        pass  # Si no encuentra los logos, continúa sin ellos
+    
+    # Título principal
+    elements.append(Paragraph("LISTA DE INSTRUCTORES", title_style))
+    
+    # Información de generación
+    current_date = datetime.now().strftime('%d/%m/%Y')
+    current_time = datetime.now().strftime('%H:%M')
+    elements.append(Paragraph(f"Generado el: {current_date} a las {current_time}", info_style))
+    
+    # Estadísticas
+    total_lecturers = lecturers.count()
+    elements.append(Paragraph(f"Total de instructores: {total_lecturers}", info_style))
     elements.append(Spacer(1, 20))
     
-    # Tabla de instructores
-    data = [['ID', 'Nombre Completo', 'Correo Electrónico', 'Teléfono', 'Dirección']]
+    # Tabla de instructores con diseño moderno
+    headers = ['#', 'ID', 'Nombres y Apellidos', 'Correo Electrónico', 'Teléfono', 'Dirección']
     
-    for lecturer in lecturers:
+    data = [headers]  # Primera fila son los headers
+    
+    # Agregar datos de instructores
+    for i, lecturer in enumerate(lecturers, 1):
         data.append([
+            str(i),
             str(lecturer.id),
             lecturer.get_full_name,
             lecturer.email or '-',
@@ -320,40 +401,50 @@ def lecturer_list_pdf(request):
             lecturer.address or '-'
         ])
     
-    # Estilo de la tabla
+    # Crear tabla con anchos de columna optimizados
+    col_widths = [30, 50, 200, 150, 100, 200]  # Anchos en puntos
+    table = Table(data, colWidths=col_widths)
+    
+    # Estilo moderno para la tabla con letras más pequeñas
     table_style = TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a237e')),
+        # Header styling
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#033b80')),  # Azul GPD
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 12),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('TOPPADDING', (0, 0), (-1, 0), 12),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),  # Reducido de 11 a 9
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),  # Reducido de 12 a 10
+        ('TOPPADDING', (0, 0), (-1, 0), 10),  # Reducido de 12 a 10
+        ('LINEBELOW', (0, 0), (-1, 0), 2, colors.HexColor('#042042')),
+        
+        # Data rows styling con letras más pequeñas
         ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 10),
-        ('TOPPADDING', (0, 1), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 1), (-1, -1), 8),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f5f5f5')])
+        ('FONTSIZE', (0, 1), (-1, -1), 7),  # Reducido de 9 a 7
+        ('TOPPADDING', (0, 1), (-1, -1), 6),  # Reducido de 8 a 6
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),  # Reducido de 8 a 6
+        ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # Número centrado
+        ('ALIGN', (1, 1), (1, -1), 'CENTER'),  # ID centrado
+        ('ALIGN', (2, 1), (2, -1), 'LEFT'),    # Nombre a la izquierda
+        ('ALIGN', (3, 1), (3, -1), 'LEFT'),    # Email a la izquierda
+        ('ALIGN', (4, 1), (4, -1), 'CENTER'),  # Teléfono centrado
+        ('ALIGN', (5, 1), (5, -1), 'LEFT'),    # Dirección a la izquierda
+        
+        # Grid styling
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e9ecef')),
+        ('LINEBELOW', (0, -1), (-1, -1), 1, colors.HexColor('#033b80')),
+        
+        # Alternating row colors
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')])
     ])
     
-    # Crear tabla con anchos de columna personalizados
-    table = Table(data, colWidths=[50, 150, 150, 100, 150])
     table.setStyle(table_style)
     elements.append(table)
     
-    # Pie de página
+    # Espacio final (sin pie de página)
     elements.append(Spacer(1, 30))
-    footer = Paragraph(
-        "Este documento fue generado automáticamente por el sistema de gestión de aprendizaje",
-        styles['Normal']
-    )
-    elements.append(footer)
     
+    # Construir el PDF
     doc.build(elements)
-    pdf = buffer.getvalue()
-    buffer.close()
-    response.write(pdf)
     
     return response
 
@@ -382,17 +473,42 @@ def student_add_view(request):
             student = form.save()
             full_name = student.get_full_name
             email = student.email
-            messages.success(
-                request,
-                f"Cuenta para  {full_name} ha si do creada. "
-                f"An email with account credentials will be sent to {email} within a minute.",
-            )
+            
+            # Obtener información sobre los cursos asignados
+            student_obj = Student.objects.get(student=student)
+            courses_count = student_obj.courses.count()
+            
+            if courses_count > 0:
+                courses_list = ", ".join([course.title for course in student_obj.courses.all()[:3]])
+                if courses_count > 3:
+                    courses_list += f" y {courses_count - 3} más"
+                
+                messages.success(
+                    request,
+                    f"Participante {full_name} creado exitosamente. "
+                    f"Inscrito en {courses_count} curso(s): {courses_list}. "
+                    f"Las credenciales se enviarán a {email}."
+                )
+            else:
+                messages.success(
+                    request,
+                    f"Participante {full_name} creado exitosamente. "
+                    f"Puedes asignarle cursos desde la lista de participantes. "
+                    f"Las credenciales se enviarán a {email}."
+                )
+            
             return redirect("student_list")
-        messages.error(request, "Correct the error(s) below.")
+        messages.error(request, "Por favor corrige los errores indicados abajo.")
     else:
         form = StudentAddForm()
+    
     return render(
-        request, "accounts/add_student.html", {"title": "Add Student", "form": form}
+        request, 
+        "accounts/add_student.html", 
+        {
+            "title": "Crear Participante", 
+            "form": form
+        }
     )
 
 
@@ -431,95 +547,171 @@ class StudentListView(FilterView):
 @login_required
 @admin_required
 def render_student_pdf_list(request):
-    students = Student.objects.all()
+    students = Student.objects.all().order_by('student__first_name', 'student__last_name')
     
     # Crear el PDF
     response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'filename="lista_participantes.pdf"'
+    response['Content-Disposition'] = 'filename="lista_participantes_gpd.pdf"'
     
-    # Crear el documento PDF
-    doc = SimpleDocTemplate(response, pagesize=landscape(letter))
+    # Crear el documento PDF en landscape para mejor aprovechamiento del espacio
+    doc = SimpleDocTemplate(response, pagesize=landscape(letter), 
+                           topMargin=0.3*inch,  # Margen superior reducido
+                           bottomMargin=0.5*inch,
+                           leftMargin=0.5*inch,
+                           rightMargin=0.5*inch)
     elements = []
     
-    # Estilos
+    # Estilos modernos
     styles = getSampleStyleSheet()
+    
+    # Estilo para el título principal
     title_style = ParagraphStyle(
-        'CustomTitle',
+        'ModernTitle',
         parent=styles['Heading1'],
-        fontSize=24,
+        fontSize=28,
         spaceAfter=30,
-        textColor=colors.HexColor('#1a237e'),  # Azul marino
-        alignment=1  # Centrado
+        textColor=colors.HexColor('#033b80'),  # Azul GPD
+        alignment=1,  # Centrado
+        fontName='Helvetica-Bold',
+        leading=32
     )
     
-    subtitle_style = ParagraphStyle(
-        'CustomSubtitle',
-        parent=styles['Heading2'],
-        fontSize=16,
-        spaceAfter=20,
-        textColor=colors.HexColor('#1a237e'),
-        alignment=1
+    # Estilo para información del sistema
+    info_style = ParagraphStyle(
+        'SystemInfo',
+        parent=styles['Normal'],
+        fontSize=10,
+        spaceAfter=15,
+        textColor=colors.HexColor('#6c757d'),
+        alignment=2,  # Derecha
+        fontName='Helvetica'
     )
     
-    # Título del documento
-    elements.append(Paragraph("LISTA DE PARTICIPANTES", title_style))
-    
-    # Información de generación
-    elements.append(Paragraph(f"Fecha de generación: {datetime.now().strftime('%d/%m/%Y %H:%M')}", styles['Normal']))
-    elements.append(Spacer(1, 30))
-    
-    # Tabla de participantes
-    data = [['DNI', 'Nombre Completo', 'Correo Electrónico', 'Empresa', 'Cargo']]
-    
-    for student in students:
-        data.append([
-            student.student.username,
-            student.student.get_full_name,
-            student.student.email,
-            student.empresa or '-',
-            student.cargo or '-'
-        ])
-    
-    # Crear la tabla
-    table = Table(data)
-    
-    # Estilo de la tabla
-    table.setStyle(TableStyle([
-        # Estilo del encabezado
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a237e')),  # Azul marino
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 12),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('TOPPADDING', (0, 0), (-1, 0), 12),
-        
-        # Estilo de las filas
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 10),
-        ('TOPPADDING', (0, 1), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 1), (-1, -1), 8),
-        
-        # Bordes y rejilla
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('LINEBELOW', (0, 0), (-1, 0), 2, colors.black),
-        
-        # Colores alternados para las filas
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f5f5f5')])
-    ]))
-    
-    elements.append(table)
-    
-    # Pie de página
-    elements.append(Spacer(1, 30))
+    # Estilo para el pie de página
     footer_style = ParagraphStyle(
         'Footer',
         parent=styles['Normal'],
         fontSize=8,
-        textColor=colors.gray,
-        alignment=1
+        textColor=colors.HexColor('#6c757d'),
+        alignment=1,
+        fontName='Helvetica'
     )
-    elements.append(Paragraph("Documento generado automáticamente por el sistema de gestión de aprendizaje", footer_style))
+    
+    # ENCABEZADO: Agregar logos arriba de todo
+    try:
+        logo1_path = settings.STATICFILES_DIRS[0] + "/img/logo1.jpg"
+        logoaniversario_path = settings.STATICFILES_DIRS[0] + "/img/logoaniversario.png"
+        
+        # Crear tabla para los logos (2 columnas)
+        logo_data = []
+        logo_row = []
+        
+        # Logo 1 (tamaño normal)
+        if os.path.exists(logo1_path):
+            logo1 = Image(logo1_path, width=2*inch, height=1.5*inch)
+            logo_row.append(logo1)
+        else:
+            logo_row.append("")
+        
+        # Logo aniversario (más pequeño)
+        if os.path.exists(logoaniversario_path):
+            logoaniversario = Image(logoaniversario_path, width=1.5*inch, height=1.125*inch)  # 25% más pequeño
+            logo_row.append(logoaniversario)
+        else:
+            logo_row.append("")
+        
+        logo_data.append(logo_row)
+        
+        # Crear tabla con los logos
+        logo_table = Table(logo_data, colWidths=[3*inch, 3*inch])
+        logo_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+            ('TOPPADDING', (0, 0), (-1, -1), 0),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+        ]))
+        
+        elements.append(logo_table)
+        elements.append(Spacer(1, 20))
+    except:
+        pass  # Si no encuentra los logos, continúa sin ellos
+    
+    # Título principal
+    elements.append(Paragraph("LISTA DE PARTICIPANTES", title_style))
+    
+    # Información de generación
+    current_date = datetime.now().strftime('%d/%m/%Y')
+    current_time = datetime.now().strftime('%H:%M')
+    elements.append(Paragraph(f"Generado el: {current_date} a las {current_time}", info_style))
+    
+    # Estadísticas
+    total_students = students.count()
+    elements.append(Paragraph(f"Total de participantes: {total_students}", info_style))
+    elements.append(Spacer(1, 20))
+    
+    # Tabla de participantes con diseño moderno
+    headers = ['#', 'DNI', 'Nombres y Apellidos', 'Correo Electrónico', 'Teléfono', 'Empresa', 'Cargo', 'Programa']
+    
+    data = [headers]  # Primera fila son los headers
+    
+    # Agregar datos de participantes
+    for i, student in enumerate(students, 1):
+        data.append([
+            str(i),
+            student.student.username,
+            student.student.get_full_name,
+            student.student.email or '-',
+            student.student.phone or '-',
+            student.empresa or '-',
+            student.cargo or '-',
+            str(student.program) if student.program else '-'
+        ])
+    
+    # Crear tabla con anchos de columna optimizados
+    col_widths = [30, 80, 150, 120, 80, 100, 100, 100]  # Anchos en puntos
+    table = Table(data, colWidths=col_widths)
+    
+    # Estilo moderno para la tabla con letras más pequeñas
+    table_style = TableStyle([
+        # Header styling
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#033b80')),  # Azul GPD
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),  # Reducido de 11 a 9
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),  # Reducido de 12 a 10
+        ('TOPPADDING', (0, 0), (-1, 0), 10),  # Reducido de 12 a 10
+        ('LINEBELOW', (0, 0), (-1, 0), 2, colors.HexColor('#042042')),
+        
+        # Data rows styling con letras más pequeñas
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 7),  # Reducido de 9 a 7
+        ('TOPPADDING', (0, 1), (-1, -1), 6),  # Reducido de 8 a 6
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),  # Reducido de 8 a 6
+        ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # Número centrado
+        ('ALIGN', (1, 1), (1, -1), 'CENTER'),  # DNI centrado
+        ('ALIGN', (2, 1), (2, -1), 'LEFT'),    # Nombre a la izquierda
+        ('ALIGN', (3, 1), (3, -1), 'LEFT'),    # Email a la izquierda
+        ('ALIGN', (4, 1), (4, -1), 'CENTER'),  # Teléfono centrado
+        ('ALIGN', (5, 1), (5, -1), 'LEFT'),    # Empresa a la izquierda
+        ('ALIGN', (6, 1), (6, -1), 'LEFT'),    # Cargo a la izquierda
+        ('ALIGN', (7, 1), (7, -1), 'LEFT'),    # Programa a la izquierda
+        
+        # Grid styling
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e9ecef')),
+        ('LINEBELOW', (0, -1), (-1, -1), 1, colors.HexColor('#033b80')),
+        
+        # Alternating row colors
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')])
+    ])
+    
+    table.setStyle(table_style)
+    elements.append(table)
+    
+    # Espacio final (sin pie de página)
+    elements.append(Spacer(1, 30))
     
     # Construir el PDF
     doc.build(elements)

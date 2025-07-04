@@ -71,19 +71,24 @@
             </li>
             {% endif %}
 
-            {% if request.user.is_superuser %}
+            <!-- Ocultar "Registro de progreso de exámenes" para administradores e instructores -->
+            {% if request.user.is_student %}
             <li class="{% if request.path == qpr %}active{% endif %}">
                 <a href="{% url 'quiz_progress' %}"><i class="fas fa-record-vinyl"></i>{% trans 'Registro de progreso de exámenes' %}</a>
             </li>
+            {% endif %}
+
+            {% if request.user.is_superuser %}
             <li class="{% if request.path == cav %}active{% endif %}">
                 <a href="{% url 'course_allocation_view' %}"><i class="fas fa-tasks"></i>{% trans 'Asignación de cursos' %}</a>
             </li>
-            <li class="{% if request.path == sess %}active{% endif %}">
+            <!-- NO TOCAR POR AHORA - FUNCIONALIDAD IMPORTANTE PARA FUTURO -->
+            <!-- <li class="{% if request.path == sess %}active{% endif %}">
                 <a href="{% url 'session_list' %}"><i class="fas fa-calendar-week"></i>{% trans 'Gestión de sesiones' %}</a>
             </li>
             <li class="{% if request.path == sem %}active{% endif %}">
                 <a href="{% url 'semester_list' %}"><i class="fas fa-calendar-alt"></i>{% trans 'Gestión de grupos' %}</a>
-            </li>
+            </li> -->
             {% endif %}
 
             <!-- {% if request.user.is_lecturer %}
@@ -93,9 +98,6 @@
             {% endif %} -->
 
             {% if request.user.is_student %}
-            <li class="{% if request.path == qpr %}active{% endif %}">
-                <a href="{% url 'quiz_progress' %}"><i class="fas fa-record-vinyl"></i>{% trans 'Registro de progreso de exámenes' %}</a>
-            </li>
             <!-- <li class="{% if request.path == vr %}active{% endif %}">
                 <a href="{% url 'grade_results' %}"><i class="fa fa-spell-check"></i>{% trans 'Resultados de calificaciones' %}</a>
             </li>

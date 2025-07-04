@@ -39,8 +39,8 @@ from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
 from django.utils import timezone
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Image
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import Paragraph, Spacer
 from datetime import datetime
 from babel.dates import format_date
@@ -587,107 +587,174 @@ def course_drop(request):
 def download_courses_pdf(request):
     # Obtener los cursos que el estudiante tiene registrados
     student = get_object_or_404(Student, student__pk=request.user.id)
-    taken_courses = TakenCourse.objects.filter(student=student)
-    # Crear una respuesta HTTP con tipo de contenido PDF
+    taken_courses = TakenCourse.objects.filter(student=student).order_by('course__title')
+    
+    # Crear el PDF
     response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="cursos_registrados.pdf"'
-
-    # Crear un documento PDF
-    doc = SimpleDocTemplate(response, pagesize=landscape(letter))  # Cambiar a landscape
+    response['Content-Disposition'] = 'filename="consolidado_cursos_gpd.pdf"'
     
-    # Encabezados de la tabla
-    headers = ["Nombre del Curso", "Código", "Estatus de registro", "Fecha de Inscripción", "Fecha de Vencimiento"]  # Agregar encabezados
-    
-    # Datos de los cursos
-    data = []
-    
-    # Fechas fijas
-    fixed_enrollment_date = "12/01/2025"
-    fixed_expiration_date = "12/02/2026"
-    
-    # Agregar los detalles de cada curso
-    for taken_course in taken_courses:
-        course_name = taken_course.course.title
-        course_code = taken_course.course.code
-        course_status = "Inscrito" if taken_course.course.is_active else "En curso"
-        data.append([course_name, course_code, course_status, fixed_enrollment_date, fixed_expiration_date])  # Usar fechas fijas
-
-    # Crear la tabla con los datos
-    table = Table([headers] + data)
-    
-    # Estilo de la tabla
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#BA6022')),  # Fondo gris para el encabezado
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),  # Texto blanco en el encabezado
-        ('ALIGN', (0, 1), (-1, -1), 'CENTER'),  # Alineación centrada por defecto
-        ('ALIGN', (0, 0), (0, -1), 'LEFT'),  # Alinear "Nombre del Curso" a la izquierda
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),  # Fuente
-        ('FONTSIZE', (0, 0), (-1, -1), 8),  # Tamaño de la fuente
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),  # Espacio debajo del encabezado
-        ('TOPPADDING', (0, 1), (-1, -1), 10),  # Espacio encima de las filas de datos
-        ('LINEBEFORE', (0, 0), (0, -1), 0.25, colors.black),  # Borde izquierdo
-        ('LINEAFTER', (-1, 0), (-1, -1), 0.25, colors.black),  # Borde derecho
-        ('LINEABOVE', (0, 0), (-1, 0), 0.25, colors.black),  # Línea encima del encabezado
-        ('LINEBELOW', (0, -1), (-1, -1), 0.25, colors.black),  # Línea debajo de la última fila
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),  # Rejilla para las celdas
-    ]))
-    
-    # Crear lista de elementos para agregar al documento
+    # Crear el documento PDF en landscape para mejor aprovechamiento del espacio
+    doc = SimpleDocTemplate(response, pagesize=landscape(letter), 
+                           topMargin=0.3*inch,  # Margen superior reducido
+                           bottomMargin=0.5*inch,
+                           leftMargin=0.5*inch,
+                           rightMargin=0.5*inch)
     elements = []
     
-    # Añadir el título "REPORTE DE PROGRESO" al documento
-    title = "REPORTE DE PROGRESO"
-    title_style = TableStyle([
-        ('ALIGN', (0, 0), (0, 0), 'CENTER'),  # Alinear el título al centro
-        ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (0, 0), 16),
-        ('BOTTOMPADDING', (0, 0), (0, 0), 10),
-    ])
+    # Estilos modernos
+    styles = getSampleStyleSheet()
     
-    # Para el título se crea una tabla con un solo elemento para tener control sobre la alineación
-    title_table = Table([[title]], style=title_style, colWidths=[6 * inch])
-    elements.append(title_table)
-
-    # # Añadir un espacio entre la fecha y la tabla de cursos
-    elements.append(Table([[""]], colWidths=[6 * inch], rowHeights=[0.5 * inch]))  # Espacio vacío
-
-    # Añadir el nombre del estudiante debajo del título
+    # Estilo para el título principal
+    title_style = ParagraphStyle(
+        'ModernTitle',
+        parent=styles['Heading1'],
+        fontSize=28,
+        spaceAfter=30,
+        textColor=colors.HexColor('#033b80'),  # Azul GPD
+        alignment=1,  # Centrado
+        fontName='Helvetica-Bold',
+        leading=32
+    )
+    
+    # Estilo para información del sistema
+    info_style = ParagraphStyle(
+        'SystemInfo',
+        parent=styles['Normal'],
+        fontSize=10,
+        spaceAfter=15,
+        textColor=colors.HexColor('#6c757d'),
+        alignment=2,  # Derecha
+        fontName='Helvetica'
+    )
+    
+    # Estilo para el pie de página
+    footer_style = ParagraphStyle(
+        'Footer',
+        parent=styles['Normal'],
+        fontSize=8,
+        textColor=colors.HexColor('#6c757d'),
+        alignment=1,
+        fontName='Helvetica'
+    )
+    
+    # ENCABEZADO: Agregar logos arriba de todo
+    try:
+        logo1_path = settings.STATICFILES_DIRS[0] + "/img/logo1.jpg"
+        logoaniversario_path = settings.STATICFILES_DIRS[0] + "/img/logoaniversario.png"
+        
+        # Crear tabla para los logos (2 columnas)
+        logo_data = []
+        logo_row = []
+        
+        # Logo 1 (tamaño normal)
+        if os.path.exists(logo1_path):
+            logo1 = Image(logo1_path, width=2*inch, height=1.5*inch)
+            logo_row.append(logo1)
+        else:
+            logo_row.append("")
+        
+        # Logo aniversario (más pequeño)
+        if os.path.exists(logoaniversario_path):
+            logoaniversario = Image(logoaniversario_path, width=1.5*inch, height=1.125*inch)  # 25% más pequeño
+            logo_row.append(logoaniversario)
+        else:
+            logo_row.append("")
+        
+        logo_data.append(logo_row)
+        
+        # Crear tabla con los logos
+        logo_table = Table(logo_data, colWidths=[3*inch, 3*inch])
+        logo_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+            ('TOPPADDING', (0, 0), (-1, -1), 0),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+        ]))
+        
+        elements.append(logo_table)
+        elements.append(Spacer(1, 20))
+    except Exception as e:
+        print(f"Error cargando logos: {e}")
+        pass  # Si no encuentra los logos, continúa sin ellos
+    
+    # Título principal
+    elements.append(Paragraph("CONSOLIDADO DE CURSOS", title_style))
+    
+    # Información del estudiante
     student_name = f"{student.student.first_name} {student.student.last_name}"
-    name_style = TableStyle([
-        ('ALIGN', (0, 0), (0, 0), 'LEFT'),  # Alinear a la izquierda
-        ('FONTNAME', (0, 0), (0, 0), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (0, 0), 12),
-        ('BOTTOMPADDING', (0, 0), (0, 0), 6),
+    student_info = Paragraph(f"Participante: {student_name}", info_style)
+    elements.append(student_info)
+    
+    # Información de generación
+    current_date = datetime.now().strftime('%d/%m/%Y')
+    current_time = datetime.now().strftime('%H:%M')
+    elements.append(Paragraph(f"Generado el: {current_date} a las {current_time}", info_style))
+    
+    # Estadísticas
+    total_courses = taken_courses.count()
+    elements.append(Paragraph(f"Total de cursos inscritos: {total_courses}", info_style))
+    elements.append(Spacer(1, 20))
+    
+    # Tabla de cursos con diseño moderno (sin fechas)
+    headers = ['#', 'Código', 'Nombre del Curso', 'Estado']
+    
+    data = [headers]  # Primera fila son los headers
+    
+    # Agregar datos de cursos
+    for i, taken_course in enumerate(taken_courses, 1):
+        course_status = "Inscrito" if taken_course.course.is_active else "En curso"
+        data.append([
+            str(i),
+            taken_course.course.code,
+            taken_course.course.title,
+            course_status
+        ])
+    
+    # Crear tabla con anchos de columna optimizados (sin columnas de fechas)
+    col_widths = [40, 100, 350, 120]  # Anchos en puntos ajustados
+    table = Table(data, colWidths=col_widths)
+    
+    # Estilo moderno para la tabla con letras más pequeñas
+    table_style = TableStyle([
+        # Header styling
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#033b80')),  # Azul GPD
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),  # Reducido de 11 a 9
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),  # Reducido de 12 a 10
+        ('TOPPADDING', (0, 0), (-1, 0), 10),  # Reducido de 12 a 10
+        ('LINEBELOW', (0, 0), (-1, 0), 2, colors.HexColor('#042042')),
+        
+        # Data rows styling con letras más pequeñas
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 7),  # Reducido de 9 a 7
+        ('TOPPADDING', (0, 1), (-1, -1), 6),  # Reducido de 8 a 6
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),  # Reducido de 8 a 6
+        ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # Número centrado
+        ('ALIGN', (1, 1), (1, -1), 'CENTER'),  # Código centrado
+        ('ALIGN', (2, 1), (2, -1), 'LEFT'),    # Nombre a la izquierda
+        ('ALIGN', (3, 1), (3, -1), 'CENTER'),  # Estado centrado
+        
+        # Grid styling
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e9ecef')),
+        ('LINEBELOW', (0, -1), (-1, -1), 1, colors.HexColor('#033b80')),
+        
+        # Alternating row colors
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')])
     ])
     
-    # Crear una tabla con el nombre del estudiante
-    name_table = Table([[f"Nombre: {student_name}"]], style=name_style, colWidths=[6 * inch])
-    elements.append(name_table)
-
-    # Obtener la fecha actual
-    current_date = format_date(datetime.now(), format='d \'de\' MMMM \'de\' y', locale='es_ES')  # Formato: 27 de Noviembre de 2024
-
-    # Crear una tabla con la fecha
-    date_style = TableStyle([
-        ('ALIGN', (0, 0), (0, 0), 'LEFT'),  # Alinear a la izquierda
-        ('FONTNAME', (0, 0), (0, 0), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (0, 0), 12),
-        ('BOTTOMPADDING', (0, 0), (0, 0), 6),
-    ])
-
-    # Crear una tabla con la fecha
-    date_table = Table([[f"Fecha: {current_date}"]], style=date_style, colWidths=[6 * inch])
-    elements.append(date_table)
-
-    # Añadir un espacio entre la fecha y la tabla de cursos
-    elements.append(Table([[""]], colWidths=[6 * inch], rowHeights=[0.5 * inch]))  # Espacio vacío
-
-    # Añadir la tabla de cursos al documento
+    table.setStyle(table_style)
     elements.append(table)
-
-    # Construir el documento PDF
+    
+    # Espacio final (sin pie de página)
+    elements.append(Spacer(1, 30))
+    
+    # Construir el PDF
     doc.build(elements)
-
+    
     return response
 # ########################################################
 # User Course List View

@@ -16,48 +16,163 @@
 {% for student in students %}<h3>{{ student.student.user.get_full_name }}</h3>{% endfor %}
 {% for marking in marking_list %}<h3>{{ marking }} <small>{{ forloop.counter }}</small></h3>{% endfor %}
 
-<form action="" method="GET" class="form-inline justify-content-center bg-white p-4 my-3 d-flex gap-3">
-	<input type="text" name="user_filter" class="form-control" placeholder="{% trans 'Usuario' %}" value="{{ request.GET.user_filter }}">
-	<input type="text" name="quiz_filter" class="form-control" placeholder="{% trans 'Cuestionario' %}" value="{{ request.GET.quiz_filter }}">
-	<button type="submit" class="btn btn-outline-secondary">{% trans "Filtrar" %}</button>
-</form>
+<!-- Filtros mejorados -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form action="" method="GET" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label for="user_filter" class="form-label">{% trans 'Usuario' %}</label>
+                <input type="text" name="user_filter" id="user_filter" class="form-control" 
+                       placeholder="{% trans 'Buscar por usuario' %}" value="{{ request.GET.user_filter }}">
+            </div>
+            <div class="col-md-4">
+                <label for="quiz_filter" class="form-label">{% trans 'Cuestionario' %}</label>
+                <input type="text" name="quiz_filter" id="quiz_filter" class="form-control" 
+                       placeholder="{% trans 'Buscar por cuestionario' %}" value="{{ request.GET.quiz_filter }}">
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary me-2">
+                    <i class="fas fa-search"></i> {% trans "Filtrar" %}
+                </button>
+                <a href="{% url 'quiz_marking' %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> {% trans "Limpiar" %}
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
 
-{% if sitting_list %}
+{% if object_list %}
 
-	<div class="text-light bg-secondary p-1 my-2">{% trans 'Total de exámenes completos' %}: {{ sitting_list.count }}</div>
+	<!-- Información de estadísticas -->
+	<div class="row mb-3">
+		<div class="col-md-6">
+			<div class="alert alert-info">
+				<i class="fas fa-info-circle"></i>
+				{% trans 'Total de exámenes completos' %}: <strong>{{ total_exams }}</strong>
+			</div>
+		</div>
+		<div class="col-md-6">
+			<div class="alert alert-success">
+				<i class="fas fa-list"></i>
+				{% trans 'Mostrando página' %} <strong>{{ current_page }}</strong> 
+				{% if is_paginated %}de {{ page_obj.paginator.num_pages }}{% endif %}
+			</div>
+		</div>
+	</div>
 
-	<table class="table table-bordered table-striped">
-		<thead>
+	<!-- Tabla de exámenes -->
+	<div class="table-responsive">
+		<table class="table table-bordered table-striped table-hover">
+			<thead class="table-dark">
+				<tr>
+					<th>#</th>
+					<th>{% trans "Usuario" %}</th>
+					<th>{% trans "Curso" %}</th>
+					<th>{% trans "Cuestionario" %}</th>
+					<th>{% trans "Completado" %}</th>
+					<th>{% trans "Puntuación" %}</th>
+					<th>{% trans "Estado" %}</th>
+					<th>{% trans "Acciones" %}</th>
+				</tr>
+			</thead>
+			<tbody>
+			{% for sitting in object_list %}
 			<tr>
-				<th>#</th>
-				<th>{% trans "Usuario" %}</th>
-				<th>{% trans "Curso" %}</th>
-				<th>{% trans "Cuestionario" %}</th>
-				<th>{% trans "Completado" %}</th>
-				<th>{% trans "Puntuación" %}(%)</th>
-				<th></th>
+				<td>
+					{% if is_paginated %}
+						{{ page_obj.start_index|add:forloop.counter0 }}
+					{% else %}
+						{{ forloop.counter }}
+					{% endif %}
+				</td>
+				<td>
+					<strong>{{ sitting.user.username }}</strong><br>
+					<small class="text-muted">{{ sitting.user.get_full_name }}</small>
+				</td>
+				<td>{{ sitting.quiz.course.title }}</td>
+				<td>{{ sitting.quiz.title }}</td>
+				<td>{{ sitting.end|date:"d/m/Y H:i" }}</td>
+				<td>
+					<span class="badge {% if sitting.get_percent_correct >= 80 %}bg-success{% elif sitting.get_percent_correct >= 60 %}bg-warning{% else %}bg-danger{% endif %}">
+						{{ sitting.get_percent_correct }}%
+					</span>
+				</td>
+				<td>
+					{% if sitting.get_percent_correct >= sitting.quiz.pass_mark %}
+						<span class="badge bg-success">{% trans "Aprobado" %}</span>
+					{% else %}
+						<span class="badge bg-danger">{% trans "No Aprobado" %}</span>
+					{% endif %}
+				</td>
+				<td>
+					<a href="{% url 'quiz_marking_detail' pk=sitting.id %}" class="btn btn-sm btn-primary">
+						<i class="fas fa-eye"></i> {% trans "Ver detalles" %}
+					</a>
+				</td>
 			</tr>
-		</thead>
-		<tbody>
-		{% for sitting in sitting_list %}
-		<tr>
-			<td>{{ forloop.counter }}</td>
-			<td>{{ sitting.user }}</td>
-			<td>{{ sitting.quiz.course }}</td>
-			<td>{{ sitting.quiz }}</td>
-			<td>{{ sitting.end|date }}</td>
-			<td>{{ sitting.get_percent_correct }}%</td>
-			<td>
-			<a href="{% url 'quiz_marking_detail' pk=sitting.id %}">
-				{% trans "Ver detalles" %}
-			</a>
-			</td>
-		</tr>
-		{% endfor %}
-		</tbody>
+			{% endfor %}
+			</tbody>
+		</table>
+	</div>
 
-	</table>
+	<!-- Paginación -->
+	{% if is_paginated %}
+	<nav aria-label="Navegación de páginas">
+		<ul class="pagination justify-content-center">
+			{% if page_obj.has_previous %}
+				<li class="page-item">
+					<a class="page-link" href="?page=1{% if request.GET.user_filter %}&user_filter={{ request.GET.user_filter }}{% endif %}{% if request.GET.quiz_filter %}&quiz_filter={{ request.GET.quiz_filter }}{% endif %}">
+						<i class="fas fa-angle-double-left"></i> {% trans "Primera" %}
+					</a>
+				</li>
+				<li class="page-item">
+					<a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.user_filter %}&user_filter={{ request.GET.user_filter }}{% endif %}{% if request.GET.quiz_filter %}&quiz_filter={{ request.GET.quiz_filter }}{% endif %}">
+						<i class="fas fa-angle-left"></i> {% trans "Anterior" %}
+					</a>
+				</li>
+			{% endif %}
+
+			{% for num in page_obj.paginator.page_range %}
+				{% if page_obj.number == num %}
+					<li class="page-item active">
+						<span class="page-link">{{ num }}</span>
+					</li>
+				{% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+					<li class="page-item">
+						<a class="page-link" href="?page={{ num }}{% if request.GET.user_filter %}&user_filter={{ request.GET.user_filter }}{% endif %}{% if request.GET.quiz_filter %}&quiz_filter={{ request.GET.quiz_filter }}{% endif %}">{{ num }}</a>
+					</li>
+				{% endif %}
+			{% endfor %}
+
+			{% if page_obj.has_next %}
+				<li class="page-item">
+					<a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.user_filter %}&user_filter={{ request.GET.user_filter }}{% endif %}{% if request.GET.quiz_filter %}&quiz_filter={{ request.GET.quiz_filter }}{% endif %}">
+						{% trans "Siguiente" %} <i class="fas fa-angle-right"></i>
+					</a>
+				</li>
+				<li class="page-item">
+					<a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.user_filter %}&user_filter={{ request.GET.user_filter }}{% endif %}{% if request.GET.quiz_filter %}&quiz_filter={{ request.GET.quiz_filter }}{% endif %}">
+						{% trans "Última" %} <i class="fas fa-angle-double-right"></i>
+					</a>
+				</li>
+			{% endif %}
+		</ul>
+	</nav>
+
+	<!-- Información de paginación -->
+	<div class="text-center mt-3">
+		<p class="text-muted">
+			{% trans "Mostrando" %} {{ page_obj.start_index }} - {{ page_obj.end_index }} 
+			{% trans "de" %} {{ page_obj.paginator.count }} {% trans "exámenes" %}
+		</p>
+	</div>
+	{% endif %}
+
 {% else %}
-	<p class="p-3 bg-light">{% trans "No hay exámenes completos para ti" %}.</p>
+	<div class="alert alert-warning text-center">
+		<i class="fas fa-exclamation-triangle"></i>
+		{% trans "No hay exámenes completos para mostrar." %}
+	</div>
 {% endif %}
 {% endblock %}
