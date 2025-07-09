@@ -303,7 +303,7 @@ def unset_current_semester():
 @login_required
 def cotizaciones_list_view(request):
     """Lista de cotizaciones con filtros y paginación"""
-    cotizaciones = Cotizacion.objects.all().order_by('-fecha_cotizacion')
+    cotizaciones = Cotizacion.objects.all().order_by('-cotizacion')
     
     # Filtros
     estado = request.GET.get('estado')
@@ -527,184 +527,177 @@ def cotizacion_change_status_view(request, pk):
 
 @login_required
 def cotizacion_download_pdf(request, pk):
-    """Generar y descargar PDF de la cotización con estilo corporativo"""
+    """Generar y descargar PDF de la cotización con flowables y paginación automática"""
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+    from reportlab.lib.units import inch
+    import os
+    from decimal import Decimal
+    import math
+    from reportlab.platypus import KeepTogether
+
     cotizacion = get_object_or_404(Cotizacion, pk=pk)
     buffer = BytesIO()
-    p = canvas.Canvas(buffer, pagesize=letter)
+    doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=30, rightMargin=30, topMargin=10, bottomMargin=5)
     width, height = letter
-
-    # LOGOS ARRIBA (doble de tamaño, ajuste fino)
-    try:
-        p.drawImage('static/img/logo1.jpg', 30, height-100, width=240, height=100, preserveAspectRatio=True, mask='auto')
-    except:
-        pass
-    try:
-        p.drawImage('static/img/iso.PNG', width-240, height-90, width=160, height=80, preserveAspectRatio=True, mask='auto')
-    except:
-        pass
-
-    # TÍTULO Y SUBTÍTULO DEBAJO DE LOS LOGOS
-    p.setFont("Helvetica-Bold", 12)
-    p.drawCentredString(width/2, height-105, '“AÑO DE LA RECUPERACIÓN Y CONSOLIDACIÓN DE LA ECONOMÍA PERUANA”')
-    p.setFont("Helvetica", 8)
-    p.drawString(30, height-120, "Residencial los Álamos Mz. A5 piso Nº 3 – Cerro Colorado")
-    p.drawString(30, height-130, "RUC: 20604885141")
-    p.drawString(30, height-140, "944 065 297 – 991 087 490")
-    p.drawString(30, height-150, "ventas@gpdconsultoressac.com")
-    p.setFont("Helvetica-Oblique", 8)
-    p.drawString(width-220, height-120, "Elaborado por: Área Comercial")
-    p.drawString(width-220, height-130, "Aprobado por: Gerente General")
-
-    # LÍNEA AZUL
-    p.setStrokeColorRGB(0.1, 0.3, 0.6)
-    p.setLineWidth(2)
-    p.line(30, height-160, width-30, height-160)
-
-    # DATOS DE COTIZACIÓN Y CLIENTE (alineados en filas)
-    p.setFont("Helvetica-Bold", 9)
-    y_datos = height-175
-    p.drawString(35, y_datos, "Dirigido a:")
-    p.drawString(35, y_datos-15, "Empresa:")
-    p.drawString(35, y_datos-30, "RUC:")
-    p.setFont("Helvetica", 9)
-    p.drawString(100, y_datos, cotizacion.dirigido_a or "-")
-    p.drawString(100, y_datos-15, cotizacion.empresa or "-")
-    p.drawString(100, y_datos-30, cotizacion.ruc or "-")
-
-    # DATOS DE COTIZACIÓN (alineados en filas, no encimados)
-    p.setFont("Helvetica-Bold", 9)
-    x2 = width/2+10
-    y_cot = y_datos
-    p.drawString(x2, y_cot, "Cotización:")
-    p.drawString(x2, y_cot-15, "Tipo de Cotización:")
-    p.drawString(x2, y_cot-30, "Fecha de Cotización:")
-    p.drawString(x2, y_cot-45, "Validez de la Cotización:")
-    p.setFont("Helvetica", 9)
-    p.drawString(x2+90, y_cot, cotizacion.cotizacion or "-")
-    p.drawString(x2+90, y_cot-15, cotizacion.tipo_cotizacion or "-")
-    p.drawString(x2+90, y_cot-30, cotizacion.fecha_cotizacion.strftime('%d/%m/%Y') if cotizacion.fecha_cotizacion else "-")
-    p.drawString(x2+110, y_cot-45, cotizacion.validez_cotizacion.strftime('%d/%m/%Y') if cotizacion.validez_cotizacion else "-")
-    
-    # LÍNEA NARANJA
-    p.setStrokeColorRGB(1, 0.5, 0)
-    p.setLineWidth(2)
-    p.line(30, y_datos-55, width-30, y_datos-55)
-
-    # SERVICIO
-    y_serv = y_datos-70
-    # Solo dibujar la etiqueta Servicio aquí, el resto se dibuja después del bloque
-    p.setFont("Helvetica-Bold", 9)
-    p.drawString(35, y_serv, "Servicio:")
-
-    # Mostrar el campo servicio completo y con saltos de línea, con letra más pequeña
+    elements = []
     styles = getSampleStyleSheet()
-    styleN = styles["Normal"].clone('servicioSmall')
-    styleN.fontSize = 7  # Letra más pequeña
-    styleN.leading = 8   # Espaciado entre líneas
-    servicio_texto = cotizacion.servicio or "-"
-    servicio_texto = servicio_texto.replace('\n', '<br/>')
-    parrafo_servicio = Paragraph(servicio_texto, styleN)
-    ancho_max = width - 130  # Usar casi todo el ancho de la hoja
-    alto_max = 100  # Permitir más altura
-    w, h = parrafo_servicio.wrap(ancho_max, alto_max)
-    parrafo_servicio.drawOn(p, 35, y_serv-h-5)  # Debajo de la etiqueta
-    
-    # Ajustar la posición de los siguientes campos según la altura del Paragraph
-    y_siguiente = y_serv - h - 20  # 20 de margen
-    p.setFont("Helvetica-Bold", 9)
-    p.drawString(35, y_siguiente, "Modalidad:")
-    p.drawString(35, y_siguiente-15, "Sede del servicio:")
-    p.drawString(35, y_siguiente-30, "Fecha del servicio:")
-    p.setFont("Helvetica", 9)
-    p.drawString(120, y_siguiente, cotizacion.get_modalidad_display() or "-")
-    p.drawString(120, y_siguiente-15, cotizacion.sede_servicio or "-")
-    p.drawString(120, y_siguiente-30, cotizacion.fecha_servicio.strftime('%d/%m/%Y') if cotizacion.fecha_servicio else "-")
 
-    # TABLA DE ÍTEMS (solo una vez, con altura dinámica)
-    styles = getSampleStyleSheet()
-    styleN = styles["Normal"]
-    styleN.fontName = 'Helvetica'
-    styleN.fontSize = 8
-    styleN.leading = 10
+    # --- 1. Encabezado: Logos y título ---
+    logo1_path = os.path.join('static', 'img', 'logo1.jpg')
+    iso_path = os.path.join('static', 'img', 'iso.PNG')
+    logo1 = None
+    iso = None
+    if os.path.exists(logo1_path):
+        logo1 = Image(logo1_path, width=2.0*inch, height=1.0*inch)
+    if os.path.exists(iso_path):
+        iso = Image(iso_path, width=1.0*inch, height=0.9*inch)
+    logo_table_data = [[logo1 if logo1 else '', '', iso if iso else '']]
+    logo_table = Table(logo_table_data, colWidths=[2.2*inch, width-3.7*inch, 1.2*inch])
+    logo_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+        ('ALIGN', (2, 0), (2, 0), 'RIGHT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LEFTPADDING', (0, 0), (0, 0), 10),
+        ('RIGHTPADDING', (2, 0), (2, 0), 10),
+        ('LEFTPADDING', (1, 0), (1, 0), 0),
+        ('RIGHTPADDING', (1, 0), (1, 0), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+    ]))
+    elements.append(logo_table)
+    # Quitar el Spacer aquí para que el título quede pegado a los logos
+    # elements.append(Spacer(1, 2))
+
+    # Título y datos empresa
+    title_style = ParagraphStyle('title', parent=styles['Heading2'], alignment=1, fontSize=12, fontName='Helvetica-Bold')
+    elements.append(Paragraph('“AÑO DE LA RECUPERACIÓN Y CONSOLIDACIÓN DE LA ECONOMÍA PERUANA”', title_style))
+    info_style = ParagraphStyle('info', parent=styles['Normal'], fontSize=8, leading=10)
+    empresa_info = (
+        'Residencial los Álamos Mz. A5 piso Nº 3 – Cerro Colorado<br/>'
+        'RUC: 20604885141<br/>'
+        '944 065 297 – 991 087 490<br/>'
+        'ventas@gpdconsultoressac.com'
+    )
+    elaborado_aprobado = (
+        '<b>Elaborado por:</b> Área Comercial<br/><b>Aprobado por:</b> Gerente General'
+    )
+    info_table = Table([
+        [Paragraph(empresa_info, info_style), Paragraph(elaborado_aprobado, ParagraphStyle('right', parent=info_style, alignment=2))]
+    ], colWidths=[width*0.55, width*0.45])
+    info_table.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('ALIGN', (0,0), (0,0), 'LEFT'),
+        ('ALIGN', (1,0), (1,0), 'RIGHT'),
+        ('LEFTPADDING', (0,0), (0,0), 40),
+        ('RIGHTPADDING', (1,0), (1,0), 40),
+        ('TOPPADDING', (0,0), (-1,-1), 0),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+    ]))
+    elements.append(info_table)
+    elements.append(Table([[" "]], colWidths=[width-60], rowHeights=[2], style=TableStyle([('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#1a3764'))])))
+    elements.append(Spacer(1, 1))
+
+    # --- 2. Datos de cliente y cotización ---
+    datos_cliente = [
+        [Paragraph('<b>Dirigido a:</b>', info_style), cotizacion.dirigido_a or '-', '', Paragraph('<b>Cotización:</b>', info_style), cotizacion.cotizacion or '-'],
+        [Paragraph('<b>Empresa:</b>', info_style), cotizacion.empresa or '-', '', Paragraph('<b>Tipo de Cotización:</b>', info_style), cotizacion.tipo_cotizacion or '-'],
+        [Paragraph('<b>RUC:</b>', info_style), cotizacion.ruc or '-', '', Paragraph('<b>Fecha de Cotización:</b>', info_style), cotizacion.fecha_cotizacion.strftime('%d/%m/%Y') if cotizacion.fecha_cotizacion else '-'],
+        ['', '', '', Paragraph('<b>Validez de la Cotización:</b>', info_style), cotizacion.validez_cotizacion.strftime('%d/%m/%Y') if cotizacion.validez_cotizacion else '-'],
+    ]
+    table_cliente = Table(datos_cliente, colWidths=[60, 120, 20, 110, 100])
+    table_cliente.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+        ('FONTSIZE', (0,0), (-1,-1), 8),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+        ('TOPPADDING', (0,0), (-1,-1), 2),
+    ]))
+    elements.append(table_cliente)
+    elements.append(Spacer(1, 8))
+    elements.append(Table([[" "]], colWidths=[width-60], rowHeights=[2], style=TableStyle([('BACKGROUND', (0,0), (-1,-1), colors.orange)])))
+
+    # --- 3. Servicio y detalles ---
+    servicio_style = ParagraphStyle('servicio', parent=info_style, fontSize=7, leading=8)
+    elements.append(Paragraph('<b>Servicio:</b>', info_style))
+    servicio_texto = (cotizacion.servicio or '-').replace('\n', '<br/>')
+    elements.append(Paragraph(servicio_texto, servicio_style))
+    elements.append(Spacer(1, 4))
+    detalles = [
+        [Paragraph('<b>Modalidad:</b>', info_style), cotizacion.get_modalidad_display() or '-'],
+        [Paragraph('<b>Sede del servicio:</b>', info_style), cotizacion.sede_servicio or '-'],
+        [Paragraph('<b>Fecha del servicio:</b>', info_style), cotizacion.fecha_servicio.strftime('%d/%m/%Y') if cotizacion.fecha_servicio else '-'],
+    ]
+    table_detalles = Table(detalles, colWidths=[80, 350])
+    table_detalles.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+        ('FONTSIZE', (0,0), (-1,-1), 8),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+        ('TOPPADDING', (0,0), (-1,-1), 2),
+    ]))
+    elements.append(table_detalles)
+    elements.append(Spacer(1, 8))
+
+    # --- 4. Tabla de ítems ---
+    styleN = ParagraphStyle('tabla', parent=info_style, fontSize=8, leading=10)
+    styleHeader = ParagraphStyle('tablaHeader', parent=styleN, textColor=colors.white, fontName='Helvetica-Bold')
     items_data = [[
-        "Descripción", "Curso", "Duración", "Precio Unit.", "Cantidad", "Inversión S/."
+        Paragraph('<b>Descripción</b>', styleHeader), Paragraph('<b>Curso</b>', styleHeader), Paragraph('<b>Duración</b>', styleHeader),
+        Paragraph('<b>Precio Unit.</b>', styleHeader), Paragraph('<b>Cantidad</b>', styleHeader), Paragraph('<b>Inversión S/.</b>', styleHeader)
     ]]
     for item in cotizacion.items.all():
-        desc = Paragraph(item.descripcion or "-", styleN)
-        curso = Paragraph(item.curso or "-", styleN)
+        desc = Paragraph(item.descripcion or '-', styleN)
+        curso = Paragraph(item.curso or '-', styleN)
         items_data.append([
             desc,
             curso,
-            item.duracion or "-",
+            item.duracion or '-',
             f"S/ {item.precio_unitario:.2f}",
             str(item.cantidad),
             f"S/ {item.subtotal:.2f}"
         ])
-    table = Table(items_data, colWidths=[150, 100, 60, 70, 60, 80])
-    table.setStyle(TableStyle([
+    table_items = Table(items_data, colWidths=[120, 90, 50, 60, 50, 70], repeatRows=1)
+    table_items.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1a3764')),
         ('TEXTCOLOR', (0,0), (-1,0), colors.white),
         ('ALIGN', (0,0), (-1,-1), 'CENTER'),
         ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0), (-1,0), 7),
+        ('FONTSIZE', (0,0), (-1,0), 8),
         ('BOTTOMPADDING', (0,0), (-1,0), 8),
         ('GRID', (0,0), (-1,-1), 0.5, colors.black),
         ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
         ('FONTSIZE', (0,1), (-1,-1), 7),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
     ]))
-    table_width, table_height = table.wrap(width-60, height)
-    # Calcular la altura del encabezado (primera fila)
-    header_table = Table([items_data[0]], colWidths=[150, 100, 60, 70, 60, 80])
-    header_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1a3764')),
-        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0), (-1,0), 7),
-        ('BOTTOMPADDING', (0,0), (-1,0), 8),
+    elements.append(table_items)
+    elements.append(Spacer(1, 10))
+
+    # --- 5. Totales ---
+    totales_data = [
+        [Paragraph('<b>TOTAL, S/:</b>', info_style), f"S/ {math.ceil(float(cotizacion.total_con_igv) * 10) / 10:.2f}"],
+        [Paragraph('<b>SUBTOTAL</b>', info_style), f"S/ {cotizacion.monto_total:.2f}"],
+        [Paragraph('<b>IGV</b>', info_style), f"S/ {math.ceil(float(cotizacion.igv) * 10) / 10:.2f}"],
+        [Paragraph('<b>INVERSIÓN TOTAL A DEPOSITAR</b>', info_style), f"S/ {math.ceil(float(cotizacion.total_con_igv) * 10) / 10:.2f}"],
+    ]
+    table_totales = Table(totales_data, colWidths=[200, 100], hAlign='RIGHT')
+    table_totales.setStyle(TableStyle([
+        ('ALIGN', (0,0), (-1,-1), 'RIGHT'),
+        ('FONTSIZE', (0,0), (-1,-1), 8),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+        ('TOPPADDING', (0,0), (-1,-1), 2),
     ]))
-    _, header_height = header_table.wrap(width-60, height)
-    # Ubicar la tabla justo después de los datos generales, dejando margen suficiente
-    y_tabla = y_siguiente - 30 - 20 - table_height  # y_siguiente-30 es la última etiqueta, -20 de margen
-    x_tabla = (width - table_width) // 2  # Centrar la tabla
-    table.drawOn(p, x_tabla, y_tabla)
+    elements.append(table_totales)
+    elements.append(Spacer(1, 10))
 
-    # TOTALES (justo debajo de la tabla)
-    y_tot = y_tabla - 30
-    p.setFont("Helvetica-Bold", 9)
-    p.drawString(width-300, y_tot, "TOTAL, S/:")
-    p.setFont("Helvetica", 9)
-    p.drawString(width-80, y_tot, f"S/ {math.ceil(float(cotizacion.total_con_igv) * 10) / 10:.2f}")
-    p.setFont("Helvetica-Bold", 8)
-    p.drawString(width-300, y_tot-15, "SUBTOTAL")
-    p.setFont("Helvetica", 8)
-    p.drawString(width-80, y_tot-15, f"S/ {cotizacion.monto_total:.2f}")
-    p.setFont("Helvetica-Bold", 8)
-    p.drawString(width-300, y_tot-30, "IGV")
-    p.setFont("Helvetica", 8)
-    p.drawString(width-80, y_tot-30, f"S/ {math.ceil(float(cotizacion.igv) * 10) / 10:.2f}")
-    p.setFont("Helvetica-Bold", 8)
-    p.drawString(width-300, y_tot-45, "INVERSIÓN TOTAL A DEPOSITAR")
-    p.setFont("Helvetica", 9)
-    p.drawString(width-80, y_tot-45, f"S/ {math.ceil(float(cotizacion.total_con_igv) * 10) / 10:.2f}")
-
-    # MEDIOS DE PAGO (justo debajo de totales)
-    y_pago = y_tot-90
-    p.setFillColor(colors.HexColor('#1a3764'))
-    p.setStrokeColor(colors.HexColor('#1a3764'))
-    p.setLineWidth(1.2)
-    p.rect(30, y_pago, width-60, 18, fill=1, stroke=0)  # Barra azul
-    p.setFillColor(colors.white)
-    p.setFont("Helvetica-Bold", 9)
-    p.drawString(35, y_pago+3, "MEDIOS DE PAGO")
-    p.setFillColor(colors.black)
-    p.setFont("Helvetica", 8)
-    y_pago_txt = y_pago-10
-    p.drawString(35, y_pago_txt, "Tiempo de entrega:")
-    p.drawString(130, y_pago_txt, cotizacion.tiempo_entrega or "-")
-    p.drawString(35, y_pago_txt-10, "Forma de pago:")
-    
-    # Calcular montos según la forma de pago
+    # --- 6. Medios de pago ---
+    medios_pago = []
+    medios_pago.append(Paragraph('<b>MEDIOS DE PAGO</b>', ParagraphStyle('medios', parent=info_style, textColor=colors.white, backColor=colors.HexColor('#1a3764'), fontSize=9, leftIndent=0, alignment=0)))
+    medios_pago.append(Spacer(1, 2))
+    medios_pago.append(Paragraph(f"<b>Tiempo de entrega:</b> {cotizacion.tiempo_entrega or '-'}", info_style))
+    # Forma de pago
     total_final = cotizacion.total_con_detraccion
     if cotizacion.forma_pago == '50_50':
         adelanto_monto = total_final * Decimal('0.5')
@@ -730,12 +723,9 @@ def cotizacion_download_pdf(request, pk):
         adelanto_pct = "0%"
         saldo_pct = "100%"
         forma_pago_texto = "-"
-    
-    # Mostrar forma de pago y montos
     texto_pago = f"{forma_pago_texto}   |   Adelanto: {adelanto_pct} (S/ {adelanto_monto:.2f})   |   Saldo: {saldo_pct} (S/ {saldo_monto:.2f})"
-    p.drawString(130, y_pago_txt-10, texto_pago)
-    
-    # Mostrar plazo de crédito si corresponde
+    medios_pago.append(Paragraph(f"<b>Forma de pago:</b> {texto_pago}", info_style))
+    # Plazo de crédito
     if cotizacion.forma_pago == 'al_credito':
         plazo_texto = ""
         if cotizacion.plazo_credito_dias:
@@ -743,22 +733,14 @@ def cotizacion_download_pdf(request, pk):
         elif cotizacion.plazo_credito_fecha:
             plazo_texto = f"Plazo: Hasta {cotizacion.plazo_credito_fecha.strftime('%d/%m/%Y')}"
         if plazo_texto:
-            p.drawString(35, y_pago_txt-20, plazo_texto)
-            y_pago_txt -= 10  # Ajustar posición para las siguientes líneas
-        
-        # Mostrar información adicional de crédito
+            medios_pago.append(Paragraph(plazo_texto, info_style))
         if cotizacion.fecha_vencimiento_calculada:
-            p.drawString(35, y_pago_txt-20, f"Vencimiento: {cotizacion.fecha_vencimiento_calculada.strftime('%d/%m/%Y')}")
-            y_pago_txt -= 10
-        
+            medios_pago.append(Paragraph(f"Vencimiento: {cotizacion.fecha_vencimiento_calculada.strftime('%d/%m/%Y')}", info_style))
         if cotizacion.dias_restantes_credito is not None:
             if cotizacion.dias_restantes_credito > 0:
-                p.drawString(35, y_pago_txt-20, f"Días restantes: {cotizacion.dias_restantes_credito}")
+                medios_pago.append(Paragraph(f"Días restantes: {cotizacion.dias_restantes_credito}", info_style))
             else:
-                p.drawString(35, y_pago_txt-20, "ESTADO: VENCIDO")
-            y_pago_txt -= 10
-        
-        # Mostrar estado del crédito
+                medios_pago.append(Paragraph("ESTADO: VENCIDO", info_style))
         estado_texto = ""
         if cotizacion.estado_credito == 'pagado':
             estado_texto = "ESTADO: PAGADO"
@@ -768,64 +750,57 @@ def cotizacion_download_pdf(request, pk):
             estado_texto = "ESTADO: VENCIDO"
         else:
             estado_texto = "ESTADO: PENDIENTE"
-        
-        p.drawString(35, y_pago_txt-20, estado_texto)
-        y_pago_txt -= 10
-    
-    p.drawString(35, y_pago_txt-20, "Cuenta de ahorros BCP:")
-    p.drawString(180, y_pago_txt-20, "215-95088021-001")
-    p.drawString(35, y_pago_txt-30, "Cuenta CCI:")
-    p.drawString(180, y_pago_txt-30, "00221519508802100123")
-    p.drawString(35, y_pago_txt-40, "CUENTA de detracciones Banco de la Nación-SOLES:")
-    p.drawString(280, y_pago_txt-40, "00-113-039019")
-    p.drawString(35, y_pago_txt-50, "12% DE DETRACCIÓN - Banco de la Nación*:")
-    p.drawString(280, y_pago_txt-50, f"S/ {math.ceil(float(cotizacion.detraccion) * 10) / 10:.2f}")
+        medios_pago.append(Paragraph(estado_texto, info_style))
+    # Cuentas
+    medios_pago.append(Paragraph("Cuenta de ahorros BCP: 215-95088021-001", info_style))
+    medios_pago.append(Paragraph("Cuenta CCI: 00221519508802100123", info_style))
+    medios_pago.append(Paragraph("CUENTA de detracciones Banco de la Nación-SOLES: 00-113-039019", info_style))
+    medios_pago.append(Paragraph(f"12% DE DETRACCIÓN - Banco de la Nación*: S/ {math.ceil(float(cotizacion.detraccion) * 10) / 10:.2f}", info_style))
+    elements.extend(medios_pago)
+    elements.append(Spacer(1, 10))
 
-    # CONSIDERACIONES GENERALES (justo debajo de medios de pago)
-    y_cons = y_pago_txt-70
-    p.setFont("Helvetica-BoldOblique", 8)
-    p.drawString(35, y_cons, u"Consideraciones generales del servicio")
-    p.setFont("Helvetica", 7)
+    # --- 7. Consideraciones generales y firmas ---
+    cons_style = ParagraphStyle('cons', parent=info_style, fontSize=7, leading=9)
+    elements.append(Paragraph('<b>Consideraciones generales del servicio</b>', cons_style))
     consideraciones = [
         "1. Se tomará en cuenta la asistencia y la nota mínima de aprobación que es 14 (70%)",
         "2. G.P.D Consultores brinda: Certificado de cada curso para los participantes, material didáctico, acceso a nuestra página web.",
         "3. El servicio se brindará con un aviso mínimo de 48 horas de anticipación y previa confirmación del pago, ya sea parcial o total.",
         "4. Cambios de fecha y cancelaciones: Cualquier cambio debe notificarse 48 horas antes del curso, aplicando una penalización del 30% sobre el monto acordado.",
-        "5. Confirmación de acuerdos: Todos los compromisos serán válidos únicamente si son confirmados por correo electrónico por un representante autorizado de GPD CONSULTORES."
+        "5. Confirmación de acuerdos: Todos los compromisos serán válidos únicamente si son confirmados por correo electrónico por un representante autorizado de GPD CONSULTORES.",
+        "6. PRESENCIAL (mínimo 8 participantes) previa coordinación, VIRTUAL SINCRÓNICO (mínimo 7 participantes) reunión TEAMS, VIRTUAL ASINCRÓNICO (sin mínimo de participantes) clase grabada."
     ]
-    y = y_cons-15
     for c in consideraciones:
-        p.drawString(40, y, c)
-        y -= 12
-    p.setFont("Helvetica-Bold", 8)
-    p.drawString(35, y-10, u"De aceptar la presente propuesta, sírvase reenviar el documento debidamente firmado y sellado por el representante autorizado.")
+        elements.append(Paragraph(c, cons_style))
+    elements.append(Spacer(1, 4))
+    elements.append(Paragraph('De aceptar la presente propuesta, sírvase reenviar el documento debidamente firmado y sellado por el representante autorizado.', cons_style))
+    elements.append(Spacer(1, 16))
+    # Firmas
+    firmas_data = [
+        [Paragraph('Nombre y Apellidos: ________________________________', info_style), Paragraph('Firma y Sello: ________________________________', info_style)],
+        [Paragraph('Cargo: ________________________________', info_style), ''],
+    ]
+    firmas_table = Table(firmas_data, colWidths=[270, 230])
+    firmas_table.setStyle(TableStyle([
+        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ('TOPPADDING', (0,0), (-1,-1), 6),
+        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ('RIGHTPADDING', (0,0), (-1,-1), 0),
+    ]))
+    elements.append(KeepTogether([firmas_table]))
 
-    # LÍNEAS DE FIRMA (justo debajo de consideraciones)
-    from reportlab.lib.colors import black
-    p.setStrokeColor(black)
-    p.setLineWidth(1)
-    p.setFont("Helvetica", 8)
-    p.drawString(35, y-40, "Nombre y Apellidos:")
-    p.line(120, y-42, 270, y-42)
-    p.drawString(35, y-55, "Cargo:")
-    p.line(120, y-57, 270, y-57)
-    p.drawString(width-200, y-40, "Firma y Sello")
-    p.line(width-140, y-42, width-40, y-42)
-
-    p.showPage()
-    p.save()
+    # --- 8. Construir el PDF ---
+    doc.build(elements)
     buffer.seek(0)
     response = HttpResponse(buffer, content_type='application/pdf')
-    
-    # Generar nombre del archivo usando el nombre de la cotización
+    # Nombre del archivo
     if cotizacion.cotizacion:
-        # Limpiar el nombre de caracteres especiales para el nombre del archivo
         nombre_archivo = cotizacion.cotizacion.replace('/', '_').replace('\\', '_').replace(':', '_').replace('*', '_').replace('?', '_').replace('"', '_').replace('<', '_').replace('>', '_').replace('|', '_')
         filename = f"cotizacion_{nombre_archivo}.pdf"
     else:
-        # Si no hay nombre de cotización, usar el ID como respaldo
         filename = f"cotizacion_{cotizacion.pk}.pdf"
-    
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
 
