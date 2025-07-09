@@ -129,6 +129,10 @@ class ItemCotizacionForm(forms.ModelForm):
             }),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['duracion'].label = 'Duración (Horas Certificado)'
+
     def clean(self):
         cleaned_data = super().clean()
         # Si todos los campos están vacíos, no validar

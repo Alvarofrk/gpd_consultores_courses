@@ -607,7 +607,7 @@ def cotizacion_download_pdf(request, pk):
         [Paragraph('<b>RUC:</b>', info_style), cotizacion.ruc or '-', '', Paragraph('<b>Fecha de Cotización:</b>', info_style), cotizacion.fecha_cotizacion.strftime('%d/%m/%Y') if cotizacion.fecha_cotizacion else '-'],
         ['', '', '', Paragraph('<b>Validez de la Cotización:</b>', info_style), cotizacion.validez_cotizacion.strftime('%d/%m/%Y') if cotizacion.validez_cotizacion else '-'],
     ]
-    table_cliente = Table(datos_cliente, colWidths=[60, 120, 20, 110, 100])
+    table_cliente = Table(datos_cliente, colWidths=[60, 240, 0, 110, 120])
     table_cliente.setStyle(TableStyle([
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
         ('ALIGN', (0,0), (-1,-1), 'LEFT'),
@@ -645,7 +645,7 @@ def cotizacion_download_pdf(request, pk):
     styleN = ParagraphStyle('tabla', parent=info_style, fontSize=8, leading=10)
     styleHeader = ParagraphStyle('tablaHeader', parent=styleN, textColor=colors.white, fontName='Helvetica-Bold')
     items_data = [[
-        Paragraph('<b>Descripción</b>', styleHeader), Paragraph('<b>Curso</b>', styleHeader), Paragraph('<b>Duración</b>', styleHeader),
+        Paragraph('<b>Descripción</b>', styleHeader), Paragraph('<b>Curso</b>', styleHeader), Paragraph('<b>Duración (Horas Certificado)</b>', styleHeader),
         Paragraph('<b>Precio Unit.</b>', styleHeader), Paragraph('<b>Cantidad</b>', styleHeader), Paragraph('<b>Inversión S/.</b>', styleHeader)
     ]]
     for item in cotizacion.items.all():
@@ -659,7 +659,7 @@ def cotizacion_download_pdf(request, pk):
             str(item.cantidad),
             f"S/ {item.subtotal:.2f}"
         ])
-    table_items = Table(items_data, colWidths=[120, 90, 50, 60, 50, 70], repeatRows=1)
+    table_items = Table(items_data, colWidths=[170, 120, 55, 60, 50, 80], repeatRows=1)
     table_items.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1a3764')),
         ('TEXTCOLOR', (0,0), (-1,0), colors.white),
