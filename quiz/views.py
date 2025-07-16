@@ -990,10 +990,13 @@ def generar_pdf_certificado_manual(request, certificate, plantilla_nombre):
     resultado = io.BytesIO()
     writer.write(resultado)
     resultado.seek(0)
+    nombre_sanitizado = certificate.nombre_completo.replace(" ", "_")
+    nombre_curso_sanitizado = certificate.curso.title.replace(" ", "_")
+    filename = f"{certificate.curso.code}-{certificate.certificate_code}-{nombre_curso_sanitizado}-{nombre_sanitizado}.pdf"
     return FileResponse(
         resultado, 
         as_attachment=True, 
-        filename=f'certificado_{certificate_code}.pdf'
+        filename=filename
     )
 
 class ManualCertificateUpdateView(UpdateView):
