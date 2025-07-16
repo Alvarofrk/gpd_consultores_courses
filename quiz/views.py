@@ -77,6 +77,7 @@ POSICIONES_CERTIFICADOS = {
     "C19-TED":     {"pos_nombre": (490, 401), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (584, 215.5), "pos_fecha_aprobacion2": (466, 250.5), "pos_fecha_vencimiento": (630, 250.5), "pos_usuario": (555, 371), "pos_codigo": (809,335 ), "pos_qr": (750, 370)},
     "C63-UHP":     {"pos_nombre": (490, 401), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (588, 223.5), "pos_fecha_aprobacion2": (464, 261), "pos_fecha_vencimiento": (630, 261), "pos_usuario": (555, 371), "pos_codigo": (809,335.4 ), "pos_qr": (750, 370)},
     "C70-RTA":     {"pos_nombre": (490, 401), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (583, 223.5), "pos_fecha_aprobacion2": (464, 258.5), "pos_fecha_vencimiento": (630, 258.5), "pos_usuario": (555, 372), "pos_codigo": (805,335 ), "pos_qr": (750, 370)},
+    "C24-TA":      {"pos_nombre": (490, 401), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 221.8), "pos_fecha_aprobacion2": (464, 258.5), "pos_fecha_vencimiento": (625, 258.5), "pos_usuario": (555, 372), "pos_codigo": (788,326 ), "pos_qr": (750, 370)},
 }
 
 def formatear_fecha_larga(fecha):
