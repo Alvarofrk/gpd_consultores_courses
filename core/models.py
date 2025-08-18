@@ -4,6 +4,7 @@ from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from decimal import Decimal
+import math
 
 
 NEWS = _("News")
@@ -184,9 +185,22 @@ class Cotizacion(models.Model):
         return Decimal('0.00')
 
     @property
+    def detraccion_redondeada(self):
+        """Calcula la detracción redondeada hacia arriba sin decimales"""
+        if self.total_con_igv >= Decimal('700.00'):
+            detraccion_calculada = self.total_con_igv * Decimal('0.12')
+            return math.ceil(detraccion_calculada)
+        return Decimal('0.00')
+
+    @property
     def total_con_detraccion(self):
         """Calcula el total final con IGV y detracción"""
         return self.total_con_igv + self.detraccion
+
+    @property
+    def total_con_detraccion_redondeado(self):
+        """Calcula el total final con IGV y detracción redondeada"""
+        return self.total_con_igv + self.detraccion_redondeada
 
     @property
     def porcentaje_cancelado(self):

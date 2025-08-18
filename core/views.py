@@ -677,10 +677,9 @@ def cotizacion_download_pdf(request, pk):
 
     # --- 5. Totales ---
     totales_data = [
-        [Paragraph('<b>TOTAL, S/:</b>', info_style), f"S/ {math.ceil(float(cotizacion.total_con_igv) * 10) / 10:.2f}"],
         [Paragraph('<b>SUBTOTAL</b>', info_style), f"S/ {cotizacion.monto_total:.2f}"],
-        [Paragraph('<b>IGV</b>', info_style), f"S/ {math.ceil(float(cotizacion.igv) * 10) / 10:.2f}"],
-        [Paragraph('<b>INVERSIÓN TOTAL A DEPOSITAR</b>', info_style), f"S/ {math.ceil(float(cotizacion.total_con_igv) * 10) / 10:.2f}"],
+        [Paragraph('<b>IGV (18%)</b>', info_style), f"S/ {cotizacion.igv:.2f}"],
+        [Paragraph('<b>TOTAL A PAGAR</b>', info_style), f"S/ {cotizacion.total_con_igv:.2f}"],
     ]
     table_totales = Table(totales_data, colWidths=[200, 100], hAlign='RIGHT')
     table_totales.setStyle(TableStyle([
@@ -698,7 +697,7 @@ def cotizacion_download_pdf(request, pk):
     medios_pago.append(Spacer(1, 2))
     medios_pago.append(Paragraph(f"<b>Tiempo de entrega:</b> {cotizacion.tiempo_entrega or '-'}", info_style))
     # Forma de pago
-    total_final = cotizacion.total_con_detraccion
+    total_final = cotizacion.total_con_igv
     if cotizacion.forma_pago == '50_50':
         adelanto_monto = total_final * Decimal('0.5')
         saldo_monto = total_final * Decimal('0.5')
@@ -755,7 +754,7 @@ def cotizacion_download_pdf(request, pk):
     medios_pago.append(Paragraph("Cuenta de ahorros BCP: 215-95088021-001", info_style))
     medios_pago.append(Paragraph("Cuenta CCI: 00221519508802100123", info_style))
     medios_pago.append(Paragraph("CUENTA de detracciones Banco de la Nación-SOLES: 00-113-039019", info_style))
-    medios_pago.append(Paragraph(f"12% DE DETRACCIÓN - Banco de la Nación*: S/ {math.ceil(float(cotizacion.detraccion) * 10) / 10:.2f}", info_style))
+    medios_pago.append(Paragraph(f"12% DE DETRACCIÓN - Banco de la Nación*: S/ {cotizacion.detraccion_redondeada}", info_style))
     elements.extend(medios_pago)
     elements.append(Spacer(1, 10))
 
