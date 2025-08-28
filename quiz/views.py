@@ -478,12 +478,38 @@ class QuizCreateView(CreateView):
         return context
 
     def form_valid(self, form):
-        form.instance.course = get_object_or_404(Course, slug=self.kwargs["slug"])
-        with transaction.atomic():
-            self.object = form.save()
-            return redirect(
-                "mc_create", slug=self.kwargs["slug"], quiz_id=self.object.id
-            )
+        try:
+            form.instance.course = get_object_or_404(Course, slug=self.kwargs["slug"])
+            with transaction.atomic():
+                self.object = form.save()
+                print(f"✅ Cuestionario creado exitosamente con ID: {self.object.id}")
+                print(f"✅ Redirigiendo a: mc_create con slug={self.kwargs['slug']} y quiz_id={self.object.id}")
+                
+                # Verificar que la URL existe
+                from django.urls import reverse
+                try:
+                    redirect_url = reverse("mc_create", kwargs={
+                        "slug": self.kwargs["slug"], 
+                        "quiz_id": self.object.id
+                    })
+                    print(f"✅ URL de redirección generada: {redirect_url}")
+                except Exception as e:
+                    print(f"❌ Error generando URL: {e}")
+                    messages.error(self.request, f"Error en la redirección: {e}")
+                    return redirect("quiz_index", slug=self.kwargs["slug"])
+                
+                return redirect("mc_create", slug=self.kwargs["slug"], quiz_id=self.object.id)
+        except Exception as e:
+            print(f"❌ Error en form_valid: {e}")
+            messages.error(self.request, f"Error al crear el cuestionario: {e}")
+            return self.form_invalid(form)
+
+    def form_invalid(self, form):
+        print(f"❌ Formulario inválido. Errores: {form.errors}")
+        for field, errors in form.errors.items():
+            for error in errors:
+                print(f"❌ Campo '{field}': {error}")
+        return super().form_invalid(form)
 
 
 @method_decorator([login_required, lecturer_required], name="dispatch")
@@ -535,12 +561,18 @@ class MCQuestionCreate(CreateView):
     form_class = MCQuestionForm
     template_name = "quiz/mcquestion_form.html"
 
+    def dispatch(self, request, *args, **kwargs):
+        print(f"🚀 MCQuestionCreate.dispatch() llamado")
+        print(f"🚀 Parámetros: slug={kwargs.get('slug')}, quiz_id={kwargs.get('quiz_id')}")
+        return super().dispatch(request, *args, **kwargs)
+
     # def get_form_kwargs(self):
     #     kwargs = super().get_form_kwargs()
     #     kwargs["quiz"] = get_object_or_404(Quiz, id=self.kwargs["quiz_id"])
     #     return kwargs
 
     def get_context_data(self, **kwargs):
+        print(f"📋 MCQuestionCreate.get_context_data() llamado")
         context = super().get_context_data(**kwargs)
         context["course"] = get_object_or_404(Course, slug=self.kwargs["slug"])
         context["quiz_obj"] = get_object_or_404(Quiz, id=self.kwargs["quiz_id"])
@@ -551,6 +583,7 @@ class MCQuestionCreate(CreateView):
             context["formset"] = MCQuestionFormSet(self.request.POST)
         else:
             context["formset"] = MCQuestionFormSet()
+        print(f"📋 Contexto generado: course={context['course'].title}, quiz={context['quiz_obj'].title}")
         return context
 
     def form_valid(self, form):
