@@ -679,7 +679,7 @@ def cotizacion_download_pdf(request, pk):
     totales_data = [
         [Paragraph('<b>SUBTOTAL</b>', info_style), f"S/ {cotizacion.monto_total:.2f}"],
         [Paragraph('<b>IGV (18%)</b>', info_style), f"S/ {cotizacion.igv:.2f}"],
-        [Paragraph('<b>TOTAL A PAGAR</b>', info_style), f"S/ {cotizacion.total_con_igv:.2f}"],
+        [Paragraph('<b>TOTAL A PAGAR</b>', info_style), f"S/ {cotizacion.total_con_igv_redondeado:.2f}"],
     ]
     table_totales = Table(totales_data, colWidths=[200, 100], hAlign='RIGHT')
     table_totales.setStyle(TableStyle([
@@ -697,32 +697,40 @@ def cotizacion_download_pdf(request, pk):
     medios_pago.append(Spacer(1, 2))
     medios_pago.append(Paragraph(f"<b>Tiempo de entrega:</b> {cotizacion.tiempo_entrega or '-'}", info_style))
     # Forma de pago
-    total_final = cotizacion.total_con_igv
+    total_final = cotizacion.total_con_igv_redondeado
+    # Verificar si hay detracción
+    tiene_detraccion = cotizacion.detraccion_redondeada > 0
+    
     if cotizacion.forma_pago == '50_50':
         adelanto_monto = total_final * Decimal('0.5')
         saldo_monto = total_final * Decimal('0.5')
-        adelanto_pct = "50%"
-        saldo_pct = "50%"
-        forma_pago_texto = "50% al iniciar y 50% al finalizar"
+        if tiene_detraccion:
+            forma_pago_texto = "50% al iniciar y 50% al finalizar (más detracción por separado)"
+            texto_pago = f"{forma_pago_texto}   |   Adelanto: S/ {adelanto_monto:.2f}   |   Saldo: S/ {saldo_monto:.2f}"
+        else:
+            forma_pago_texto = "50% al iniciar y 50% al finalizar"
+            texto_pago = f"{forma_pago_texto}   |   Adelanto: S/ {adelanto_monto:.2f}   |   Saldo: S/ {saldo_monto:.2f}"
     elif cotizacion.forma_pago == '100_adelantado':
-        adelanto_monto = total_final
-        saldo_monto = Decimal('0')
-        adelanto_pct = "100%"
-        saldo_pct = "0%"
-        forma_pago_texto = "100% adelantado"
+        if tiene_detraccion:
+            forma_pago_texto = "100% adelantado (más detracción por separado)"
+            texto_pago = f"{forma_pago_texto}   |   Monto: S/ {total_final:.2f}"
+        else:
+            forma_pago_texto = "100% adelantado"
+            texto_pago = f"{forma_pago_texto}   |   Monto: S/ {total_final:.2f}"
     elif cotizacion.forma_pago == 'al_credito':
-        adelanto_monto = Decimal('0')
-        saldo_monto = total_final
-        adelanto_pct = "0%"
-        saldo_pct = "100%"
-        forma_pago_texto = "Al crédito"
+        if tiene_detraccion:
+            forma_pago_texto = "Al crédito (más detracción por separado)"
+            texto_pago = f"{forma_pago_texto}   |   Monto: S/ {total_final:.2f}"
+        else:
+            forma_pago_texto = "Al crédito"
+            texto_pago = f"{forma_pago_texto}   |   Monto: S/ {total_final:.2f}"
     else:
-        adelanto_monto = Decimal('0')
-        saldo_monto = total_final
-        adelanto_pct = "0%"
-        saldo_pct = "100%"
-        forma_pago_texto = "-"
-    texto_pago = f"{forma_pago_texto}   |   Adelanto: {adelanto_pct} (S/ {adelanto_monto:.2f})   |   Saldo: {saldo_pct} (S/ {saldo_monto:.2f})"
+        if tiene_detraccion:
+            forma_pago_texto = "Pago único (más detracción por separado)"
+            texto_pago = f"{forma_pago_texto}   |   Monto: S/ {total_final:.2f}"
+        else:
+            forma_pago_texto = "Pago único"
+            texto_pago = f"{forma_pago_texto}   |   Monto: S/ {total_final:.2f}"
     medios_pago.append(Paragraph(f"<b>Forma de pago:</b> {texto_pago}", info_style))
     # Plazo de crédito
     if cotizacion.forma_pago == 'al_credito':
@@ -754,7 +762,8 @@ def cotizacion_download_pdf(request, pk):
     medios_pago.append(Paragraph("Cuenta de ahorros BCP: 215-95088021-001", info_style))
     medios_pago.append(Paragraph("Cuenta CCI: 00221519508802100123", info_style))
     medios_pago.append(Paragraph("CUENTA de detracciones Banco de la Nación-SOLES: 00-113-039019", info_style))
-    medios_pago.append(Paragraph(f"12% DE DETRACCIÓN - Banco de la Nación*: S/ {cotizacion.detraccion_redondeada}", info_style))
+    if cotizacion.detraccion_redondeada > 0:
+        medios_pago.append(Paragraph(f"12% DE DETRACCIÓN - Banco de la Nación*: S/ {cotizacion.detraccion_redondeada}", info_style))
     elements.extend(medios_pago)
     elements.append(Spacer(1, 10))
 

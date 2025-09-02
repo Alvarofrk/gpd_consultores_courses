@@ -178,6 +178,12 @@ class Cotizacion(models.Model):
         return self.monto_total * Decimal('1.18')
 
     @property
+    def total_con_igv_redondeado(self):
+        """Calcula el total con IGV redondeado hacia arriba sin decimales"""
+        total_calculado = self.monto_total * Decimal('1.18')
+        return math.ceil(total_calculado)
+
+    @property
     def detraccion(self):
         """Calcula la detracción del 12% si el total + IGV es >= 700"""
         if self.total_con_igv >= Decimal('700.00'):
