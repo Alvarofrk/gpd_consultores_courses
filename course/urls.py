@@ -44,6 +44,18 @@ urlpatterns = [
         name="course_video_navigation_first"
     ),
     
+    # Document Navigation URLs
+    path(
+        "course/<slug>/documents/<int:document_id>/navigate/",
+        views.course_document_navigation,
+        name="course_document_navigation"
+    ),
+    path(
+        "course/<slug>/documents/navigate/",
+        views.course_document_navigation,
+        name="course_document_navigation_first"
+    ),
+    
     # Course Registration URLs
     path("course/registration/", views.course_registration, name="course_registration"),
     path("course/drop/", views.course_drop, name="course_drop"),
@@ -53,6 +65,11 @@ urlpatterns = [
 
     path('video/<int:video_id>/update_order/', views.update_video_order, name='update_video_order'),
 
-    path('document/<int:document_id>/view/', views.PDFViewerView.as_view(), name='view_pdf'),
-    path('document/<int:document_id>/download/', views.PDFDownloadView.as_view(), name='download_pdf'),
+    path('document/<int:document_id>/view/', views.DocumentViewerView.as_view(), name='view_document'),
+    path('document/<int:document_id>/powerpoint/', views.PowerPointViewerView.as_view(), name='view_powerpoint'),
+    path('document/<int:document_id>/download/', views.DocumentDownloadView.as_view(), name='download_document'),
+    
+    # URLs de compatibilidad para mantener las URLs antiguas funcionando
+    path('document/<int:document_id>/view/', views.DocumentViewerView.as_view(), name='view_pdf'),
+    path('document/<int:document_id>/download/', views.DocumentDownloadView.as_view(), name='download_pdf'),
 ]

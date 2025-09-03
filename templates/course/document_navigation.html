@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{{ course.title }} - {% trans 'Navegación de Documentos' %} | {% trans 'Sistema de gestión de aprendizaje' %}{% endblock title %}
+{% load static %}
+
+{% block content %}
+
+<nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'programs' %}">{% trans 'Programas' %}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'program_detail' course.program.id %}">{{ course.program }}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'course_detail' course.slug %}">{{ course.title }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{% trans 'Documentos' %}</li>
+    </ol>
+</nav>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header" style="background-color: #042042; color: white;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">{{ current_document.title }}</h5>
+                        {% if current_user.is_staff or current_user.is_lecturer %}
+                            <div class="btn-group">
+                                <a href="{% url 'upload_file_edit' course.slug current_document.id %}" 
+                                   class="btn btn-warning btn-sm">
+                                    <i class="fas fa-edit"></i> {% trans "Editar Documento" %}
+                                </a>
+                                <a href="{% url 'upload_file_view' course.slug %}" 
+                                   class="btn btn-success btn-sm">
+                                    <i class="fas fa-plus"></i> {% trans "Nuevo Documento" %}
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="document-container mb-4 rounded overflow-hidden shadow-sm">
+                        {% if current_document.get_extension_short == 'pdf' %}
+                            <!-- Para PDFs: iframe directo -->
+                            <iframe src="{% url 'view_document' current_document.id %}" 
+                                    width="100%" height="600px" frameborder="0"
+                                    style="border: 1px solid #ddd;"></iframe>
+                        {% elif current_document.get_extension_short == 'powerpoint' %}
+                            <!-- Para PowerPoint: botón para abrir en nueva ventana -->
+                            <div class="text-center p-4">
+                                <h5><i class="fas fa-presentation me-2"></i>{% trans "Presentación PowerPoint" %}</h5>
+                                <p class="text-muted">{{ current_document.title }}</p>
+                                <div class="btn-group">
+                                    <a href="{% url 'view_powerpoint' current_document.id %}" 
+                                       class="btn btn-primary" target="_blank">
+                                        <i class="fas fa-play"></i> {% trans "Ver Presentación" %}
+                                    </a>
+                                    <a href="{% url 'download_document' current_document.id %}" 
+                                       class="btn btn-secondary">
+                                        <i class="fas fa-download"></i> {% trans "Descargar" %}
+                                    </a>
+                                </div>
+                            </div>
+                        {% else %}
+                            <!-- Para otros formatos: solo descarga -->
+                            <div class="text-center p-4">
+                                <h5><i class="fas fa-file me-2"></i>{% trans "Archivo" %} {{ current_document.get_extension_short|title }}</h5>
+                                <p class="text-muted">{{ current_document.title }}</p>
+                                <a href="{% url 'download_document' current_document.id %}" 
+                                   class="btn btn-primary">
+                                    <i class="fas fa-download"></i> {% trans "Descargar" %}
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    {% if current_document.description %}
+                        <div class="document-summary mb-4 p-3 bg-light rounded">
+                            <h5 class="text-dark">{% trans "Descripción" %}</h5>
+                            <p class="mb-0">{{ current_document.description }}</p>
+                        </div>
+                    {% endif %}
+
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <small class="text-muted">
+                                <i class="fas fa-calendar"></i> 
+                                {% trans "Subido el" %} {{ current_document.upload_time|date:"d/m/Y" }}
+                            </small>
+                        </div>
+                        <a href="{% url 'download_document' current_document.id %}"
+                           class="btn"
+                           style="background-color: #042042; color: white;"
+                           target="_blank">
+                            <i class="fas fa-download"></i> {% trans "Descargar" %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header" style="background-color: #1a237e; color: white;">
+                    <h5 class="mb-0">{% trans "Lista de Documentos" %}</h5>
+                    {% if current_user.is_staff or current_user.is_lecturer %}
+                        <a href="{% url 'upload_file_view' course.slug %}" 
+                           class="btn btn-success btn-sm">
+                            <i class="fas fa-plus"></i> {% trans "Agregar" %}
+                        </a>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        {% for document in documents %}
+                            <a href="{% url 'course_document_navigation' course.slug document.id %}" 
+                               class="list-group-item list-group-item-action d-flex justify-content-between align-items-center
+                                      {% if document.id == current_document.id %}active{% endif %}">
+                                <div>
+                                    <i class="fas fa-file-pdf text-danger"></i>
+                                    {{ document.title }}
+                                </div>
+                                {% if document.id == current_document.id %}
+                                    <i class="fas fa-play-circle"></i>
+                                {% endif %}
+                            </a>
+                        {% empty %}
+                            <div class="text-center text-muted py-3">
+                                <i class="fas fa-folder-open fa-2x mb-2"></i>
+                                <p>{% trans "No hay documentos disponibles" %}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-center gap-2">
+                {% if previous_document %}
+                    <a href="{% url 'course_document_navigation' course.slug previous_document.id %}" 
+                       class="btn" style="background-color: #1a237e; color: white;">
+                        <i class="fas fa-arrow-left"></i> {% trans "Anterior" %}
+                    </a>
+                {% else %}
+                    <button class="btn btn-secondary" disabled>
+                        <i class="fas fa-arrow-left"></i> {% trans "Anterior" %}
+                    </button>
+                {% endif %}
+
+                {% if is_last_document %}
+                    <a class="btn btn-warning" href="{% url 'quiz_index' course.slug %}">
+                        <i class="fas fa-list"></i> {% trans 'Tomar examen' %}
+                    </a>
+                {% endif %}
+
+                {% if next_document %}
+                    {% if can_proceed or current_user.is_staff or current_user.is_lecturer %}
+                        <a href="{% url 'course_document_navigation' course.slug next_document.id %}" 
+                           class="btn" style="background-color: #1a237e; color: white;">
+                            {% trans "Siguiente" %} <i class="fas fa-arrow-right"></i>
+                        </a>
+                    {% else %}
+                        <button class="btn btn-secondary" disabled title="{% trans 'Debes completar este documento para continuar' %}">
+                            {% trans "Siguiente" %} <i class="fas fa-arrow-right"></i>
+                        </button>
+                    {% endif %}
+                {% else %}
+                    <button class="btn btn-secondary" disabled>
+                        {% trans "Siguiente" %} <i class="fas fa-arrow-right"></i>
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}

@@ -41,10 +41,20 @@
 <div class="title-1">{{ course }}</div>
 <p class="small text-muted">{{ course.summary }}</p>
 
-<!-- Botón para ver todos los videos del curso -->
-<a class="btn btn-gpd mb-4" href="{% url 'course_video_navigation_first' course.slug %}" style="padding: 10px 20px; border-radius: 5px; text-align: center; font-weight: bold; text-decoration: none; display: inline-block; font-size: 16px; transition: background-color 0.3s ease, transform 0.2s ease;">
-    {% trans 'INICIAR CURSO' %}
-</a>
+<!-- Botón para iniciar el curso (videos o documentos) -->
+{% if videos %}
+    <a class="btn btn-gpd mb-4" href="{% url 'course_video_navigation_first' course.slug %}" style="padding: 10px 20px; border-radius: 5px; text-align: center; font-weight: bold; text-decoration: none; display: inline-block; font-size: 16px; transition: background-color 0.3s ease, transform: 0.2s ease;">
+        <i class="fas fa-play"></i> {% trans 'INICIAR CURSO' %}
+    </a>
+{% elif files %}
+    <a class="btn btn-gpd mb-4" href="{% url 'course_document_navigation_first' course.slug %}" style="padding: 10px 20px; border-radius: 5px; text-align: center; font-weight: bold; text-decoration: none; display: inline-block; font-size: 16px; transition: background-color 0.3s ease, transform: 0.2s ease;">
+        <i class="fas fa-file-pdf"></i> {% trans 'VER DOCUMENTOS' %}
+    </a>
+{% else %}
+    <button class="btn btn-secondary mb-4" disabled style="padding: 10px 20px; border-radius: 5px; text-align: center; font-weight: bold; text-decoration: none; display: inline-block; font-size: 16px;">
+        <i class="fas fa-exclamation-triangle"></i> {% trans 'SIN CONTENIDO' %}
+    </button>
+{% endif %}
 {% if request.user.is_superuser or request.user.is_lecturer %}
 <a class="btn btn-gpd mb-4 ms-2" href="{% url 'quiz_index' course.slug %}" style="padding: 10px 20px; border-radius: 5px; text-align: center; font-weight: bold; text-decoration: none; display: inline-block; font-size: 16px; transition: background-color 0.3s ease, transform 0.2s ease;">
     <i class="fas fa-list"></i> {% trans 'Tomar examen' %}
@@ -150,7 +160,7 @@
                             <td>{{ file.updated_date|date }}</td>
                             <th>
                                 <div>
-                                    <a class="download-btn" href="{{ file.file.url }}" title="Descargar en tu dispositivo">
+                                    <a class="download-btn" href="{% url 'download_document' file.id %}" title="Descargar en tu dispositivo">
                                         <i class="fas fa-download me-1"></i>{% trans 'Descargar' %}</a>
                                 </div>
                             </th>
