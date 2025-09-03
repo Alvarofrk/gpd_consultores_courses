@@ -65,11 +65,6 @@ urlpatterns = [
 
     path('video/<int:video_id>/update_order/', views.update_video_order, name='update_video_order'),
 
-    path('document/<int:document_id>/view/', views.DocumentViewerView.as_view(), name='view_document'),
-    path('document/<int:document_id>/powerpoint/', views.PowerPointViewerView.as_view(), name='view_powerpoint'),
-    path('document/<int:document_id>/download/', views.DocumentDownloadView.as_view(), name='download_document'),
-    
-    # URLs de compatibilidad para mantener las URLs antiguas funcionando
-    path('document/<int:document_id>/view/', views.DocumentViewerView.as_view(), name='view_pdf'),
-    path('document/<int:document_id>/download/', views.DocumentDownloadView.as_view(), name='download_pdf'),
+    path('document/<int:document_id>/view/', views.PDFViewerView.as_view(), name='view_pdf'),
+    path('document/<int:document_id>/download/', views.PDFDownloadView.as_view(), name='download_pdf'),
 ]

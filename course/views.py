@@ -267,31 +267,58 @@ def course_document_navigation(request, slug, document_id=None):
     else:
         current_document = documents.first()
     
-    # Obtener el índice del documento actual y los documentos anterior y siguiente
-    current_index = list(documents).index(current_document)
-    previous_document = documents[current_index - 1] if current_index > 0 else None
-    next_document = documents[current_index + 1] if current_index < len(documents) - 1 else None
+    # Obtener documentos anterior y siguiente
+    document_list = list(documents)
+    current_index = document_list.index(current_document)
+    
+    previous_document = document_list[current_index - 1] if current_index > 0 else None
+    next_document = document_list[current_index + 1] if current_index < len(document_list) - 1 else None
     
     # Verificar si es el último documento
     is_last_document = current_index == len(documents) - 1
     
-    # Verificar si se puede avanzar al siguiente documento
-    can_proceed = current_index == 0 or request.user.is_staff or request.user.is_lecturer
+    # Preparar contexto para PowerPoint
+    powerpoint_data = None
+    if current_document.get_extension_short() == 'powerpoint':
+        # Intentar Office Online primero
+        office_online_url = current_document.get_office_online_url()
+        
+        if office_online_url:
+            powerpoint_data = {
+                'viewer_type': 'office_online',
+                'office_online_url': office_online_url,
+                'slide_count': current_document.get_slide_count(),
+            }
+        else:
+            # Fallback al visualizador propio
+            slides_html = current_document.convert_pptx_to_html()
+            if slides_html:
+                powerpoint_data = {
+                    'viewer_type': 'custom',
+                    'slides_html': slides_html,
+                    'slide_count': len(slides_html),
+                    'current_slide': 1
+                }
+            else:
+                # Si todo falla, mostrar mensaje de descarga
+                powerpoint_data = {
+                    'viewer_type': 'download_only',
+                    'slide_count': current_document.get_slide_count(),
+                    'message': 'No se pudo cargar la presentación. Te recomendamos descargar el archivo.'
+                }
     
-    return render(
-        request,
-        "course/document_navigation.html",
-        {
-            "course": course,
-            "current_document": current_document,
-            "previous_document": previous_document,
-            "next_document": next_document,
-            "is_last_document": is_last_document,
-            "can_proceed": can_proceed,
-            "documents": documents,
-            "current_user": request.user,
-        },
-    )
+    context = {
+        'course': course,
+        'current_document': current_document,
+        'previous_document': previous_document,
+        'next_document': next_document,
+        'documents': documents,
+        'powerpoint_data': powerpoint_data,
+        'is_last_document': is_last_document,
+        'current_user': request.user,
+    }
+    
+    return render(request, 'course/document_navigation.html', context)
 
 
 @login_required
@@ -852,84 +879,28 @@ def update_video_order(request, video_id):
     return redirect('course_video_navigation', slug=video.course.slug, video_id=video_id)
 
 @method_decorator(login_required, name='dispatch')
-class DocumentViewerView(View):
-    """
-    Vista inteligente para visualizar documentos según su tipo
-    """
+class PDFViewerView(View):
     def get(self, request, document_id):
         document = get_object_or_404(Upload, id=document_id)
         file_path = os.path.join(settings.MEDIA_ROOT, str(document.file))
         
         if not os.path.exists(file_path):
             raise Http404("El archivo no existe")
-        
-        # Detectar el tipo de archivo
-        file_extension = document.get_extension_short()
-        
-        if file_extension == 'pdf':
-            # Para PDFs: mostrar inline
-            response = FileResponse(open(file_path, 'rb'), content_type='application/pdf')
-            response['Content-Disposition'] = 'inline; filename="{}"'.format(os.path.basename(file_path))
-            return response
-        
-        elif file_extension == 'powerpoint':
-            # Para PowerPoint: usar Google Docs Viewer (más confiable)
-            file_url = request.build_absolute_uri(document.file.url)
-            google_viewer_url = f"https://docs.google.com/viewer?url={file_url}&embedded=true"
-            return redirect(google_viewer_url)
-        
-        else:
-            # Para otros formatos: redirigir a descarga
-            return redirect('download_document', document_id=document_id)
-
+            
+        response = FileResponse(open(file_path, 'rb'), content_type='application/pdf')
+        response['Content-Disposition'] = 'inline; filename="{}"'.format(os.path.basename(file_path))
+        return response
 
 @method_decorator(login_required, name='dispatch')
-class PowerPointViewerView(View):
-    """
-    Vista específica para visualizar presentaciones PowerPoint
-    """
-    def get(self, request, document_id):
-        document = get_object_or_404(Upload, id=document_id)
-        
-        # Verificar que sea un archivo PowerPoint
-        if document.get_extension_short() != 'powerpoint':
-            messages.error(request, "Este archivo no es una presentación PowerPoint.")
-            return redirect('course_document_navigation', slug=document.course.slug)
-        
-        # Usar Google Docs Viewer (más confiable)
-        file_url = request.build_absolute_uri(document.file.url)
-        google_viewer_url = f"https://docs.google.com/viewer?url={file_url}&embedded=true"
-        
-        return render(request, 'course/powerpoint_viewer.html', {
-            'document': document,
-            'google_viewer_url': google_viewer_url,
-            'course': document.course
-        })
-
-
-@method_decorator(login_required, name='dispatch')
-class DocumentDownloadView(View):
-    """
-    Vista universal para descargar cualquier tipo de documento
-    """
+class PDFDownloadView(View):
     def get(self, request, document_id):
         document = get_object_or_404(Upload, id=document_id)
         file_path = os.path.join(settings.MEDIA_ROOT, str(document.file))
         
         if not os.path.exists(file_path):
             messages.error(request, "El archivo no existe o no está disponible.")
-            return redirect('course_document_navigation', slug=document.course.slug)
-        
-        # Detectar content-type basado en extensión
-        content_type_map = {
-            'pdf': 'application/pdf',
-            'powerpoint': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            'word': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'excel': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        }
-        
-        content_type = content_type_map.get(document.get_extension_short(), 'application/octet-stream')
-        
-        response = FileResponse(open(file_path, 'rb'), content_type=content_type)
+            return redirect('course_video_navigation', slug=document.course.slug)
+            
+        response = FileResponse(open(file_path, 'rb'), content_type='application/pdf')
         response['Content-Disposition'] = 'attachment; filename="{}"'.format(os.path.basename(file_path))
         return response

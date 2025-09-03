@@ -46,6 +46,7 @@ if DEBUG:
         'http://localhost:3000',
         'http://127.0.0.1:3000',
     ]
+    SITE_DOMAIN = 'http://localhost:8000'
 else:
     # Configuración para producción
     ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="gpd-consultores-courses.onrender.com").split(",")
@@ -53,6 +54,7 @@ else:
         'https://gpd-consultores-courses.onrender.com',
         # Agrega aquí otros dominios de producción si los necesitas
     ]
+    SITE_DOMAIN = 'https://gpd-consultores-courses.onrender.com'
 
 
 # change the default user models to our custom model

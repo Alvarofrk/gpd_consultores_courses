@@ -160,7 +160,7 @@
                             <td>{{ file.updated_date|date }}</td>
                             <th>
                                 <div>
-                                    <a class="download-btn" href="{% url 'download_document' file.id %}" title="Descargar en tu dispositivo">
+                                    <a class="download-btn" href="{{ file.file.url }}" title="Descargar en tu dispositivo">
                                         <i class="fas fa-download me-1"></i>{% trans 'Descargar' %}</a>
                                 </div>
                             </th>

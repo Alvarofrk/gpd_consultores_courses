@@ -15,164 +15,354 @@
     </ol>
 </nav>
 
-<div class="container-fluid">
+<div class="container mt-4">
     <div class="row">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header" style="background-color: #042042; color: white;">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">{{ current_document.title }}</h5>
-                        {% if current_user.is_staff or current_user.is_lecturer %}
-                            <div class="btn-group">
-                                <a href="{% url 'upload_file_edit' course.slug current_document.id %}" 
-                                   class="btn btn-warning btn-sm">
-                                    <i class="fas fa-edit"></i> {% trans "Editar Documento" %}
-                                </a>
-                                <a href="{% url 'upload_file_view' course.slug %}" 
-                                   class="btn btn-success btn-sm">
-                                    <i class="fas fa-plus"></i> {% trans "Nuevo Documento" %}
-                                </a>
-                            </div>
-                        {% endif %}
-                    </div>
+        <!-- Contenido Principal -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4>{{ current_document.title }}</h4>
+                    <small class="text-muted">{{ current_document.get_extension_short|upper }} • {{ current_document.upload_time|date:"d/m/Y H:i" }}</small>
                 </div>
                 <div class="card-body">
-                    <div class="document-container mb-4 rounded overflow-hidden shadow-sm">
-                        {% if current_document.get_extension_short == 'pdf' %}
-                            <!-- Para PDFs: iframe directo -->
-                            <iframe src="{% url 'view_document' current_document.id %}" 
-                                    width="100%" height="600px" frameborder="0"
-                                    style="border: 1px solid #ddd;"></iframe>
-                        {% elif current_document.get_extension_short == 'powerpoint' %}
-                            <!-- Para PowerPoint: botón para abrir en nueva ventana -->
-                            <div class="text-center p-4">
-                                <h5><i class="fas fa-presentation me-2"></i>{% trans "Presentación PowerPoint" %}</h5>
-                                <p class="text-muted">{{ current_document.title }}</p>
-                                <div class="btn-group">
-                                    <a href="{% url 'view_powerpoint' current_document.id %}" 
-                                       class="btn btn-primary" target="_blank">
-                                        <i class="fas fa-play"></i> {% trans "Ver Presentación" %}
+                    {% if current_document.get_extension_short == 'pdf' %}
+                        <!-- Visualizador de PDF -->
+                        <div class="pdf-viewer">
+                            <iframe src="{{ current_document.file.url }}" width="100%" height="600px" frameborder="0"></iframe>
+                        </div>
+                    {% elif current_document.get_extension_short == 'powerpoint' %}
+                        {% if powerpoint_data.viewer_type == 'office_online' %}
+                            <!-- Office Online Viewer -->
+                            <div class="office-online-viewer">
+                                <div class="alert alert-info mb-3">
+                                    <h5><i class="fas fa-external-link-alt"></i> Visualizador de Office Online</h5>
+                                    <p>Esta presentación se está mostrando usando Microsoft Office Online para una mejor experiencia.</p>
+                                    <p><strong>Diapositivas detectadas:</strong> {{ powerpoint_data.slide_count }}</p>
+                                </div>
+                                <div class="presentation-container">
+                                    <iframe src="{{ powerpoint_data.office_online_url }}" 
+                                            width="100%" height="600px" 
+                                            frameborder="0" 
+                                            allowfullscreen>
+                                    </iframe>
+                                </div>
+                                <div class="mt-3">
+                                    <a href="{{ current_document.file.url }}" class="btn btn-outline-primary" download>
+                                        <i class="fas fa-download"></i> Descargar Presentación
                                     </a>
-                                    <a href="{% url 'download_document' current_document.id %}" 
-                                       class="btn btn-secondary">
-                                        <i class="fas fa-download"></i> {% trans "Descargar" %}
-                                    </a>
+                                </div>
+                            </div>
+                        {% elif powerpoint_data.viewer_type == 'custom' %}
+                            <!-- Visualizador propio -->
+                            <div class="powerpoint-viewer">
+                                <div class="presentation-controls mb-3">
+                                    <button class="btn btn-outline-primary" id="prev-slide" disabled>
+                                        <i class="fas fa-chevron-left"></i> Anterior
+                                    </button>
+                                    <span class="mx-3">
+                                        Diapositiva <span id="current-slide">1</span> de <span id="total-slides">{{ powerpoint_data.slide_count }}</span>
+                                    </span>
+                                    <button class="btn btn-outline-primary" id="next-slide">
+                                        Siguiente <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                </div>
+                                
+                                <div class="presentation-container">
+                                    <div id="slides-container">
+                                        {% for slide_html in powerpoint_data.slides_html %}
+                                            {{ slide_html|safe }}
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                
+                                <!-- Miniaturas -->
+                                <div class="thumbnails-container mt-3">
+                                    <h6>Miniaturas:</h6>
+                                    <div class="thumbnails" id="thumbnails">
+                                        {% for i in powerpoint_data.slide_count|add:"0"|make_list %}
+                                            <div class="thumbnail {% if forloop.first %}active{% endif %}" data-slide="{{ forloop.counter }}">
+                                                <span class="thumbnail-number">{{ forloop.counter }}</span>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
                                 </div>
                             </div>
                         {% else %}
-                            <!-- Para otros formatos: solo descarga -->
-                            <div class="text-center p-4">
-                                <h5><i class="fas fa-file me-2"></i>{% trans "Archivo" %} {{ current_document.get_extension_short|title }}</h5>
-                                <p class="text-muted">{{ current_document.title }}</p>
-                                <a href="{% url 'download_document' current_document.id %}" 
-                                   class="btn btn-primary">
-                                    <i class="fas fa-download"></i> {% trans "Descargar" %}
+                            <!-- Solo descarga -->
+                            <div class="alert alert-warning">
+                                <h5><i class="fas fa-file-powerpoint"></i> Presentación no visualizable</h5>
+                                <p>{{ powerpoint_data.message }}</p>
+                                <p><strong>Diapositivas detectadas:</strong> {{ powerpoint_data.slide_count }}</p>
+                                <hr>
+                                <a href="{{ current_document.file.url }}" class="btn btn-primary" download>
+                                    <i class="fas fa-download"></i> Descargar Presentación Completa
                                 </a>
                             </div>
                         {% endif %}
-                    </div>
-
-                    {% if current_document.description %}
-                        <div class="document-summary mb-4 p-3 bg-light rounded">
-                            <h5 class="text-dark">{% trans "Descripción" %}</h5>
-                            <p class="mb-0">{{ current_document.description }}</p>
+                    {% else %}
+                        <!-- Otros tipos de archivo -->
+                        <div class="alert alert-warning">
+                            <h5><i class="fas fa-file"></i> Archivo no visualizable</h5>
+                            <p>Este tipo de archivo no se puede visualizar directamente en el navegador.</p>
+                            <a href="{{ current_document.file.url }}" class="btn btn-primary" download>
+                                <i class="fas fa-download"></i> Descargar Archivo
+                            </a>
                         </div>
                     {% endif %}
-
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <div>
-                            <small class="text-muted">
-                                <i class="fas fa-calendar"></i> 
-                                {% trans "Subido el" %} {{ current_document.upload_time|date:"d/m/Y" }}
-                            </small>
-                        </div>
-                        <a href="{% url 'download_document' current_document.id %}"
-                           class="btn"
-                           style="background-color: #042042; color: white;"
-                           target="_blank">
-                            <i class="fas fa-download"></i> {% trans "Descargar" %}
-                        </a>
-                    </div>
                 </div>
             </div>
         </div>
-
-        <div class="col-md-4">
-            <div class="card shadow-sm">
-                <div class="card-header" style="background-color: #1a237e; color: white;">
-                    <h5 class="mb-0">{% trans "Lista de Documentos" %}</h5>
-                    {% if current_user.is_staff or current_user.is_lecturer %}
-                        <a href="{% url 'upload_file_view' course.slug %}" 
-                           class="btn btn-success btn-sm">
-                            <i class="fas fa-plus"></i> {% trans "Agregar" %}
-                        </a>
-                    {% endif %}
+        
+        <!-- Barra lateral -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Documentos del Curso</h5>
                 </div>
                 <div class="card-body">
-                    <div class="list-group list-group-flush">
+                    <div class="list-group">
                         {% for document in documents %}
                             <a href="{% url 'course_document_navigation' course.slug document.id %}" 
-                               class="list-group-item list-group-item-action d-flex justify-content-between align-items-center
-                                      {% if document.id == current_document.id %}active{% endif %}">
-                                <div>
-                                    <i class="fas fa-file-pdf text-danger"></i>
-                                    {{ document.title }}
+                               class="list-group-item list-group-item-action {% if document.id == current_document.id %}active{% endif %}">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ document.title }}</h6>
+                                    <small class="text-muted">{{ document.get_extension_short|upper }}</small>
                                 </div>
-                                {% if document.id == current_document.id %}
-                                    <i class="fas fa-play-circle"></i>
-                                {% endif %}
+                                <small class="text-muted">{{ document.upload_time|date:"d/m/Y" }}</small>
                             </a>
-                        {% empty %}
-                            <div class="text-center text-muted py-3">
-                                <i class="fas fa-folder-open fa-2x mb-2"></i>
-                                <p>{% trans "No hay documentos disponibles" %}</p>
-                            </div>
                         {% endfor %}
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-center gap-2">
-                {% if previous_document %}
-                    <a href="{% url 'course_document_navigation' course.slug previous_document.id %}" 
-                       class="btn" style="background-color: #1a237e; color: white;">
-                        <i class="fas fa-arrow-left"></i> {% trans "Anterior" %}
-                    </a>
-                {% else %}
-                    <button class="btn btn-secondary" disabled>
-                        <i class="fas fa-arrow-left"></i> {% trans "Anterior" %}
-                    </button>
-                {% endif %}
-
-                {% if is_last_document %}
-                    <a class="btn btn-warning" href="{% url 'quiz_index' course.slug %}">
-                        <i class="fas fa-list"></i> {% trans 'Tomar examen' %}
-                    </a>
-                {% endif %}
-
-                {% if next_document %}
-                    {% if can_proceed or current_user.is_staff or current_user.is_lecturer %}
-                        <a href="{% url 'course_document_navigation' course.slug next_document.id %}" 
-                           class="btn" style="background-color: #1a237e; color: white;">
-                            {% trans "Siguiente" %} <i class="fas fa-arrow-right"></i>
+            
+            <!-- Navegación -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>Navegación</h5>
+                </div>
+                <div class="card-body">
+                    {% if previous_document %}
+                        <a href="{% url 'course_document_navigation' course.slug previous_document.id %}" 
+                           class="btn btn-outline-primary btn-sm mb-2 w-100">
+                            <i class="fas fa-chevron-left"></i> Documento Anterior
                         </a>
-                    {% else %}
-                        <button class="btn btn-secondary" disabled title="{% trans 'Debes completar este documento para continuar' %}">
-                            {% trans "Siguiente" %} <i class="fas fa-arrow-right"></i>
-                        </button>
                     {% endif %}
-                {% else %}
-                    <button class="btn btn-secondary" disabled>
-                        {% trans "Siguiente" %} <i class="fas fa-arrow-right"></i>
-                    </button>
-                {% endif %}
+                    
+                    {% if next_document %}
+                        <a href="{% url 'course_document_navigation' course.slug next_document.id %}" 
+                           class="btn btn-outline-primary btn-sm w-100">
+                            Documento Siguiente <i class="fas fa-chevron-right"></i>
+                        </a>
+                    {% elif is_last_document %}
+                        <!-- Opción de examen al final -->
+                        <div class="text-center">
+                            <p class="text-muted mb-2">¡Has completado la revisión de todos los documentos!</p>
+                            <a href="{% url 'quiz_index' course.slug %}" 
+                               class="btn btn-success btn-sm w-100">
+                                <i class="fas fa-clipboard-check"></i> Tomar Examen
+                            </a>
+                        </div>
+                    {% else %}
+                        <a href="{% url 'course_detail' course.slug %}" 
+                           class="btn btn-success btn-sm w-100">
+                            <i class="fas fa-check"></i> Finalizar Revisión
+                        </a>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Estilos CSS para el visualizador -->
+<style>
+.office-online-viewer {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.office-online-viewer iframe {
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.powerpoint-viewer {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.presentation-controls {
+    text-align: center;
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.presentation-container {
+    background: white;
+    border-radius: 8px;
+    padding: 30px;
+    min-height: 400px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.slide {
+    text-align: center;
+}
+
+.slide-content {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.slide-number {
+    color: #666;
+    margin-bottom: 20px;
+    font-size: 1.2em;
+}
+
+.slide-text {
+    font-size: 1.1em;
+    line-height: 1.6;
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.slide-text h2 {
+    font-size: 1.8em;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.slide-text h3 {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #444;
+    margin-bottom: 15px;
+}
+
+.slide-text h4 {
+    font-size: 1.3em;
+    font-weight: bold;
+    color: #555;
+    margin-bottom: 12px;
+}
+
+.slide-text p {
+    font-size: 1.1em;
+    line-height: 1.6;
+    margin-bottom: 10px;
+}
+
+.slide-text strong {
+    font-weight: bold;
+    color: #000;
+}
+
+.slide-text em {
+    font-style: italic;
+}
+
+.slide-text u {
+    text-decoration: underline;
+}
+
+.slide-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.slide-table-cell {
+    padding: 12px;
+    border: 1px solid #ddd;
+    text-align: left;
+    vertical-align: top;
+}
+
+.slide-table tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.slide-shape {
+    margin: 10px 0;
+    padding: 15px;
+    border-radius: 8px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+}
+
+.slide-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin: 10px 0;
+}
+
+.thumbnails-container {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.thumbnails {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.thumbnail {
+    width: 60px;
+    height: 40px;
+    background: #e9ecef;
+    border: 2px solid #dee2e6;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.thumbnail:hover {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.thumbnail.active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.thumbnail-number {
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.pdf-viewer iframe {
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+</style>
+
+<!-- JavaScript para el visualizador de PowerPoint -->
+{% if powerpoint_data and powerpoint_data.viewer_type == 'custom' %}
+<script src="{% static 'js/powerpoint-viewer.js' %}"></script>
+{% endif %}
 
 {% endblock content %}

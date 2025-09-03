@@ -12,6 +12,12 @@ from core.models import ActivityLog, Semester
 from core.utils import unique_slug_generator
 from django.contrib.auth.models import User
 import re  # Importamos el módulo 're' para usar expresiones regulares
+import os
+import zipfile
+import io
+import base64
+from django.core.exceptions import ValidationError
+from pptx import Presentation
 
 
 class ProgramManager(models.Manager):
@@ -175,6 +181,141 @@ class Upload(models.Model):
         elif ext in ("zip", "rar", "7zip"):
             return "archive"
         return "file"
+
+    def has_embedded_videos(self):
+        """
+        Detecta si el PPTX tiene videos embebidos
+        """
+        if not self.file.name.lower().endswith(('.ppt', '.pptx')):
+            return False
+        
+        try:
+            # Abrir el archivo PPTX como ZIP
+            with zipfile.ZipFile(self.file.path, 'r') as zip_file:
+                # Buscar archivos de video en la estructura del PPTX
+                video_extensions = ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm']
+                
+                for file_info in zip_file.filelist:
+                    filename = file_info.filename.lower()
+                    # Buscar en media/embeddings/ (donde PowerPoint guarda videos)
+                    if 'media/embeddings/' in filename:
+                        return True
+                    # Buscar archivos con extensiones de video
+                    if any(filename.endswith(ext) for ext in video_extensions):
+                        return True
+                
+                return False
+        except Exception:
+            return False
+
+    def get_slide_count(self):
+        """
+        Obtiene el número total de diapositivas
+        """
+        if not self.file.name.lower().endswith(('.ppt', '.pptx')):
+            return 0
+        
+        try:
+            prs = Presentation(self.file.path)
+            return len(prs.slides)
+        except Exception:
+            return 0
+
+    def get_office_online_url(self):
+        """
+        Genera URL para Office Online Viewer
+        """
+        if not self.file.name.lower().endswith(('.ppt', '.pptx')):
+            return None
+        
+        try:
+            # Obtener URL absoluta del archivo
+            file_url = self.file.url
+            if file_url.startswith('/'):
+                # Necesitamos la URL completa del dominio
+                from django.conf import settings
+                domain = getattr(settings, 'SITE_DOMAIN', 'http://localhost:8000')
+                file_url = f"{domain}{file_url}"
+            
+            # Codificar la URL para Office Online
+            import urllib.parse
+            encoded_url = urllib.parse.quote(file_url, safe='')
+            
+            return f"https://view.officeapps.live.com/op/embed.aspx?src={encoded_url}"
+        except Exception as e:
+            print(f"Error generating Office Online URL: {e}")
+            return None
+
+    def convert_pptx_to_html(self):
+        """
+        Convierte PPTX a HTML simplificado para visualización
+        """
+        if not self.file.name.lower().endswith(('.ppt', '.pptx')):
+            return None
+        
+        try:
+            prs = Presentation(self.file.path)
+            slides_html = []
+            
+            for i, slide in enumerate(prs.slides):
+                slide_html = f"""
+                <div class="slide" id="slide-{i+1}" style="display: {'block' if i == 0 else 'none'};">
+                    <div class="slide-content">
+                        <h3 class="slide-number">Diapositiva {i+1}</h3>
+                        <div class="slide-elements">
+                """
+                
+                # Extracción simplificada
+                slide_content = ""
+                
+                for shape in slide.shapes:
+                    try:
+                        # Texto simple
+                        if hasattr(shape, 'text') and shape.text.strip():
+                            slide_content += f'<p class="slide-text">{shape.text}</p>'
+                        
+                        # Texto de text_frame
+                        elif hasattr(shape, 'text_frame') and shape.text_frame:
+                            text = shape.text_frame.text.strip()
+                            if text:
+                                slide_content += f'<p class="slide-text">{text}</p>'
+                        
+                        # Imágenes
+                        elif hasattr(shape, 'image'):
+                            try:
+                                img_stream = io.BytesIO()
+                                shape.image.save(img_stream, format='PNG')
+                                img_data = base64.b64encode(img_stream.getvalue()).decode()
+                                slide_content += f'<img src="data:image/png;base64,{img_data}" class="slide-image" alt="Imagen de diapositiva">'
+                            except:
+                                pass
+                        
+                        # Tablas
+                        elif hasattr(shape, 'table'):
+                            table_html = '<table class="slide-table">'
+                            for row in shape.table.rows:
+                                table_html += '<tr>'
+                                for cell in row.cells:
+                                    table_html += f'<td class="slide-table-cell">{cell.text}</td>'
+                                table_html += '</tr>'
+                            table_html += '</table>'
+                            slide_content += table_html
+                    
+                    except Exception:
+                        continue
+                
+                slide_html += slide_content
+                slide_html += """
+                        </div>
+                    </div>
+                </div>
+                """
+                slides_html.append(slide_html)
+            
+            return slides_html
+        except Exception as e:
+            print(f"Error converting PPTX: {e}")
+            return None
 
     def delete(self, *args, **kwargs):
         self.file.delete(save=False)
