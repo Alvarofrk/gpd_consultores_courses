@@ -1106,7 +1106,7 @@ class CertificadosDashboardView(TemplateView):
         context['manuales_vencidos'] = certificados_manuales.filter(
             fecha_vencimiento__lt=hoy
         ).count()
-        context['certificados_vencidos'] = context['automaticos_vencidos'] + context['manuales_activos']
+        context['certificados_vencidos'] = context['automaticos_vencidos'] + context['manuales_vencidos']
         
         # Certificados del mes actual
         context['automaticos_mes'] = len([s for s in sittings_aprobados if s.fecha_aprobacion and datetime_to_date(s.fecha_aprobacion) >= inicio_mes])
