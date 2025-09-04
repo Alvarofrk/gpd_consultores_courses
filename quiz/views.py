@@ -6,7 +6,7 @@ from PyPDF2 import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import landscape,A4
 from django.http import FileResponse, Http404, HttpResponse 
-from django.db.models import Max
+from django.db.models import Max, Count
 from django.utils.translation import gettext as _ 
 from django.conf import settings
 from django.contrib import messages
@@ -30,6 +30,7 @@ from django.views.generic import (
     ListView,
     TemplateView,
     UpdateView,
+    View,
 )
 
 from accounts.decorators import lecturer_required, admin_required
@@ -1042,3 +1043,342 @@ class ManualCertificateUpdateView(UpdateView):
     def get_success_url(self):
         from django.urls import reverse
         return reverse('listar_certificados_manuales')
+
+# ########################################################
+# Dashboard de Certificados Views
+# ########################################################
+
+@method_decorator([login_required, lecturer_required], name="dispatch")
+class CertificadosDashboardView(TemplateView):
+    template_name = "quiz/certificados_dashboard.html"
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Obtener fecha actual y cálculos
+        from datetime import date, timedelta
+        hoy = date.today()
+        en_30_dias = hoy + timedelta(days=30)
+        inicio_mes = hoy.replace(day=1)
+        
+        # Función helper para convertir datetime a date
+        def datetime_to_date(dt):
+            if dt is None:
+                return None
+            if isinstance(dt, datetime):
+                return dt.date()
+            return dt
+        
+        # Filtrar por instructor si no es superusuario
+        instructor_filter = {}
+        if not self.request.user.is_superuser:
+            instructor_filter = {
+                'quiz__course__allocated_course__lecturer__pk': self.request.user.id
+            }
+        
+        # Estadísticas de certificados automáticos (aprobados)
+        sittings_aprobados = Sitting.objects.filter(
+            complete=True,
+            **instructor_filter
+        ).select_related('quiz')
+        
+        # Filtrar por aprobación en Python ya que get_max_score es un método
+        sittings_aprobados = [sitting for sitting in sittings_aprobados if sitting.get_percent_correct >= sitting.quiz.pass_mark]
+        
+        # Estadísticas de certificados manuales
+        certificados_manuales = ManualCertificate.objects.filter(**instructor_filter)
+        
+        # Estadísticas generales
+        context['total_automaticos'] = len(sittings_aprobados)
+        context['total_manuales'] = certificados_manuales.count()
+        context['total_certificados'] = context['total_automaticos'] + context['total_manuales']
+        
+        # Certificados activos (no vencidos)
+        context['automaticos_activos'] = len([s for s in sittings_aprobados if s.fecha_aprobacion and datetime_to_date(s.fecha_aprobacion) >= hoy - timedelta(days=365)])
+        context['manuales_activos'] = certificados_manuales.filter(
+            activo=True,
+            fecha_vencimiento__gte=hoy
+        ).count()
+        context['certificados_activos'] = context['automaticos_activos'] + context['manuales_activos']
+        
+        # Certificados vencidos
+        context['automaticos_vencidos'] = len([s for s in sittings_aprobados if s.fecha_aprobacion and datetime_to_date(s.fecha_aprobacion) < hoy - timedelta(days=365)])
+        context['manuales_vencidos'] = certificados_manuales.filter(
+            fecha_vencimiento__lt=hoy
+        ).count()
+        context['certificados_vencidos'] = context['automaticos_vencidos'] + context['manuales_activos']
+        
+        # Certificados del mes actual
+        context['automaticos_mes'] = len([s for s in sittings_aprobados if s.fecha_aprobacion and datetime_to_date(s.fecha_aprobacion) >= inicio_mes])
+        context['manuales_mes'] = certificados_manuales.filter(
+            fecha_generacion__gte=inicio_mes
+        ).count()
+        context['certificados_mes'] = context['automaticos_mes'] + context['manuales_mes']
+        
+        # Certificados por vencer (próximos 30 días)
+        context['automaticos_por_vencer'] = len([s for s in sittings_aprobados if s.fecha_aprobacion and datetime_to_date(s.fecha_aprobacion) >= hoy - timedelta(days=335) and datetime_to_date(s.fecha_aprobacion) < hoy - timedelta(days=365)])
+        context['manuales_por_vencer'] = certificados_manuales.filter(
+            activo=True,
+            fecha_vencimiento__gte=hoy,
+            fecha_vencimiento__lte=en_30_dias
+        ).count()
+        context['por_vencer'] = context['automaticos_por_vencer'] + context['manuales_por_vencer']
+        
+        # Datos para gráficos y filtros
+        context['datos_mensuales'] = self.get_datos_mensuales(instructor_filter)
+        context['distribucion_cursos'] = self.get_distribucion_cursos(instructor_filter)
+        context['certificados_recientes'] = self.get_certificados_recientes(instructor_filter)
+        context['cursos_disponibles'] = self.get_cursos_disponibles(instructor_filter)
+        
+        return context
+    
+    def get_datos_mensuales(self, instructor_filter):
+        """Obtener datos de certificados por mes (últimos 12 meses)"""
+        from datetime import date, timedelta
+        
+        # Función helper para convertir datetime a date
+        def datetime_to_date(dt):
+            if dt is None:
+                return None
+            if isinstance(dt, datetime):
+                return dt.date()
+            return dt
+        
+        datos = []
+        for i in range(12):
+            fecha = date.today() - timedelta(days=30*i)
+            inicio_mes = fecha.replace(day=1)
+            fin_mes = (inicio_mes + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+            
+            # Certificados automáticos del mes
+            sittings_mes = Sitting.objects.filter(
+                complete=True,
+                fecha_aprobacion__gte=inicio_mes,
+                fecha_aprobacion__lte=fin_mes,
+                **instructor_filter
+            ).select_related('quiz')
+            
+            automaticos = len([s for s in sittings_mes if s.get_percent_correct >= s.quiz.pass_mark])
+            
+            # Certificados manuales del mes
+            manuales = ManualCertificate.objects.filter(
+                fecha_generacion__gte=inicio_mes,
+                fecha_generacion__lte=fin_mes,
+                **instructor_filter
+            ).count()
+            
+            datos.append({
+                'mes': fecha.strftime('%b %Y'),
+                'automaticos': automaticos,
+                'manuales': manuales,
+                'total': automaticos + manuales
+            })
+        
+        return list(reversed(datos))
+    
+    def get_distribucion_cursos(self, instructor_filter):
+        """Obtener distribución de certificados por curso"""
+        from collections import Counter
+        
+        # Certificados automáticos por curso
+        sittings_aprobados = Sitting.objects.filter(
+            complete=True,
+            **instructor_filter
+        ).select_related('quiz', 'quiz__course')
+        
+        # Filtrar por aprobación y contar por curso
+        cursos_automaticos = Counter()
+        for sitting in sittings_aprobados:
+            if sitting.get_percent_correct >= sitting.quiz.pass_mark:
+                curso_title = sitting.quiz.course.title if sitting.quiz.course else 'Sin curso'
+                cursos_automaticos[curso_title] += 1
+        
+        automaticos_por_curso = [{'quiz__course__title': curso, 'total': count} for curso, count in cursos_automaticos.most_common(10)]
+        
+        # Certificados manuales por curso
+        manuales_por_curso = ManualCertificate.objects.filter(
+            **instructor_filter
+        ).values('curso__title').annotate(
+            total=Count('id')
+        ).order_by('-total')[:10]
+        
+        return {
+            'automaticos': automaticos_por_curso,
+            'manuales': list(manuales_por_curso)
+        }
+    
+    def get_certificados_recientes(self, instructor_filter):
+        """Obtener certificados más recientes"""
+        from datetime import date, timedelta
+        
+        # Certificados automáticos recientes
+        sittings_recientes = Sitting.objects.filter(
+            complete=True,
+            **instructor_filter
+        ).select_related('user', 'quiz__course', 'quiz').order_by('-fecha_aprobacion')[:50]
+        
+        # Filtrar por aprobación y tomar los 10 más recientes
+        automaticos_recientes = []
+        for sitting in sittings_recientes:
+            if sitting.get_percent_correct >= sitting.quiz.pass_mark:
+                automaticos_recientes.append(sitting)
+                if len(automaticos_recientes) >= 10:
+                    break
+        
+        # Certificados manuales recientes
+        manuales_recientes = ManualCertificate.objects.filter(
+            **instructor_filter
+        ).select_related('curso', 'generado_por').order_by('-fecha_generacion')[:10]
+        
+        return {
+            'automaticos': automaticos_recientes,
+            'manuales': manuales_recientes
+        }
+    
+    def get_cursos_disponibles(self, instructor_filter):
+        """Obtener lista de cursos disponibles para filtros"""
+        from course.models import Course
+        
+        if self.request.user.is_superuser:
+            cursos = Course.objects.all().order_by('title')
+        else:
+            # Para instructores, obtener cursos asignados
+            cursos = Course.objects.filter(allocated_course__lecturer=self.request.user).order_by('title')
+        
+        return cursos
+
+
+@method_decorator([login_required, lecturer_required], name="dispatch")
+class CertificadosEstadisticasAjaxView(View):
+    """Vista AJAX para cargar estadísticas por curso seleccionados"""
+    
+    def post(self, request, *args, **kwargs):
+        from django.http import JsonResponse
+        from course.models import Course
+        from datetime import date, timedelta
+        
+        try:
+            # Obtener IDs de cursos seleccionados
+            curso_ids = request.POST.getlist('curso_ids[]')
+            
+            if not curso_ids:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'No se seleccionaron cursos'
+                })
+            
+            # Filtrar por instructor si no es superusuario
+            instructor_filter = {}
+            if not request.user.is_superuser:
+                instructor_filter = {
+                    'quiz__course__allocated_course__lecturer__pk': request.user.id
+                }
+            
+            # Obtener solo los cursos seleccionados
+            if request.user.is_superuser:
+                cursos = Course.objects.filter(id__in=curso_ids).order_by('title')
+            else:
+                cursos = Course.objects.filter(
+                    id__in=curso_ids,
+                    allocated_course__lecturer=request.user
+                ).order_by('title')
+            
+            # Calcular estadísticas solo para los cursos seleccionados
+            estadisticas = []
+            hoy = date.today()
+            
+            for curso in cursos:
+                # Certificados automáticos del curso
+                sittings_curso = Sitting.objects.filter(
+                    complete=True,
+                    quiz__course=curso
+                ).select_related('quiz', 'user')
+                
+                # Filtrar por aprobación
+                sittings_aprobados = []
+                for s in sittings_curso:
+                    try:
+                        if s.get_percent_correct >= s.quiz.pass_mark:
+                            sittings_aprobados.append(s)
+                    except Exception as e:
+                        continue
+                
+                # Certificados manuales del curso
+                certificados_manuales = ManualCertificate.objects.filter(curso=curso)
+                
+                # Calcular estadísticas
+                total_automaticos = len(sittings_aprobados)
+                total_manuales = certificados_manuales.count()
+                total_curso = total_automaticos + total_manuales
+                
+                # Certificados activos (no vencidos)
+                automaticos_activos = len([s for s in sittings_aprobados if s.fecha_aprobacion and s.fecha_aprobacion.date() >= hoy - timedelta(days=365)])
+                manuales_activos = certificados_manuales.filter(activo=True, fecha_vencimiento__gte=hoy).count()
+                total_activos = automaticos_activos + manuales_activos
+                
+                # Certificados vencidos
+                automaticos_vencidos = len([s for s in sittings_aprobados if s.fecha_aprobacion and s.fecha_aprobacion.date() < hoy - timedelta(days=365)])
+                manuales_vencidos = certificados_manuales.filter(fecha_vencimiento__lt=hoy).count()
+                total_vencidos = automaticos_vencidos + manuales_vencidos
+                
+                # Último certificado
+                ultimo_automatico = sittings_aprobados[-1] if sittings_aprobados else None
+                ultimo_manual = certificados_manuales.order_by('-fecha_generacion').first()
+                
+                ultimo_certificado = None
+                try:
+                    if ultimo_automatico and ultimo_manual:
+                        if ultimo_automatico.fecha_aprobacion > ultimo_manual.fecha_generacion:
+                            usuario_nombre = ultimo_automatico.user.get_full_name() if ultimo_automatico.user else 'Usuario no disponible'
+                            ultimo_certificado = {
+                                'tipo': 'Automático',
+                                'fecha': ultimo_automatico.fecha_aprobacion.strftime('%d/%m/%Y') if ultimo_automatico.fecha_aprobacion else None,
+                                'usuario': usuario_nombre
+                            }
+                        else:
+                            ultimo_certificado = {
+                                'tipo': 'Manual',
+                                'fecha': ultimo_manual.fecha_generacion.strftime('%d/%m/%Y') if ultimo_manual.fecha_generacion else None,
+                                'usuario': ultimo_manual.nombre_completo
+                            }
+                    elif ultimo_automatico:
+                        usuario_nombre = ultimo_automatico.user.get_full_name() if ultimo_automatico.user else 'Usuario no disponible'
+                        ultimo_certificado = {
+                            'tipo': 'Automático',
+                            'fecha': ultimo_automatico.fecha_aprobacion.strftime('%d/%m/%Y') if ultimo_automatico.fecha_aprobacion else None,
+                            'usuario': usuario_nombre
+                        }
+                    elif ultimo_manual:
+                        ultimo_certificado = {
+                            'tipo': 'Manual',
+                            'fecha': ultimo_manual.fecha_generacion.strftime('%d/%m/%Y') if ultimo_manual.fecha_generacion else None,
+                            'usuario': ultimo_manual.nombre_completo
+                        }
+                except Exception as e:
+                    ultimo_certificado = {
+                        'tipo': 'Error',
+                        'fecha': None,
+                        'usuario': 'Error al obtener datos'
+                    }
+                
+                estadisticas.append({
+                    'curso_id': curso.id,
+                    'curso_titulo': curso.title,
+                    'total_automaticos': total_automaticos,
+                    'total_manuales': total_manuales,
+                    'total_curso': total_curso,
+                    'total_activos': total_activos,
+                    'total_vencidos': total_vencidos,
+                    'ultimo_certificado': ultimo_certificado
+                })
+            
+            return JsonResponse({
+                'success': True,
+                'estadisticas': estadisticas
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Error al cargar estadísticas: {str(e)}'
+            })

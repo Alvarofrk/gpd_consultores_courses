@@ -33,4 +33,6 @@ urlpatterns = [
     path('editar-certificado-manual/<int:pk>/', views.ManualCertificateUpdateView.as_view(), name='editar_certificado_manual'),
    
     # path('mc-question/add/<int:pk>/<quiz_pk>/', MCQuestionCreate.as_view(), name='mc_create'),
+    path('certificados-dashboard/', views.CertificadosDashboardView.as_view(), name='certificados_dashboard'),
+    path('estadisticas-por-curso-ajax/', views.CertificadosEstadisticasAjaxView.as_view(), name='estadisticas_por_curso_ajax'),
 ]

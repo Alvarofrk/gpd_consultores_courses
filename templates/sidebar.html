@@ -69,6 +69,9 @@
             <li class="{% if request.path == qce %}active{% endif %}">
                 <a href="{% url 'quiz_marking' %}"><i class="fas fa-check-double"></i>{% trans 'Exámenes completos' %}</a>
             </li>
+            <li class="{% if request.path == '/quiz/certificados-dashboard/' %}active{% endif %}">
+                <a href="{% url 'certificados_dashboard' %}"><i class="fas fa-chart-pie"></i>{% trans 'Dashboard de Certificados' %}</a>
+            </li>
             {% endif %}
 
             <!-- Ocultar "Registro de progreso de exámenes" para administradores e instructores -->

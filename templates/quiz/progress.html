@@ -2,19 +2,45 @@
 {% load i18n %}
 {% load quiz_tags %}
 
-{% block title %} {% trans "Página de Progreso" %} | {% trans 'Sistema de gestión de aprendizaje' %} {% endblock %}
-{% block description %} {% trans "Página de Progreso del Usuario" %} {% endblock %}
+{% block title %} {% trans "Registro y Progreso de Exámenes" %} | {% trans 'Sistema de gestión de aprendizaje' %} {% endblock %}
+{% block description %} {% trans "Registro y Progreso de Exámenes del Usuario" %} {% endblock %}
 
 {% block content %}
 
 <nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
-        <li class="breadcrumb-item active" aria-current="page">{% trans 'Página de Progreso' %}</li>
+        <li class="breadcrumb-item active" aria-current="page">{% trans 'Registro y Progreso de Exámenes' %}</li>
     </ol>
 </nav>
 
-<p class="title-1"><i class="fas fa-record-vinyl"></i>{% trans 'Evaluaciones' %}</p>
+<!-- Header Principal -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #1a237e 0%, #3f51b5 100%);">
+            <div class="card-body text-white p-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h2 class="mb-2">
+                            <i class="fas fa-chart-line me-3"></i>
+                            {% trans 'Registro y Progreso de Exámenes' %}
+                        </h2>
+                        <p class="mb-0 opacity-75">
+                            {% if request.user.is_superuser %}
+                                {% trans "Seguimiento del rendimiento académico de los trabajadores" %}
+                            {% else %}
+                                {% trans "Tu historial completo de evaluaciones y certificaciones" %}
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <!-- Botón de descarga removido -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
   {% if cat_scores %}
 
@@ -52,97 +78,258 @@
 
   {% if exams %}
 
-  <!-- <div class="header-title-xl">{% trans "Exámenes Anteriores" %}</div> -->
-  <p class="lead fw-bold">
-	{% if request.user.is_superuser %}
-	{% trans "Resultados de los exámenes de los trabajadores" %}
-	{% else %}
-	{% trans "A continuación se muestran los resultados de los cursos finalizados" %}
-	{% endif %}
-  </p>
-  <!-- <div class="text-light bg-secondary mb-2 p-1">{% trans  'Total de exámenes completados:' %} {{ exams_counter }}</div> -->
- 
-  <div class="mb-4">
-    <a href="{% url 'descargar_certificados' %}" class="btn btn-lg" style="background-color: #1a237e; color: white; border: none; padding: 12px 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); transition: all 0.3s ease;">
-        <i class="fas fa-file-pdf me-2"></i>{% trans "Descargar Consolidado" %}
-    </a>
+  <!-- Dashboard de Estadísticas -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="row g-3">
+        <div class="col-lg-3 col-md-6">
+          <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+            <div class="card-body text-white text-center p-3">
+              <i class="fas fa-graduation-cap fa-2x mb-2"></i>
+              <h4 class="mb-1">{{ sitting_list|length }}</h4>
+              <p class="mb-0 small">{% trans "Total Exámenes" %}</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);">
+            <div class="card-body text-white text-center p-3">
+              <i class="fas fa-check-circle fa-2x mb-2"></i>
+              <h4 class="mb-1">
+                {% for sitting in sitting_list %}
+                  {% if sitting.get_percent_correct >= sitting.quiz.pass_mark %}{{ forloop.counter0|add:1 }}{% endif %}
+                {% empty %}0{% endfor %}
+              </h4>
+              <p class="mb-0 small">{% trans "Aprobados" %}</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);">
+            <div class="card-body text-white text-center p-3">
+              <i class="fas fa-chart-bar fa-2x mb-2"></i>
+              <h4 class="mb-1">
+                {% if sitting_list %}
+                  {% for sitting in sitting_list %}
+                    {% if forloop.first %}
+                      {% widthratio sitting.get_percent_correct 1 1 as total_percent %}
+                    {% else %}
+                      {% widthratio sitting.get_percent_correct 1 1 as current_percent %}
+                      {% widthratio current_percent|add:total_percent 1 1 as total_percent %}
+                    {% endif %}
+                  {% endfor %}
+                  {% if sitting_list|length > 0 %}
+                    {% widthratio total_percent sitting_list|length 1 as avg_percent %}
+                    {{ avg_percent|floatformat:0 }}%
+                  {% else %}
+                    0%
+                  {% endif %}
+                {% else %}
+                  0%
+                {% endif %}
+              </h4>
+              <p class="mb-0 small">{% trans "Promedio" %}</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%);">
+            <div class="card-body text-white text-center p-3">
+              <i class="fas fa-certificate fa-2x mb-2"></i>
+              <h4 class="mb-1">
+                {% for sitting in sitting_list %}
+                  {% if sitting.get_percent_correct >= 80 %}{{ forloop.counter0|add:1 }}{% endif %}
+                {% empty %}0{% endfor %}
+              </h4>
+              <p class="mb-0 small">{% trans "Certificados" %}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title mb-3">
+            <i class="fas fa-filter me-2"></i>
+            {% trans "Filtrar Exámenes" %}
+          </h5>
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-outline-primary filter-btn active" data-filter="all">
+              <i class="fas fa-list me-1"></i>{% trans "Todos" %}
+            </button>
+            <button class="btn btn-outline-success filter-btn" data-filter="passed">
+              <i class="fas fa-check-circle me-1"></i>{% trans "Aprobados" %}
+            </button>
+            <button class="btn btn-outline-danger filter-btn" data-filter="failed">
+              <i class="fas fa-times-circle me-1"></i>{% trans "No Aprobados" %}
+            </button>
+            <button class="btn btn-outline-info filter-btn" data-filter="certified">
+              <i class="fas fa-certificate me-1"></i>{% trans "Con Certificado" %}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
  
-<div class="table-responsive">
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>#</th>
-                {% if request.user.is_student %}
-                <th>{% trans "DNI" %}</th>
-                <th>{% trans "Nombre Completo" %}</th>
+<!-- Lista de Exámenes en Cards -->
+<div class="row" id="exams-container">
+    {% for sitting in sitting_list %}
+    <div class="col-lg-6 col-xl-4 mb-4 exam-card" 
+         data-status="{% if sitting.get_percent_correct >= sitting.quiz.pass_mark %}passed{% else %}failed{% endif %}"
+         data-certified="{% if sitting.get_percent_correct >= 80 %}true{% else %}false{% endif %}">
+        <div class="card border-0 shadow-sm h-100 exam-card-item">
+            <!-- Header del Card -->
+            <div class="card-header border-0 p-3" 
+                 style="background: {% if sitting.get_percent_correct >= sitting.quiz.pass_mark %}linear-gradient(135deg, #28a745 0%, #20c997 100%){% else %}linear-gradient(135deg, #dc3545 0%, #fd7e14 100%){% endif %};">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-graduation-cap text-white me-2"></i>
+                        <h6 class="text-white mb-0">{{ sitting.course.title|truncatechars:30 }}</h6>
+                    </div>
+                    <span class="badge bg-white text-dark">
+                        #{{ forloop.counter }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Body del Card -->
+            <div class="card-body p-3">
+                <!-- Información del Usuario (solo para superusuarios) -->
+                {% if request.user.is_superuser %}
+                <div class="mb-3">
+                    <div class="d-flex align-items-center mb-1">
+                        <i class="fas fa-user text-muted me-2"></i>
+                        <small class="text-muted">{% trans "Estudiante" %}</small>
+                    </div>
+                    <p class="mb-1 fw-bold">{{ sitting.user.get_full_name }}</p>
+                    <small class="text-muted">{{ sitting.user.username }}</small>
+                </div>
                 {% endif %}
-                <th>{% trans "Curso" %}</th>
-                <th>{% trans "Nota" %}</th>
-                <th>{% trans "Porcentaje" %}</th>
-                <th>{% trans "Estado" %}</th>
-                <th>{% trans "Fecha de Aprobación" %}</th>
-                <th>{% trans "Fecha de Expiración" %}</th>
-                {% if request.user.is_student %}
-                <th>{% trans "Certificado" %}</th>
-                {% endif %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for sitting in sitting_list %}
-            <tr>
-                <td>{{ forloop.counter }}</td>
-                {% if request.user.is_student %}
-                <td>{{ sitting.user.username }}</td>
-                <td>{{ sitting.user.get_full_name }}</td>
-                {% endif %}
-                <td>{{ sitting.course.title }}</td>
-                <td>{{ sitting.current_score }}</td>
-                <td>{{ sitting.current_score|multiply:100 }}%</td>
-                <td>
+
+                <!-- Puntuación y Porcentaje -->
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <div class="text-center">
+                            <div class="d-flex align-items-center justify-content-center mb-1">
+                                <i class="fas fa-star text-warning me-1"></i>
+                                <span class="fw-bold fs-5">{{ sitting.current_score|multiply:2 }}</span>
+                            </div>
+                            <small class="text-muted">{% trans "Nota sobre 20" %}</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            <div class="d-flex align-items-center justify-content-center mb-1">
+                                <i class="fas fa-percentage text-info me-1"></i>
+                                <span class="fw-bold fs-5">{{ sitting.get_percent_correct }}%</span>
+                            </div>
+                            <small class="text-muted">{% trans "Porcentaje" %}</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Barra de Progreso -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <small class="text-muted">{% trans "Rendimiento" %}</small>
+                        <small class="fw-bold">{{ sitting.get_percent_correct }}%</small>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar {% if sitting.get_percent_correct >= sitting.quiz.pass_mark %}bg-success{% else %}bg-danger{% endif %}" 
+                             role="progressbar" 
+                             style="width: {{ sitting.get_percent_correct }}%"
+                             aria-valuenow="{{ sitting.get_percent_correct }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Estado -->
+                <div class="text-center mb-3">
                     {% if sitting.get_percent_correct >= sitting.quiz.pass_mark %}
-                        <span class="badge bg-success">{% trans "Aprobado" %}</span>
+                        <span class="badge bg-success fs-6 px-3 py-2">
+                            <i class="fas fa-check-circle me-1"></i>
+                            {% trans "Aprobado" %}
+                        </span>
                     {% else %}
-                        <span class="badge bg-danger">{% trans "No Aprobado" %}</span>
+                        <span class="badge bg-danger fs-6 px-3 py-2">
+                            <i class="fas fa-times-circle me-1"></i>
+                            {% trans "No Aprobado" %}
+                        </span>
                     {% endif %}
-                </td>
-                <td>
-                    {% if sitting.fecha_aprobacion %}
-                        {{ sitting.fecha_aprobacion|date:"d/m/Y" }}
-                    {% else %}
-                        -
-                    {% endif %}
-                </td>
-                <td>
-                    {% if sitting.fecha_aprobacion %}
-                        {{ sitting.fecha_aprobacion|add_days:365|date:"d/m/Y" }}
-                    {% else %}
-                        -
-                    {% endif %}
-                </td>
+                </div>
+
+                <!-- Fechas -->
+                <div class="row text-center mb-3">
+                    <div class="col-6">
+                        <div class="d-flex flex-column">
+                            <i class="fas fa-calendar-check text-success mb-1"></i>
+                            <small class="text-muted">{% trans "Aprobación" %}</small>
+                            <small class="fw-bold">
+                                {% if sitting.fecha_aprobacion %}
+                                    {{ sitting.fecha_aprobacion|date:"d/m/Y" }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex flex-column">
+                            <i class="fas fa-calendar-times text-warning mb-1"></i>
+                            <small class="text-muted">{% trans "Expiración" %}</small>
+                            <small class="fw-bold">
+                                {% if sitting.fecha_aprobacion %}
+                                    {{ sitting.fecha_aprobacion|add_days:365|date:"d/m/Y" }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer del Card -->
+            <div class="card-footer border-0 p-3 bg-light">
                 {% if request.user.is_student %}
-                <td>
+                <div class="d-grid">
                     {% if sitting.get_percent_correct >= 80 %}
-                    <a href="{% url 'generar_certificado' sitting.id %}" class="btn btn-gpd btn-sm">
-                        <i class="fas fa-download"></i> {% trans "Descargar" %}
-                    </a>
+                        <a href="{% url 'generar_certificado' sitting.id %}" 
+                           class="btn btn-success btn-sm">
+                            <i class="fas fa-download me-1"></i>
+                            {% trans "Descargar Certificado" %}
+                        </a>
                     {% else %}
-                    <a href="{% url 'quiz_take' sitting.course.id sitting.quiz.slug %}" class="btn btn-gpd btn-sm">
-                        <i class="fas fa-redo"></i> {% trans "Reintentar examen" %}
-                    </a>
+                        <a href="{% url 'quiz_take' sitting.course.id sitting.quiz.slug %}" 
+                           class="btn btn-warning btn-sm">
+                            <i class="fas fa-redo me-1"></i>
+                            {% trans "Reintentar Examen" %}
+                        </a>
                     {% endif %}
-                </td>
+                </div>
                 {% endif %}
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="{% if request.user.is_student %}10{% else %}8{% endif %}" class="text-center">
-                    {% trans "No hay exámenes completados." %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-clipboard-list fa-4x text-muted mb-3"></i>
+                <h5 class="text-muted">{% trans "No hay exámenes completados" %}</h5>
+                <p class="text-muted">{% trans "Los resultados de tus evaluaciones aparecerán aquí una vez que completes los exámenes." %}</p>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
 </div>
 
 <!-- Modal para el formulario de anexo -->
@@ -245,6 +432,7 @@
     }
 </style>
 
+<!-- JavaScript para Filtros y Funcionalidad -->
 <script>
     // Cerrar el modal si se hace clic fuera de él
     window.onclick = function(event) {
@@ -255,7 +443,114 @@
             }
         });
     }
+
+    // Funcionalidad de filtros
+    document.addEventListener('DOMContentLoaded', function() {
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        const examCards = document.querySelectorAll('.exam-card');
+
+        filterButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const filter = this.getAttribute('data-filter');
+                
+                // Actualizar botones activos
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Filtrar cards
+                examCards.forEach(card => {
+                    const status = card.getAttribute('data-status');
+                    const certified = card.getAttribute('data-certified');
+                    
+                    let show = false;
+                    
+                    switch(filter) {
+                        case 'all':
+                            show = true;
+                            break;
+                        case 'passed':
+                            show = status === 'passed';
+                            break;
+                        case 'failed':
+                            show = status === 'failed';
+                            break;
+                        case 'certified':
+                            show = certified === 'true';
+                            break;
+                    }
+                    
+                    if (show) {
+                        card.style.display = 'block';
+                        card.classList.add('fade-in');
+                    } else {
+                        card.style.display = 'none';
+                        card.classList.remove('fade-in');
+                    }
+                });
+            });
+        });
+    });
 </script>
+
+<!-- CSS Adicional -->
+<style>
+    .exam-card-item {
+        transition: all 0.3s ease;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .exam-card-item:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+    }
+    
+    .fade-in {
+        animation: fadeIn 0.5s ease-in;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .filter-btn {
+        transition: all 0.3s ease;
+        border-radius: 20px;
+        padding: 8px 16px;
+    }
+    
+    .filter-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .filter-btn.active {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    .progress {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    
+    .progress-bar {
+        transition: width 0.6s ease;
+    }
+    
+    .card-header {
+        border-radius: 12px 12px 0 0 !important;
+    }
+    
+    .card-footer {
+        border-radius: 0 0 12px 12px !important;
+    }
+    
+    .badge {
+        border-radius: 20px;
+    }
+</style>
 
   {% endif %}
   {% if not cat_scores and not exams %}

@@ -1,0 +1,877 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Dashboard de Certificados" %} | {% trans 'Sistema de gestión de aprendizaje' %}{% endblock %}
+{% block description %}{% trans "Dashboard completo de certificados automáticos y manuales" %}{% endblock %}
+
+{% block content %}
+
+<nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{% trans 'Dashboard de Certificados' %}</li>
+    </ol>
+</nav>
+
+<!-- Header Principal -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #1a237e 0%, #3f51b5 100%);">
+            <div class="card-body text-white p-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h2 class="mb-2">
+                            <i class="fas fa-chart-pie me-3"></i>
+                            {% trans 'Dashboard de Certificados' %}
+                        </h2>
+                        <p class="mb-0 opacity-75">
+                            {% trans "Gestión y análisis completo de certificados automáticos y manuales" %}
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="d-flex justify-content-md-end gap-2">
+                            <a href="{% url 'listar_certificados_manuales' %}" class="btn btn-light btn-lg px-4 py-2 rounded-pill">
+                                <i class="fas fa-certificate me-2"></i>
+                                {% trans "Certificados Manuales" %}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dashboard de Estadísticas -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="row g-3">
+            <!-- Total Certificados -->
+            <div class="col-lg-3 col-md-6">
+                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+                    <div class="card-body text-white text-center p-3">
+                        <i class="fas fa-certificate fa-2x mb-2"></i>
+                        <h4 class="mb-1">{{ total_certificados }}</h4>
+                        <p class="mb-0 small">{% trans "Total Certificados" %}</p>
+                        <small class="opacity-75">{{ total_automaticos }} automáticos + {{ total_manuales }} manuales</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Certificados Activos -->
+            <div class="col-lg-3 col-md-6">
+                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);">
+                    <div class="card-body text-white text-center p-3">
+                        <i class="fas fa-check-circle fa-2x mb-2"></i>
+                        <h4 class="mb-1">{{ certificados_activos }}</h4>
+                        <p class="mb-0 small">{% trans "Certificados Activos" %}</p>
+                        <small class="opacity-75">{{ automaticos_activos }} automáticos + {{ manuales_activos }} manuales</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Certificados Vencidos -->
+            <div class="col-lg-3 col-md-6">
+                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);">
+                    <div class="card-body text-white text-center p-3">
+                        <i class="fas fa-times-circle fa-2x mb-2"></i>
+                        <h4 class="mb-1">{{ certificados_vencidos }}</h4>
+                        <p class="mb-0 small">{% trans "Certificados Vencidos" %}</p>
+                        <small class="opacity-75">{{ automaticos_vencidos }} automáticos + {{ manuales_vencidos }} manuales</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Certificados por Vencer -->
+            <div class="col-lg-3 col-md-6">
+                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);">
+                    <div class="card-body text-white text-center p-3">
+                        <i class="fas fa-clock fa-2x mb-2"></i>
+                        <h4 class="mb-1">{{ por_vencer }}</h4>
+                        <p class="mb-0 small">{% trans "Por Vencer" %}</p>
+                        <small class="opacity-75">Próximos 30 días</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros Avanzados -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent border-0">
+                <h5 class="mb-0">
+                    <i class="fas fa-filter me-2"></i>
+                    {% trans "Filtros Avanzados" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <!-- Filtro por Tipo -->
+                    <div class="col-md-3">
+                        <label class="form-label">{% trans "Tipo de Certificado" %}</label>
+                        <select class="form-select" id="filtroTipo">
+                            <option value="todos">{% trans "Todos" %}</option>
+                            <option value="automaticos">{% trans "Automáticos" %}</option>
+                            <option value="manuales">{% trans "Manuales" %}</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Filtro por Estado -->
+                    <div class="col-md-3">
+                        <label class="form-label">{% trans "Estado" %}</label>
+                        <select class="form-select" id="filtroEstado">
+                            <option value="todos">{% trans "Todos" %}</option>
+                            <option value="activos">{% trans "Activos" %}</option>
+                            <option value="vencidos">{% trans "Vencidos" %}</option>
+                            <option value="por_vencer">{% trans "Por Vencer" %}</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Filtro por Fecha -->
+                    <div class="col-md-3">
+                        <label class="form-label">{% trans "Período" %}</label>
+                        <select class="form-select" id="filtroFecha">
+                            <option value="todos">{% trans "Todos" %}</option>
+                            <option value="este_mes">{% trans "Este Mes" %}</option>
+                            <option value="ultimo_mes">{% trans "Último Mes" %}</option>
+                            <option value="ultimos_3_meses">{% trans "Últimos 3 Meses" %}</option>
+                            <option value="ultimo_ano">{% trans "Último Año" %}</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Filtro por Curso -->
+                    <div class="col-md-3">
+                        <label class="form-label">{% trans "Curso" %}</label>
+                        <select class="form-select" id="filtroCurso">
+                            <option value="todos">{% trans "Todos los Cursos" %}</option>
+                            {% for curso in cursos_disponibles %}
+                            <option value="{{ curso.id }}">{{ curso.title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Contador dinámico -->
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="alert alert-info border-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <span id="contadorFiltrado">Mostrando todos los certificados</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alertas y Notificaciones -->
+{% if por_vencer > 0 %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-warning border-0 shadow-sm">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-exclamation-triangle fa-2x me-3 text-warning"></i>
+                <div>
+                    <h5 class="mb-1">{% trans "Certificados por Vencer" %}</h5>
+                    <p class="mb-0">
+                        {% trans "Hay" %} <strong>{{ por_vencer }}</strong> {% trans "certificados que vencerán en los próximos 30 días" %}
+                        ({{ automaticos_por_vencer }} automáticos, {{ manuales_por_vencer }} manuales)
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Gráficos y Análisis -->
+<div class="row mb-4">
+    <!-- Gráfico Mensual -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent border-0">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line me-2"></i>
+                    {% trans "Certificados por Mes (Últimos 12 meses)" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="chartMensual" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Distribución por Curso -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent border-0">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-pie me-2"></i>
+                    {% trans "Top 5 Cursos" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="chartCursos" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estadísticas por Curso -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-gradient-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>
+                    Estadísticas por Curso
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Selección de Cursos -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="text-muted mb-0">
+                                <i class="fas fa-filter me-2"></i>
+                                Selecciona los cursos para ver sus estadísticas:
+                            </h6>
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="btn-seleccionar-todos">
+                                    <i class="fas fa-check-double me-1"></i>
+                                    Todos
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-deseleccionar-todos">
+                                    <i class="fas fa-times me-1"></i>
+                                    Ninguno
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Grid de Checkboxes -->
+                        <div class="row g-2" id="cursos-checkboxes">
+                            {% for curso in cursos_disponibles %}
+                            <div class="col-xl-3 col-lg-4 col-md-6">
+                                <div class="form-check curso-checkbox-item">
+                                    <input class="form-check-input curso-checkbox" type="checkbox" 
+                                           value="{{ curso.id }}" id="curso_{{ curso.id }}">
+                                    <label class="form-check-label" for="curso_{{ curso.id }}">
+                                        <span class="curso-title">{{ curso.title|truncatechars:35 }}</span>
+                                    </label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Botón de Carga -->
+                        <div class="text-center mt-4">
+                            <button type="button" class="btn btn-primary btn-lg px-5" id="btn-cargar-estadisticas">
+                                <i class="fas fa-sync-alt me-2"></i>
+                                Cargar Estadísticas
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Indicador de Carga -->
+                <div class="text-center d-none" id="loading-estadisticas">
+                    <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <h6 class="text-muted">Cargando estadísticas...</h6>
+                    <p class="text-muted small">Esto puede tomar unos segundos</p>
+                </div>
+                
+                <!-- Contenedor de Estadísticas -->
+                <div id="estadisticas-contenido" class="d-none">
+                    <hr class="my-4">
+                    <h6 class="text-muted mb-3">
+                        <i class="fas fa-chart-pie me-2"></i>
+                        Resultados de los cursos seleccionados:
+                    </h6>
+                    <div class="row g-3" id="estadisticas-grid">
+                        <!-- Las estadísticas se cargarán aquí dinámicamente -->
+                    </div>
+                </div>
+                
+                <!-- Mensaje cuando no hay cursos seleccionados -->
+                <div id="mensaje-no-cursos" class="text-center text-muted py-5">
+                    <div class="mb-4">
+                        <i class="fas fa-chart-line fa-4x text-light"></i>
+                    </div>
+                    <h5 class="text-muted mb-2">Selecciona cursos para ver sus estadísticas</h5>
+                    <p class="text-muted mb-0">Usa los checkboxes de arriba para seleccionar los cursos que deseas analizar</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Certificados Recientes -->
+<div class="row mb-4">
+    <!-- Certificados Automáticos Recientes -->
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent border-0">
+                <h5 class="mb-0">
+                    <i class="fas fa-robot me-2"></i>
+                    {% trans "Certificados Automáticos Recientes" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if certificados_recientes.automaticos %}
+                    <div class="list-group list-group-flush">
+                        {% for sitting in certificados_recientes.automaticos %}
+                        <div class="list-group-item border-0 px-0">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">{{ sitting.user.get_full_name }}</h6>
+                                    <small class="text-muted">{{ sitting.quiz.course.title }}</small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-success">{{ sitting.get_percent_correct }}%</span>
+                                    <br>
+                                    <small class="text-muted">{{ sitting.fecha_aprobacion|date:"d/m/Y" }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">{% trans "No hay certificados automáticos recientes" %}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Certificados Manuales Recientes -->
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent border-0">
+                <h5 class="mb-0">
+                    <i class="fas fa-hand-paper me-2"></i>
+                    {% trans "Certificados Manuales Recientes" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if certificados_recientes.manuales %}
+                    <div class="list-group list-group-flush">
+                        {% for certificado in certificados_recientes.manuales %}
+                        <div class="list-group-item border-0 px-0">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">{{ certificado.nombre_completo }}</h6>
+                                    <small class="text-muted">{{ certificado.curso.title }}</small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-info">{{ certificado.puntaje }}/20</span>
+                                    <br>
+                                    <small class="text-muted">{{ certificado.fecha_generacion|date:"d/m/Y" }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">{% trans "No hay certificados manuales recientes" %}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Acciones Rápidas -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent border-0">
+                <h5 class="mb-0">
+                    <i class="fas fa-bolt me-2"></i>
+                    {% trans "Acciones Rápidas" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <a href="{% url 'generar_certificado_manual' %}" class="btn btn-primary w-100">
+                            <i class="fas fa-plus me-2"></i>
+                            {% trans "Generar Certificado Manual" %}
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'listar_certificados_manuales' %}" class="btn btn-info w-100">
+                            <i class="fas fa-list me-2"></i>
+                            {% trans "Ver Certificados Manuales" %}
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'quiz_marking' %}" class="btn btn-success w-100">
+                            <i class="fas fa-check-double me-2"></i>
+                            {% trans "Ver Exámenes Completos" %}
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-warning w-100" onclick="exportarReporte()">
+                            <i class="fas fa-download me-2"></i>
+                            {% trans "Exportar Reporte" %}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estilos CSS Mejorados -->
+<style>
+.card {
+    transition: all 0.3s ease;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+}
+
+.opacity-75 {
+    opacity: 0.75;
+}
+
+.list-group-item:hover {
+    background-color: rgba(26, 35, 126, 0.05);
+}
+
+.badge {
+    border-radius: 20px;
+    font-size: 0.8em;
+    padding: 0.5em 0.8em;
+}
+
+/* Estilos para los checkboxes de cursos */
+.curso-checkbox-item {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 12px 15px;
+    margin: 0;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.curso-checkbox-item:hover {
+    background: #e9ecef;
+    border-color: #1a237e;
+    transform: translateY(-1px);
+}
+
+.curso-checkbox-item .form-check-input {
+    margin-right: 12px;
+    transform: scale(1.2);
+}
+
+.curso-checkbox-item .form-check-input:checked {
+    background-color: #1a237e;
+    border-color: #1a237e;
+}
+
+.curso-checkbox-item .form-check-label {
+    cursor: pointer;
+    user-select: none;
+    font-weight: 500;
+    color: #495057;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.curso-checkbox-item .form-check-input:checked + .form-check-label {
+    font-weight: 600;
+    color: #1a237e;
+}
+
+.curso-checkbox-item .form-check-input:checked ~ .curso-title {
+    color: #1a237e;
+    font-weight: 600;
+}
+
+/* Estilos para el loading */
+#loading-estadisticas {
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #f8f9fa;
+    border-radius: 12px;
+    margin: 20px 0;
+}
+
+/* Estilos para el mensaje inicial */
+#mensaje-no-cursos {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 12px;
+    border: 2px dashed #dee2e6;
+}
+
+/* Estilos para las estadísticas cargadas */
+#estadisticas-contenido {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive para checkboxes */
+@media (max-width: 768px) {
+    .curso-checkbox-item {
+        padding: 10px 12px;
+    }
+    
+    .curso-checkbox-item .form-check-label {
+        font-size: 0.9rem;
+    }
+}
+
+/* Mejoras en botones */
+.btn-group .btn {
+    border-radius: 6px !important;
+    margin: 0 2px;
+}
+
+.btn-lg {
+    border-radius: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* Separador visual */
+hr {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #dee2e6, transparent);
+    margin: 2rem 0;
+}
+</style>
+
+<!-- JavaScript para Funcionalidad AJAX -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Elementos del DOM
+    const btnCargarEstadisticas = document.getElementById('btn-cargar-estadisticas');
+    const btnSeleccionarTodos = document.getElementById('btn-seleccionar-todos');
+    const btnDeseleccionarTodos = document.getElementById('btn-deseleccionar-todos');
+    const cursoCheckboxes = document.querySelectorAll('.curso-checkbox');
+    const loadingEstadisticas = document.getElementById('loading-estadisticas');
+    const estadisticasContenido = document.getElementById('estadisticas-contenido');
+    const estadisticasGrid = document.getElementById('estadisticas-grid');
+    const mensajeNoCursos = document.getElementById('mensaje-no-cursos');
+    
+    // Event listeners
+    btnCargarEstadisticas.addEventListener('click', cargarEstadisticas);
+    btnSeleccionarTodos.addEventListener('click', seleccionarTodos);
+    btnDeseleccionarTodos.addEventListener('click', deseleccionarTodos);
+    
+    // Función para seleccionar todos los cursos
+    function seleccionarTodos() {
+        cursoCheckboxes.forEach(checkbox => {
+            checkbox.checked = true;
+        });
+        actualizarEstilosCheckboxes();
+    }
+    
+    // Función para deseleccionar todos los cursos
+    function deseleccionarTodos() {
+        cursoCheckboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        actualizarEstilosCheckboxes();
+    }
+    
+    // Función para actualizar estilos de checkboxes
+    function actualizarEstilosCheckboxes() {
+        cursoCheckboxes.forEach(checkbox => {
+            const item = checkbox.closest('.curso-checkbox-item');
+            if (checkbox.checked) {
+                item.style.background = '#e3f2fd';
+                item.style.borderColor = '#1a237e';
+            } else {
+                item.style.background = '#f8f9fa';
+                item.style.borderColor = '#e9ecef';
+            }
+        });
+    }
+    
+    // Event listeners para checkboxes individuales
+    cursoCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', actualizarEstilosCheckboxes);
+    });
+    
+    // Función para cargar estadísticas
+    function cargarEstadisticas() {
+        const cursosSeleccionados = Array.from(cursoCheckboxes)
+            .filter(checkbox => checkbox.checked)
+            .map(checkbox => checkbox.value);
+        
+        if (cursosSeleccionados.length === 0) {
+            alert('Por favor selecciona al menos un curso');
+            return;
+        }
+        
+        // Mostrar loading
+        loadingEstadisticas.classList.remove('d-none');
+        estadisticasContenido.classList.add('d-none');
+        mensajeNoCursos.classList.add('d-none');
+        
+        // Preparar datos para enviar
+        const formData = new FormData();
+        cursosSeleccionados.forEach(id => {
+            formData.append('curso_ids[]', id);
+        });
+        
+        // Realizar petición AJAX
+        fetch('{% url "estadisticas_por_curso_ajax" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarEstadisticas(data.estadisticas);
+            } else {
+                mostrarError(data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarError('Error al cargar las estadísticas');
+        })
+        .finally(() => {
+            loadingEstadisticas.classList.add('d-none');
+        });
+    }
+    
+    // Función para mostrar estadísticas
+    function mostrarEstadisticas(estadisticas) {
+        if (estadisticas.length === 0) {
+            estadisticasGrid.innerHTML = `
+                <div class="col-12 text-center py-4">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No hay estadísticas disponibles para los cursos seleccionados</p>
+                </div>
+            `;
+        } else {
+            estadisticasGrid.innerHTML = estadisticas.map(estadistica => `
+                <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h6 class="mb-0 fw-bold">${estadistica.curso_titulo}</h6>
+                                <span class="badge bg-primary">${estadistica.total_curso}</span>
+                            </div>
+                            
+                            <div class="row text-center mb-3">
+                                <div class="col-4">
+                                    <div class="text-success">
+                                        <i class="fas fa-check-circle"></i>
+                                        <div class="small fw-bold">${estadistica.total_activos}</div>
+                                        <div class="small text-muted">Activos</div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="text-danger">
+                                        <i class="fas fa-times-circle"></i>
+                                        <div class="small fw-bold">${estadistica.total_vencidos}</div>
+                                        <div class="small text-muted">Vencidos</div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="text-info">
+                                        <i class="fas fa-robot"></i>
+                                        <div class="small fw-bold">${estadistica.total_automaticos}</div>
+                                        <div class="small text-muted">Automáticos</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            ${estadistica.ultimo_certificado ? `
+                            <div class="border-top pt-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-clock me-1"></i>
+                                    Último: ${estadistica.ultimo_certificado.tipo} - ${estadistica.ultimo_certificado.usuario}
+                                    ${estadistica.ultimo_certificado.fecha ? `<br><span class="ms-3">${estadistica.ultimo_certificado.fecha}</span>` : ''}
+                                </small>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        estadisticasContenido.classList.remove('d-none');
+    }
+    
+    // Función para mostrar error
+    function mostrarError(mensaje) {
+        estadisticasGrid.innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-danger" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    ${mensaje}
+                </div>
+            </div>
+        `;
+        estadisticasContenido.classList.remove('d-none');
+    }
+    
+    // Función para obtener el token CSRF
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+});
+</script>
+
+<!-- JavaScript para Gráficos -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Datos para el gráfico mensual
+    const datosMensuales = {{ datos_mensuales|safe }};
+    const labels = datosMensuales.map(item => item.mes);
+    const automaticos = datosMensuales.map(item => item.automaticos);
+    const manuales = datosMensuales.map(item => item.manuales);
+    
+    // Gráfico mensual
+    const ctxMensual = document.getElementById('chartMensual').getContext('2d');
+    new Chart(ctxMensual, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: '{% trans "Automáticos" %}',
+                data: automaticos,
+                borderColor: '#28a745',
+                backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                tension: 0.4
+            }, {
+                label: '{% trans "Manuales" %}',
+                data: manuales,
+                borderColor: '#007bff',
+                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    
+    // Datos para el gráfico de cursos
+    const distribucionCursos = {{ distribucion_cursos|safe }};
+    const cursosLabels = distribucionCursos.automaticos.map(item => item.quiz__course__title || 'Sin título').slice(0, 5);
+    const cursosData = distribucionCursos.automaticos.map(item => item.total).slice(0, 5);
+    
+    // Gráfico de cursos
+    const ctxCursos = document.getElementById('chartCursos').getContext('2d');
+    new Chart(ctxCursos, {
+        type: 'doughnut',
+        data: {
+            labels: cursosLabels,
+            data: cursosData,
+            backgroundColor: [
+                '#28a745',
+                '#007bff',
+                '#ffc107',
+                '#dc3545',
+                '#6f42c1'
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                }
+            }
+        }
+    });
+    
+    // Función para exportar reporte
+    function exportarReporte() {
+        // Implementar exportación de reporte
+        alert('{% trans "Función de exportación en desarrollo" %}');
+    }
+    
+    // Funciones para filtros dinámicos
+    function actualizarFiltros() {
+        const tipo = document.getElementById('filtroTipo').value;
+        const estado = document.getElementById('filtroEstado').value;
+        const fecha = document.getElementById('filtroFecha').value;
+        const curso = document.getElementById('filtroCurso').value;
+        
+        // Aquí se implementaría la lógica de filtrado
+        // Por ahora solo actualizamos el contador
+        let mensaje = 'Mostrando ';
+        
+        if (tipo !== 'todos') mensaje += tipo + ' ';
+        if (estado !== 'todos') mensaje += estado + ' ';
+        if (fecha !== 'todos') mensaje += 'del ' + fecha + ' ';
+        if (curso !== 'todos') mensaje += 'del curso seleccionado ';
+        
+        if (tipo === 'todos' && estado === 'todos' && fecha === 'todos' && curso === 'todos') {
+            mensaje = 'Mostrando todos los certificados';
+        } else {
+            mensaje += 'certificados';
+        }
+        
+        document.getElementById('contadorFiltrado').textContent = mensaje;
+    }
+    
+    // Event listeners para filtros
+    document.addEventListener('DOMContentLoaded', function() {
+        const filtros = ['filtroTipo', 'filtroEstado', 'filtroFecha', 'filtroCurso'];
+        filtros.forEach(id => {
+            document.getElementById(id).addEventListener('change', actualizarFiltros);
+        });
+    });
+</script>
+
+{% endblock %}

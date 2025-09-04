@@ -133,17 +133,75 @@ class EditCourseAllocationForm(forms.ModelForm):
 
 # Formulario para subir archivos a un curso específico
 class UploadFormFile(forms.ModelForm):
+    upload_type = forms.ChoiceField(
+        choices=[
+            ('file', 'Subir archivo desde mi PC'),
+            ('url', 'Usar enlace externo (Google Drive, Dropbox, etc.)')
+        ],
+        widget=forms.RadioSelect(attrs={"class": "form-check-input"}),
+        initial='file',
+        label="Tipo de subida"
+    )
+    
     class Meta:
         model = Upload
         fields = (
             "title",
             "file",
+            "external_url",
         )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["title"].widget.attrs.update({"class": "form-control"})
         self.fields["file"].widget.attrs.update({"class": "form-control"})
+        self.fields["external_url"].widget.attrs.update({
+            "class": "form-control",
+            "placeholder": "https://drive.google.com/file/d/.../view?usp=sharing"
+        })
+        self.fields["external_url"].required = False
+        
+        # Agregar JavaScript para mostrar/ocultar campos según el tipo
+        self.fields["upload_type"].widget.attrs.update({
+            "onchange": "toggleUploadFields()"
+        })
+
+    def clean(self):
+        cleaned_data = super().clean()
+        upload_type = cleaned_data.get('upload_type')
+        file = cleaned_data.get('file')
+        external_url = cleaned_data.get('external_url')
+        
+        if upload_type == 'file' and not file:
+            raise ValidationError('Debes seleccionar un archivo para subir.')
+        
+        if upload_type == 'url' and not external_url:
+            raise ValidationError('Debes proporcionar una URL externa.')
+        
+        if upload_type == 'file' and external_url:
+            raise ValidationError('No puedes subir un archivo y proporcionar una URL al mismo tiempo.')
+        
+        if upload_type == 'url' and file:
+            raise ValidationError('No puedes proporcionar una URL y subir un archivo al mismo tiempo.')
+        
+        return cleaned_data
+
+    def clean_external_url(self):
+        url = self.cleaned_data.get('external_url')
+        if url:
+            # Validar que sea una URL válida
+            if not url.startswith(('http://', 'https://')):
+                raise ValidationError('La URL debe comenzar con http:// o https://')
+            
+            # Validar URLs de Google Drive
+            if 'drive.google.com' in url:
+                if '/view?' in url:
+                    # Convertir URL de visualización a URL de preview
+                    url = url.replace('/view?', '/preview?')
+                elif '/preview?' not in url:
+                    raise ValidationError('Para Google Drive, usa el enlace de "Vista previa" o "Compartir"')
+        
+        return url
 
 
 

@@ -244,6 +244,8 @@ def course_video_navigation(request, slug, video_id=None):
             "videos": videos,
             "completed_videos": completed_videos,
             "current_user": request.user,
+            "current_index": current_index,
+            "total_videos": len(videos),
         },
     )
 
@@ -275,36 +277,48 @@ def course_document_navigation(request, slug, document_id=None):
     next_document = document_list[current_index + 1] if current_index < len(document_list) - 1 else None
     
     # Verificar si es el último documento
-    is_last_document = current_index == len(documents) - 1
+    is_last_document = current_index == len(document_list) - 1
+    
+    # Verificar si el documento actual está completado
+    is_completed = current_document.is_completed_by(request.user)
+    
+    # Verificar si se puede avanzar al siguiente documento
+    can_proceed = is_completed or current_index == 0 or request.user.is_staff or request.user.is_lecturer
+    
+    # Si el usuario no es staff ni instructor, verificar si puede acceder a este documento
+    if not request.user.is_staff and not request.user.is_lecturer:
+        # Si no es el primer documento, verificar si el anterior está completado
+        if current_index > 0:
+            previous_document = document_list[current_index - 1]
+            if not previous_document.is_completed_by(request.user):
+                return redirect('course_document_navigation', slug=slug, document_id=previous_document.id)
+    
+    # Manejar la marca de completado
+    if request.method == 'POST' and 'mark_completed' in request.POST:
+        if not is_completed:
+            current_document.mark_as_completed(request.user)
+            is_completed = True
+        return redirect('course_document_navigation', slug=slug, document_id=current_document.id)
     
     # Preparar contexto para PowerPoint
     powerpoint_data = None
     if current_document.get_extension_short() == 'powerpoint':
-        # Intentar Office Online primero
-        office_online_url = current_document.get_office_online_url()
-        
-        if office_online_url:
+        if current_document.has_embedded_videos():
+            # PPTX con videos - mostrar mensaje y opción de descarga
             powerpoint_data = {
-                'viewer_type': 'office_online',
-                'office_online_url': office_online_url,
+                'has_videos': True,
                 'slide_count': current_document.get_slide_count(),
+                'message': 'Esta presentación contiene videos embebidos que no se pueden reproducir en el navegador. Te recomendamos descargar el archivo para una experiencia completa.'
             }
         else:
-            # Fallback al visualizador propio
+            # PPTX sin videos - convertir a HTML para visualización
             slides_html = current_document.convert_pptx_to_html()
             if slides_html:
                 powerpoint_data = {
-                    'viewer_type': 'custom',
+                    'has_videos': False,
                     'slides_html': slides_html,
                     'slide_count': len(slides_html),
                     'current_slide': 1
-                }
-            else:
-                # Si todo falla, mostrar mensaje de descarga
-                powerpoint_data = {
-                    'viewer_type': 'download_only',
-                    'slide_count': current_document.get_slide_count(),
-                    'message': 'No se pudo cargar la presentación. Te recomendamos descargar el archivo.'
                 }
     
     context = {
@@ -315,7 +329,10 @@ def course_document_navigation(request, slug, document_id=None):
         'documents': documents,
         'powerpoint_data': powerpoint_data,
         'is_last_document': is_last_document,
-        'current_user': request.user,
+        'is_completed': is_completed,
+        'can_proceed': can_proceed,
+        'current_index': current_index,
+        'total_documents': len(document_list),
     }
     
     return render(request, 'course/document_navigation.html', context)
@@ -454,16 +471,24 @@ def handle_file_upload(request, slug):
         if form.is_valid():
             upload = form.save(commit=False)
             upload.course = course
+            
+            # Limpiar campos según el tipo de subida
+            upload_type = form.cleaned_data.get('upload_type')
+            if upload_type == 'file':
+                upload.external_url = None
+            elif upload_type == 'url':
+                upload.file = None
+            
             upload.save()
-            messages.success(request, f"{upload.title} has been uploaded.")
+            messages.success(request, f"{upload.title} ha sido subido correctamente.")
             return redirect("course_detail", slug=slug)
-        messages.error(request, "Correct the error(s) below.")
+        messages.error(request, "Corrige los errores a continuación.")
     else:
         form = UploadFormFile()
     return render(
         request,
         "upload/upload_file_form.html",
-        {"title": "File Upload", "form": form, "course": course},
+        {"title": "Subir Archivo", "form": form, "course": course},
     )
 
 
@@ -475,16 +500,30 @@ def handle_file_edit(request, slug, file_id):
     if request.method == "POST":
         form = UploadFormFile(request.POST, request.FILES, instance=upload)
         if form.is_valid():
-            upload = form.save()
-            messages.success(request, f"{upload.title} has been updated.")
+            upload = form.save(commit=False)
+            
+            # Limpiar campos según el tipo de subida
+            upload_type = form.cleaned_data.get('upload_type')
+            if upload_type == 'file':
+                upload.external_url = None
+            elif upload_type == 'url':
+                upload.file = None
+            
+            upload.save()
+            messages.success(request, f"{upload.title} ha sido actualizado correctamente.")
             return redirect("course_detail", slug=slug)
-        messages.error(request, "Correct the error(s) below.")
+        messages.error(request, "Corrige los errores a continuación.")
     else:
         form = UploadFormFile(instance=upload)
+        # Establecer el tipo de subida basado en los datos existentes
+        if upload.external_url:
+            form.fields['upload_type'].initial = 'url'
+        else:
+            form.fields['upload_type'].initial = 'file'
     return render(
         request,
         "upload/upload_file_form.html",
-        {"title": "Edit File", "form": form, "course": course},
+        {"title": "Editar Archivo", "form": form, "course": course},
     )
 
 
@@ -785,14 +824,29 @@ def download_courses_pdf(request):
     
     data = [headers]  # Primera fila son los headers
     
-    # Agregar datos de cursos
+    # Agregar datos de cursos usando la misma lógica que "Mis Cursos"
     for i, taken_course in enumerate(taken_courses, 1):
-        course_status = "Inscrito" if taken_course.course.is_active else "En curso"
+        course = taken_course.course
+        # Usar exactamente la misma lógica que user_course_list
+        course_status = course.get_course_status_for_user(request.user)
+        
+        # Determinar el estado para mostrar en el PDF
+        if course_status == 'course_completed':
+            pdf_status = "Completo"
+        elif course_status == 'material_in_progress':
+            pdf_status = "En Curso"
+        elif course_status == 'exam_available':
+            pdf_status = "En Curso"
+        elif course_status == 'exam_failed':
+            pdf_status = "En Curso"
+        else:
+            pdf_status = "Inscrito"
+        
         data.append([
             str(i),
-            taken_course.course.code,
-            taken_course.course.title,
-            course_status
+            course.code,
+            course.title,
+            pdf_status
         ])
     
     # Crear tabla con anchos de columna optimizados (sin columnas de fechas)
@@ -853,11 +907,65 @@ def user_course_list(request):
     if request.user.is_student:
         student = get_object_or_404(Student, student__pk=request.user.id)
         taken_courses = TakenCourse.objects.filter(student=student)
-        return render(
-            request,
-            "course/user_course_list.html",
-            {"student": student, "taken_courses": taken_courses},
-        )
+        
+        # Calcular estadísticas del estudiante
+        total_courses = taken_courses.count()
+        completed_courses = 0
+        in_progress_courses = 0
+        exam_available_courses = 0
+        exam_failed_courses = 0
+        total_progress = 0
+        
+        courses_with_progress = []
+        for taken_course in taken_courses:
+            course = taken_course.course
+            material_progress = course.get_progress_for_user(request.user)
+            content_summary = course.get_content_summary()
+            completion_summary = course.get_user_completion_summary(request.user)
+            
+            # Obtener estado completo del curso (incluyendo examen)
+            course_status = course.get_course_status_for_user(request.user)
+            exam_info = course.get_exam_info_for_user(request.user)
+            
+            # Contar cursos por estado
+            if course_status == 'course_completed':
+                completed_courses += 1
+            elif course_status == 'material_in_progress':
+                in_progress_courses += 1
+            elif course_status == 'exam_available':
+                exam_available_courses += 1
+            elif course_status == 'exam_failed':
+                exam_failed_courses += 1
+            
+            total_progress += material_progress
+            
+            courses_with_progress.append({
+                'taken_course': taken_course,
+                'course': course,
+                'material_progress': material_progress,
+                'course_status': course_status,
+                'content_summary': content_summary,
+                'completion_summary': completion_summary,
+                'exam_info': exam_info,
+            })
+        
+        # Calcular estadísticas generales
+        avg_progress = round(total_progress / total_courses, 1) if total_courses > 0 else 0
+        
+        context = {
+            "student": student, 
+            "taken_courses": taken_courses,
+            "courses_with_progress": courses_with_progress,
+            "total_courses": total_courses,
+            "completed_courses": completed_courses,
+            "in_progress_courses": in_progress_courses,
+            "exam_available_courses": exam_available_courses,
+            "exam_failed_courses": exam_failed_courses,
+            "not_started_courses": total_courses - completed_courses - in_progress_courses - exam_available_courses - exam_failed_courses,
+            "avg_progress": avg_progress,
+        }
+        
+        return render(request, "course/user_course_list.html", context)
 
     # For other users
     return render(request, "course/user_course_list.html")

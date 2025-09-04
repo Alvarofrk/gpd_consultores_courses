@@ -11,10 +11,70 @@
 	</ol>
 </nav>
 
-<div class="title-1"><i class="fas fa-calendar-alt"></i>{% trans "Lista de exámenes completos" %}</div>
+<!-- Header Principal -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #1a237e 0%, #3f51b5 100%);">
+            <div class="card-body text-white p-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h2 class="mb-2">
+                            <i class="fas fa-check-double me-3"></i>
+                            {% trans 'Exámenes Completos' %}
+                        </h2>
+                        <p class="mb-0 opacity-75">
+                            {% trans "Gestión y seguimiento de evaluaciones finalizadas" %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-{% for student in students %}<h3>{{ student.student.user.get_full_name }}</h3>{% endfor %}
-{% for marking in marking_list %}<h3>{{ marking }} <small>{{ forloop.counter }}</small></h3>{% endfor %}
+<!-- Dashboard de Estadísticas -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="row g-3">
+            <div class="col-lg-3 col-md-6">
+                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+                    <div class="card-body text-white text-center p-3">
+                        <i class="fas fa-graduation-cap fa-2x mb-2"></i>
+                        <h4 class="mb-1">{{ total_exams }}</h4>
+                        <p class="mb-0 small">{% trans "Total Exámenes" %}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);">
+                    <div class="card-body text-white text-center p-3">
+                        <i class="fas fa-check-circle fa-2x mb-2"></i>
+                        <h4 class="mb-1">{{ total_approved }}</h4>
+                        <p class="mb-0 small">{% trans "Aprobados" %}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);">
+                    <div class="card-body text-white text-center p-3">
+                        <i class="fas fa-times-circle fa-2x mb-2"></i>
+                        <h4 class="mb-1">{{ total_failed }}</h4>
+                        <p class="mb-0 small">{% trans "No Aprobados" %}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%);">
+                    <div class="card-body text-white text-center p-3">
+                        <i class="fas fa-users fa-2x mb-2"></i>
+                        <h4 class="mb-1">{{ object_list|length }}</h4>
+                        <p class="mb-0 small">{% trans "Usuarios Únicos" %}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Filtros mejorados -->
 <div class="card mb-4">
@@ -71,6 +131,7 @@
 					<th>{% trans "Curso" %}</th>
 					<th>{% trans "Cuestionario" %}</th>
 					<th>{% trans "Completado" %}</th>
+					<th>{% trans "Intentos" %}</th>
 					<th>{% trans "Puntuación" %}</th>
 					<th>{% trans "Estado" %}</th>
 					<th>{% trans "Acciones" %}</th>
@@ -94,6 +155,12 @@
 				<td>{{ sitting.quiz.title }}</td>
 				<td>{{ sitting.end|date:"d/m/Y H:i" }}</td>
 				<td>
+					<span class="badge {% if sitting.total_attempts == 1 %}bg-success{% elif sitting.total_attempts <= 3 %}bg-warning{% else %}bg-danger{% endif %}" 
+						  title="Total: {{ sitting.total_attempts }} | Aprobados: {{ sitting.approved_attempts }}">
+						{{ sitting.total_attempts }}
+					</span>
+				</td>
+				<td>
 					<span class="badge {% if sitting.get_percent_correct >= 80 %}bg-success{% elif sitting.get_percent_correct >= 60 %}bg-warning{% else %}bg-danger{% endif %}">
 						{{ sitting.get_percent_correct }}%
 					</span>
@@ -106,9 +173,16 @@
 					{% endif %}
 				</td>
 				<td>
-					<a href="{% url 'quiz_marking_detail' pk=sitting.id %}" class="btn btn-sm btn-primary">
-						<i class="fas fa-eye"></i> {% trans "Ver detalles" %}
-					</a>
+					<div class="btn-group" role="group">
+						<a href="{% url 'quiz_marking_detail' pk=sitting.id %}" class="btn btn-sm btn-primary" title="{% trans 'Ver detalles del examen' %}">
+							<i class="fas fa-eye"></i>
+						</a>
+						{% if sitting.get_percent_correct >= sitting.quiz.pass_mark %}
+							<a href="{% url 'generar_certificado' sitting.id %}" class="btn btn-sm btn-success" title="{% trans 'Descargar certificado' %}">
+								<i class="fas fa-download"></i>
+							</a>
+						{% endif %}
+					</div>
 				</td>
 			</tr>
 			{% endfor %}
@@ -173,6 +247,56 @@
 	<div class="alert alert-warning text-center">
 		<i class="fas fa-exclamation-triangle"></i>
 		{% trans "No hay exámenes completos para mostrar." %}
-	</div>
+</div>
 {% endif %}
+
+<!-- Estilos CSS Adicionales -->
+<style>
+    .card {
+        transition: all 0.3s ease;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+    }
+    
+    .table {
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    .table-dark {
+        background: linear-gradient(135deg, #1a237e 0%, #3f51b5 100%) !important;
+    }
+    
+    .badge {
+        border-radius: 20px;
+        font-size: 0.8em;
+        padding: 0.5em 0.8em;
+    }
+    
+    .btn-group .btn {
+        border-radius: 6px;
+        margin: 0 1px;
+    }
+    
+    .btn-group .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: rgba(26, 35, 126, 0.05) !important;
+        transform: scale(1.01);
+        transition: all 0.2s ease;
+    }
+    
+    .opacity-75 {
+        opacity: 0.75;
+    }
+</style>
+
 {% endblock %}

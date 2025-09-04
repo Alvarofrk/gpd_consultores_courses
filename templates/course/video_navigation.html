@@ -5,24 +5,49 @@
 {% block title %}{{ course.title }} - {{ current_video.title }} | {% trans 'Sistema de gestión de aprendizaje' %}{% endblock title %}
 
 {% block content %}
+
+<nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'programs' %}">{% trans 'Programas' %}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'program_detail' course.program.id %}">{{ course.program }}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'course_detail' course.slug %}">{{ course.title }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{% trans 'Videos' %}</li>
+    </ol>
+</nav>
+
 <div class="container my-5">
     <div class="row">
         <div class="col-md-8">
             <div class="card mb-4 shadow-sm">
                 <div class="card-header" style="background-color: #1a237e; color: white;">
-                    <h4 class="mb-0">{{ current_video.title }}</h4>
-                    {% if current_user.is_staff or current_user.is_lecturer %}
-                        <div class="btn-group">
-                            <a href="{% url 'upload_video_edit' course.slug current_video.slug %}" 
-                               class="btn btn-warning btn-sm">
-                                <i class="fas fa-edit"></i> {% trans "Editar Video" %}
-                            </a>
-                            <a href="{% url 'upload_video' course.slug %}" 
-                               class="btn btn-success btn-sm">
-                                <i class="fas fa-plus"></i> {% trans "Nuevo Video" %}
-                            </a>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <h4 class="mb-0">{{ current_video.title }}</h4>
+                            <small class="text-light">Video {{ current_index|add:1 }} de {{ total_videos }}</small>
                         </div>
-                    {% endif %}
+                        {% if current_user.is_staff or current_user.is_lecturer %}
+                            <div class="btn-group">
+                                <a href="{% url 'upload_video_edit' course.slug current_video.slug %}" 
+                                   class="btn btn-warning btn-sm">
+                                    <i class="fas fa-edit"></i> {% trans "Editar Video" %}
+                                </a>
+                                <a href="{% url 'upload_video' course.slug %}" 
+                                   class="btn btn-success btn-sm">
+                                    <i class="fas fa-plus"></i> {% trans "Nuevo Video" %}
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <!-- Barra de progreso -->
+                    <div class="progress" style="height: 8px; background-color: rgba(255,255,255,0.2);">
+                        <div class="progress-bar bg-light" role="progressbar" 
+                             style="width: {% widthratio current_index|add:1 total_videos 100 %}%" 
+                             aria-valuenow="{{ current_index|add:1 }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="{{ total_videos }}">
+                        </div>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="video-container mb-4 rounded overflow-hidden shadow-sm">
@@ -87,30 +112,57 @@
                 <div class="card mb-4 shadow-sm">
                     <div class="card-header" style="background-color: #042042; color: white;">
                         <div class="d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">{% trans "Documentación relacionada" %}</h5>
+                            <h5 class="mb-0">
+                                <i class="fas fa-file-{{ current_document.get_extension_short }} me-2"></i>
+                                {% trans "Documentación relacionada" %}
+                            </h5>
                             {% if current_user.is_staff or current_user.is_lecturer %}
                                 <div class="btn-group">
                                     <a href="{% url 'upload_file_edit' course.slug current_document.id %}" 
                                        class="btn btn-warning btn-sm">
-                                        <i class="fas fa-edit"></i> {% trans "Editar Documento" %}
+                                        <i class="fas fa-edit"></i> {% trans "Editar" %}
                                     </a>
                                     <a href="{% url 'upload_file_view' course.slug %}" 
                                        class="btn btn-success btn-sm">
-                                        <i class="fas fa-plus"></i> {% trans "Nuevo Documento" %}
+                                        <i class="fas fa-plus"></i> {% trans "Nuevo" %}
                                     </a>
                                 </div>
                             {% endif %}
                         </div>
                     </div>
                     <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
                             <h6 class="mb-0">{{ current_document.title }}</h6>
-                            <a href="{% url 'download_pdf' current_document.id %}"
-                               class="btn"
-                               style="background-color: #042042; color: white;"
-                               target="_blank">
-                                <i class="fas fa-download"></i> {% trans "Descargar" %}
-                            </a>
+                            <button class="btn btn-outline-info btn-sm" onclick="toggleDocumentView()">
+                                <i class="fas fa-eye" id="toggleIcon"></i> 
+                                <span id="toggleText">{% trans "Ver" %}</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Visualizador de Documento -->
+                        <div id="documentViewer" style="display: none;">
+                            {% if current_document.get_extension_short == 'pdf' %}
+                                <!-- Visualizador de PDF -->
+                                <div class="pdf-viewer-container" style="border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden;">
+                                    <iframe src="{{ current_document.get_file_url }}" 
+                                            width="100%" 
+                                            height="600px" 
+                                            style="border: none;">
+                                    </iframe>
+                                </div>
+                            {% elif current_document.get_extension_short == 'pptx' %}
+                                <!-- Visualizador de PowerPoint -->
+                                <div class="powerpoint-viewer-container" style="border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden;">
+                                    <div id="powerpoint-viewer" data-file-url="{{ current_document.get_file_url }}"></div>
+                                </div>
+                            {% else %}
+                                <!-- Otros tipos de archivo -->
+                                <div class="alert alert-info text-center">
+                                    <i class="fas fa-file-{{ current_document.get_extension_short }} fa-3x mb-3"></i>
+                                    <h5>{% trans "Vista previa no disponible" %}</h5>
+                                    <p class="mb-0">{% trans "Este tipo de archivo no se puede visualizar directamente en el navegador." %}</p>
+                                </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -118,17 +170,16 @@
         </div>
 
         <div class="col-md-4">
-            <div class="card shadow-sm">
-                <div class="card-header" style="background-color: #1a237e; color: white;">
-                    <h5 class="mb-0">{% trans "Lista de Videos" %}</h5>
-                    {% if current_user.is_staff or current_user.is_lecturer %}
-                        <a href="{% url 'upload_video' course.slug %}" class="btn btn-success btn-sm">
-                            <i class="fas fa-plus"></i> {% trans "Nuevo" %}
-                        </a>
-                    {% endif %}
+            <!-- Contenido del Curso - Vista Unificada -->
+            <div class="card shadow-sm mb-3">
+                <div class="card-header" style="background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>{% trans "Contenido del Curso" %}
+                    </h5>
                 </div>
                 <div class="card-body p-0">
                     <div class="list-group list-group-flush">
+                        <!-- Videos -->
                         {% for video in videos %}
                             <div class="list-group-item {% if video.id == current_video.id %}active{% endif %}" 
                                  style="{% if video.id == current_video.id %}background-color: #1a237e; color: white;{% endif %}">
@@ -136,12 +187,18 @@
                                     <a href="{% url 'course_video_navigation' course.slug video.id %}" 
                                        class="text-decoration-none flex-grow-1"
                                        style="{% if video.id == current_video.id %}color: white;{% endif %}">
-                                        <span>
-                                            {% if video in completed_videos %}
-                                                <i class="fas fa-check-circle text-success"></i>
-                                            {% endif %}
-                                            {{ video.title }}
-                                        </span>
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-play-circle me-2" style="color: #007bff;"></i>
+                                            <div>
+                                                <div class="fw-bold">
+                                                    {% if video in completed_videos %}
+                                                        <i class="fas fa-check-circle text-success me-1"></i>
+                                                    {% endif %}
+                                                    {{ video.title }}
+                                                </div>
+                                                <small class="text-muted">Video {{ forloop.counter }}</small>
+                                            </div>
+                                        </div>
                                     </a>
                                     <div class="d-flex align-items-center">
                                         {% if current_user.is_staff %}
@@ -164,30 +221,89 @@
                                         {% endif %}
                                     </div>
                                 </div>
+                                
+                                <!-- Documento relacionado (si existe) -->
+                                {% for doc in documents %}
+                                    {% if forloop.counter0 == forloop.parentloop.counter0 %}
+                                        <div class="mt-2 ms-4">
+                                            <a href="{% url 'course_video_navigation' course.slug video.id %}" 
+                                               class="text-decoration-none d-flex align-items-center"
+                                               style="{% if video.id == current_video.id %}color: rgba(255,255,255,0.8);{% else %}color: #6c757d;{% endif %}">
+                                                <i class="fas fa-file-{{ doc.get_extension_short }} me-2"></i>
+                                                <small>{{ doc.title }}</small>
+                                            </a>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
                             </div>
+                        {% endfor %}
+                        
+                        <!-- Documentos sin video relacionado -->
+                        {% for doc in documents %}
+                            {% if forloop.counter > videos.count %}
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <a href="{% url 'course_document_navigation' course.slug doc.id %}" 
+                                           class="text-decoration-none flex-grow-1">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-file-{{ doc.get_extension_short }} me-2" style="color: #28a745;"></i>
+                                                <div>
+                                                    <div class="fw-bold">{{ doc.title }}</div>
+                                                    <small class="text-muted">Documento {{ forloop.counter }}</small>
+                                                </div>
+                                            </div>
+                                        </a>
+                                        {% if current_user.is_staff or current_user.is_lecturer %}
+                                            <a href="{% url 'upload_file_edit' course.slug doc.id %}" 
+                                               class="btn btn-sm btn-outline-warning">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endif %}
                         {% endfor %}
                     </div>
                 </div>
             </div>
+            
+            <!-- Botones de administración -->
+            {% if current_user.is_staff or current_user.is_lecturer %}
+            <div class="card shadow-sm">
+                <div class="card-header" style="background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">
+                    <h6 class="mb-0">{% trans "Administrar Contenido" %}</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'upload_video' course.slug %}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-video me-1"></i>{% trans "Nuevo Video" %}
+                        </a>
+                        <a href="{% url 'upload_file_view' course.slug %}" class="btn btn-success btn-sm">
+                            <i class="fas fa-file-alt me-1"></i>{% trans "Nuevo Documento" %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 
     <div class="row mt-4">
         <div class="col-12">
-            <div class="d-flex justify-content-center gap-2">
+            <div class="d-flex justify-content-center gap-3 flex-wrap">
                 {% if previous_video %}
                     <a href="{% url 'course_video_navigation' course.slug previous_video.id %}" 
-                       class="btn" style="background-color: #1a237e; color: white;">
+                       class="btn" style="background-color: #1a237e; color: white; min-width: 150px;">
                         <i class="fas fa-arrow-left"></i> {% trans "Anterior" %}
                     </a>
                 {% else %}
-                    <button class="btn btn-secondary" disabled>
+                    <button class="btn btn-secondary" disabled style="min-width: 150px;">
                         <i class="fas fa-arrow-left"></i> {% trans "Anterior" %}
                     </button>
                 {% endif %}
 
                 {% if is_last_video %}
-                    <a class="btn btn-warning" href="{% url 'quiz_index' course.slug %}">
+                    <a class="btn btn-warning" href="{% url 'quiz_index' course.slug %}" style="min-width: 150px;">
                         <i class="fas fa-list"></i> {% trans 'Tomar examen' %}
                     </a>
                 {% endif %}
@@ -195,16 +311,16 @@
                 {% if next_video %}
                     {% if can_proceed or current_user.is_staff or current_user.is_lecturer %}
                         <a href="{% url 'course_video_navigation' course.slug next_video.id %}" 
-                           class="btn" style="background-color: #1a237e; color: white;">
+                           class="btn" style="background-color: #1a237e; color: white; min-width: 150px;">
                             {% trans "Siguiente" %} <i class="fas fa-arrow-right"></i>
                         </a>
                     {% else %}
-                        <button class="btn btn-secondary" disabled title="{% trans 'Debes completar este video para continuar' %}">
+                        <button class="btn btn-secondary" disabled title="{% trans 'Debes completar este video para continuar' %}" style="min-width: 150px;">
                             {% trans "Siguiente" %} <i class="fas fa-arrow-right"></i>
                         </button>
                     {% endif %}
                 {% else %}
-                    <button class="btn btn-secondary" disabled>
+                    <button class="btn btn-secondary" disabled style="min-width: 150px;">
                         {% trans "Siguiente" %} <i class="fas fa-arrow-right"></i>
                     </button>
                 {% endif %}
@@ -212,4 +328,41 @@
         </div>
     </div>
 </div>
+
+<!-- JavaScript para el visualizador de documentos -->
+<script>
+    function toggleDocumentView() {
+        const viewer = document.getElementById('documentViewer');
+        const toggleIcon = document.getElementById('toggleIcon');
+        const toggleText = document.getElementById('toggleText');
+        
+        if (viewer.style.display === 'none') {
+            viewer.style.display = 'block';
+            toggleIcon.className = 'fas fa-eye-slash';
+            toggleText.textContent = '{% trans "Ocultar" %}';
+        } else {
+            viewer.style.display = 'none';
+            toggleIcon.className = 'fas fa-eye';
+            toggleText.textContent = '{% trans "Ver" %}';
+        }
+    }
+</script>
+
+<!-- Script para el visualizador de PowerPoint -->
+{% if current_document and current_document.get_extension_short == 'pptx' %}
+<script src="{% static 'js/powerpoint-viewer.js' %}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const viewer = document.getElementById('powerpoint-viewer');
+        if (viewer) {
+            const fileUrl = viewer.getAttribute('data-file-url');
+            if (fileUrl) {
+                // Inicializar el visualizador de PowerPoint
+                initializePowerPointViewer(viewer, fileUrl);
+            }
+        }
+    });
+</script>
+{% endif %}
+
 {% endblock content %}

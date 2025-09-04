@@ -48,7 +48,7 @@
     </a>
 {% elif files %}
     <a class="btn btn-gpd mb-4" href="{% url 'course_document_navigation_first' course.slug %}" style="padding: 10px 20px; border-radius: 5px; text-align: center; font-weight: bold; text-decoration: none; display: inline-block; font-size: 16px; transition: background-color 0.3s ease, transform: 0.2s ease;">
-        <i class="fas fa-file-pdf"></i> {% trans 'VER DOCUMENTOS' %}
+        <i class="fas fa-play"></i> {% trans 'INICIAR CURSO' %}
     </a>
 {% else %}
     <button class="btn btn-secondary mb-4" disabled style="padding: 10px 20px; border-radius: 5px; text-align: center; font-weight: bold; text-decoration: none; display: inline-block; font-size: 16px;">
@@ -63,150 +63,243 @@
 
 {% include 'snippets/messages.html' %}
 
-<div class="container">
-    <!-- Lista de Videos sin accesos -->
-    <div class="row mb-5">
-        <div class="col-md-12 p-0">
-            <p class="form-title m-0">{% trans 'Videos' %}</p>
-            <div class="table-responsive">
-                <table class="table table-shadow table-light table-striped m-0">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>{% trans 'Título del video' %}</th>
-                            <th>{% trans 'Fecha de subida' %}</th>
-                            {% if request.user.is_superuser or request.user.is_lecturer %}
-                            <th>{% trans 'Acciones' %}</th>
-                            {% endif %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for video in videos %}
-                        <tr>
-                            <td>{{ forloop.counter }}</td>
-                            <!-- Título del video sin enlace -->
-                            <td>{{ video.title|title }}</td>
-                            <td>{{ video.timestamp|date }}</td>
-
-                            {% if request.user.is_superuser or request.user.is_lecturer %}
-                            <td>
-                                <div class="update-delete">
-                                    <a href="{% url 'upload_video_edit' slug=course.slug video_slug=video.slug %}"
-                                        class="update" title="{% trans 'Editar' %}">
-                                        <i class="fas fa-pencil-alt"></i>
-                                    </a>
-                                    <a href="{% url 'upload_video_delete' slug=course.slug video_slug=video.slug %}"
-                                        class="delete" title="{% trans 'Eliminar' %}">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </a>
-                                </div>
-                            </td>
-                            {% endif %}
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td></td>
-                            <td></td>
-                            <td>
-                                <span class="text-danger">
-                                    {% trans 'No hay videos subidos.' %}
-                                    {% if request.user.is_superuser or request.user.is_lecturer %}
-                                    <a href="{% url 'upload_video' course.slug %}" class="text-primary">
-                                        <i class="primary" style="font-size: 22px;">
-                                            {% trans 'Subir ahora.' %}
-                                        </i>
-                                        {% endif %}
-                                    </a>
+<!-- Contenido del Curso - Diseño Moderno -->
+<div class="container-fluid px-4">
+    <!-- Header del Curso -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #1a237e 0%, #3f51b5 100%);">
+                <div class="card-body text-white p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h2 class="card-title mb-2">
+                                <i class="fas fa-graduation-cap me-2"></i>{{ course.title }}
+                            </h2>
+                            <p class="card-text mb-0 opacity-75">{{ course.summary }}</p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="d-flex flex-column align-items-end">
+                                <span class="badge bg-light text-dark fs-6 mb-2 px-3 py-2">
+                                    <i class="fas fa-code me-1"></i>{{ course.code }}
                                 </span>
-                            </td>
-                            <td></td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                                <div class="d-flex gap-2">
+                                    {% if videos %}
+                                        <span class="badge bg-success px-3 py-2">
+                                            <i class="fas fa-video me-1"></i>{{ videos.count }} Videos
+                                        </span>
+                                    {% endif %}
+                                    {% if files %}
+                                        <span class="badge bg-info px-3 py-2">
+                                            <i class="fas fa-file-alt me-1"></i>{{ files.count }} Documentos
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    
 
-    <!-- Sección de Documentaciones -->
+    <!-- Contenido del Curso -->
     <div class="row">
-        <div class="col-md-12 p-0">
-            <p class="form-title m-0">{% trans 'Documentaciones' %}</p>
-            <div class="table-responsive">
-                <table class="table table-shadow table-light table-striped m-0">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>{% trans 'Nombre del archivo' %}</th>
-                            <th>{% trans 'Fecha de subida' %}</th>
-                            <th>{% trans 'Fecha de actualización' %}</th>
-                            <th>{% trans 'Descargas' %}</th>
-                            {% if request.user.is_superuser or request.user.is_lecturer %}
-                            <th>{% trans 'Acciones' %}</th>
-                            {% endif %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for file in files %}
-                        <tr>
-                            <td>{{ forloop.counter }}</td>
-                            <td><a href="{{ file.file.url }}" title="{{ file }}" class="d-flex align-items-center">
-                                    <i class="fas fa-file-{{ file.get_extension_short }} me-1"></i>
-                                    {{ file.title|title }}
-                                </a>
-                            </td>
-                            <td>{{ file.upload_time|date }}</td>
-                            <td>{{ file.updated_date|date }}</td>
-                            <th>
-                                <div>
-                                    <a class="download-btn" href="{{ file.file.url }}" title="Descargar en tu dispositivo">
-                                        <i class="fas fa-download me-1"></i>{% trans 'Descargar' %}</a>
+        <!-- Videos Section -->
+        {% if videos %}
+        <div class="col-12 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-video me-2"></i>{% trans 'Videos del Curso' %}
+                        <span class="badge bg-light text-primary ms-2">{{ videos.count }}</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for video in videos %}
+                        <div class="list-group-item border-0 py-3">
+                            <div class="row align-items-center">
+                                <div class="col-auto">
+                                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                                         style="width: 40px; height: 40px;">
+                                        <i class="fas fa-play"></i>
+                                    </div>
                                 </div>
-                            </th>
-
-                            {% if request.user.is_superuser or request.user.is_lecturer %}
-                            <td>
-                                <div class="update-delete">
-                                    <a href="{% url 'upload_file_edit' slug=course.slug file_id=file.pk %}"
-                                        class="update" title="{% trans 'Editar' %}">
-                                        <i class="fas fa-pencil-alt"></i>
-                                    </a>
-                                    <a href="{% url 'upload_file_delete' slug=course.slug file_id=file.pk %}"
-                                        class="delete" title="{% trans 'Eliminar' %}">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </a>
+                                <div class="col">
+                                    <h6 class="mb-1 fw-bold">{{ video.title|title }}</h6>
+                                    <small class="text-muted">
+                                        <i class="fas fa-calendar me-1"></i>Subido el {{ video.timestamp|date:"d/m/Y" }}
+                                    </small>
                                 </div>
-                            </td>
-                            {% endif %}
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td></td>
-                            <td></td>
-                            <td>
-                                <span class="text-danger">
-                                    {% trans 'No hay archivos subidos.' %}
+                                <div class="col-auto">
                                     {% if request.user.is_superuser or request.user.is_lecturer %}
-                                    <a href="{% url 'upload_file_view' course.slug %}" class="text-primary">
-                                        <i class="primary" style="font-size: 22px;">
-                                            {% trans 'Subir ahora.' %}
-                                        </i>
-                                        {% endif %}
-                                    </a>
-                                </span>
-                            </td>
-                            <td></td>
-                            <td></td>
-                        </tr>
+                                    <div class="btn-group" role="group">
+                                        <a href="{% url 'upload_video_edit' slug=course.slug video_slug=video.slug %}"
+                                           class="btn btn-outline-primary btn-sm" title="{% trans 'Editar' %}">
+                                            <i class="fas fa-pencil-alt"></i>
+                                        </a>
+                                        <a href="{% url 'upload_video_delete' slug=course.slug video_slug=video.slug %}"
+                                           class="btn btn-outline-danger btn-sm" title="{% trans 'Eliminar' %}">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="list-group-item border-0 text-center py-5">
+                            <i class="fas fa-video-slash fa-3x text-muted mb-3"></i>
+                            <h6 class="text-muted">{% trans 'No hay videos subidos.' %}</h6>
+                            {% if request.user.is_superuser or request.user.is_lecturer %}
+                            <a href="{% url 'upload_video' course.slug %}" class="btn btn-primary">
+                                <i class="fas fa-plus me-1"></i>{% trans 'Subir ahora' %}
+                            </a>
+                            {% endif %}
+                        </div>
                         {% endfor %}
-                    </tbody>
-                </table>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
+        {% endif %}
 
+        <!-- Documentos Section -->
+        {% if files %}
+        <div class="col-12 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-alt me-2"></i>{% trans 'Documentos del Curso' %}
+                        <span class="badge bg-light text-success ms-2">{{ files.count }}</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for file in files %}
+                        <div class="list-group-item border-0 py-3">
+                            <div class="row align-items-center">
+                                <div class="col-auto">
+                                    <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center" 
+                                         style="width: 40px; height: 40px;">
+                                        <i class="fas fa-file-{{ file.get_extension_short }}"></i>
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <h6 class="mb-1 fw-bold">
+                                        {% if file.get_file_url %}
+                                            <a href="{{ file.get_file_url }}" class="text-decoration-none text-dark" title="{{ file }}">
+                                                {{ file.title|title }}
+                                            </a>
+                                        {% else %}
+                                            <span class="text-muted">{{ file.title|title }}</span>
+                                            <small class="text-warning ms-2">(Sin archivo)</small>
+                                        {% endif %}
+                                    </h6>
+                                    <div class="d-flex gap-3">
+                                        <small class="text-muted">
+                                            <i class="fas fa-calendar me-1"></i>Subido: {{ file.upload_time|date:"d/m/Y" }}
+                                        </small>
+                                        <small class="text-muted">
+                                            <i class="fas fa-edit me-1"></i>Actualizado: {{ file.updated_date|date:"d/m/Y" }}
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <div class="d-flex gap-2">
+                                        {% if file.get_file_url %}
+                                        <a href="{{ file.get_file_url }}" 
+                                           class="btn btn-outline-success btn-sm" 
+                                           title="Descargar archivo">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                        {% else %}
+                                        <span class="btn btn-outline-secondary btn-sm disabled">
+                                            <i class="fas fa-ban"></i>
+                                        </span>
+                                        {% endif %}
+                                        
+                                        {% if request.user.is_superuser or request.user.is_lecturer %}
+                                        <div class="btn-group" role="group">
+                                            <a href="{% url 'upload_file_edit' slug=course.slug file_id=file.pk %}"
+                                               class="btn btn-outline-primary btn-sm" title="{% trans 'Editar' %}">
+                                                <i class="fas fa-pencil-alt"></i>
+                                            </a>
+                                            <a href="{% url 'upload_file_delete' slug=course.slug file_id=file.pk %}"
+                                               class="btn btn-outline-danger btn-sm" title="{% trans 'Eliminar' %}">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </a>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="list-group-item border-0 text-center py-5">
+                            <i class="fas fa-file-slash fa-3x text-muted mb-3"></i>
+                            <h6 class="text-muted">{% trans 'No hay archivos subidos.' %}</h6>
+                            {% if request.user.is_superuser or request.user.is_lecturer %}
+                            <a href="{% url 'upload_file_view' course.slug %}" class="btn btn-success">
+                                <i class="fas fa-plus me-1"></i>{% trans 'Subir ahora' %}
+                            </a>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Mensaje si no hay contenido -->
+        {% if not videos and not files %}
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-folder-open fa-4x text-muted mb-4"></i>
+                    <h4 class="text-muted mb-3">{% trans 'Este curso no tiene contenido disponible' %}</h4>
+                    <p class="text-muted mb-4">{% trans 'El instructor aún no ha subido videos o documentos para este curso.' %}</p>
+                    {% if request.user.is_superuser or request.user.is_lecturer %}
+                    <div class="d-flex gap-2 justify-content-center">
+                        <a href="{% url 'upload_video' course.slug %}" class="btn btn-primary">
+                            <i class="fas fa-video me-1"></i>{% trans 'Subir Video' %}
+                        </a>
+                        <a href="{% url 'upload_file_view' course.slug %}" class="btn btn-success">
+                            <i class="fas fa-file-alt me-1"></i>{% trans 'Subir Documento' %}
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
 </div>
+
+<!-- Estilos adicionales -->
+<style>
+    .card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+    }
+    
+    .list-group-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .btn {
+        transition: all 0.2s ease;
+    }
+    
+    .btn:hover {
+        transform: translateY(-1px);
+    }
+</style>
 
 <!-- <div class="site-section mb-5 mt-4">
     <div class="title-1">{% trans 'Instructor(es)' %}</div>
