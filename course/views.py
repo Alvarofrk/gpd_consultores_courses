@@ -170,7 +170,7 @@ def course_single(request, slug):
 
 @login_required
 def course_video_navigation(request, slug, video_id=None):
-    from .optimizations import CourseOptimizations
+    from .optimizations import CourseOptimizations, CourseCache
     
     course = get_object_or_404(Course, slug=slug)
     
@@ -274,7 +274,7 @@ def course_document_navigation(request, slug, document_id=None):
     """
     Vista para navegar por documentos cuando no hay videos en el curso
     """
-    from .optimizations import CourseOptimizations
+    from .optimizations import CourseOptimizations, CourseCache
     
     course = get_object_or_404(Course, slug=slug)
     

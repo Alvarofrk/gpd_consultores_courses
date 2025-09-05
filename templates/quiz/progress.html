@@ -124,9 +124,9 @@
                   {% else %}
                     0%
                   {% endif %}
-                {% else %}
+	{% else %}
                   0%
-                {% endif %}
+	{% endif %}
               </h4>
               <p class="mb-0 small">{% trans "Promedio" %}</p>
             </div>
@@ -179,7 +179,7 @@
  
 <!-- Lista de Exámenes en Cards -->
 <div class="row" id="exams-container">
-    {% for sitting in sitting_list %}
+            {% for sitting in sitting_list %}
     <div class="col-lg-6 col-xl-4 mb-4 exam-card" 
          data-status="{% if sitting.get_percent_correct >= sitting.quiz.pass_mark %}passed{% else %}failed{% endif %}"
          data-certified="{% if sitting.get_percent_correct >= 80 %}true{% else %}false{% endif %}">
@@ -273,11 +273,11 @@
                             <i class="fas fa-calendar-check text-success mb-1"></i>
                             <small class="text-muted">{% trans "Aprobación" %}</small>
                             <small class="fw-bold">
-                                {% if sitting.fecha_aprobacion %}
-                                    {{ sitting.fecha_aprobacion|date:"d/m/Y" }}
-                                {% else %}
-                                    -
-                                {% endif %}
+                    {% if sitting.fecha_aprobacion %}
+                        {{ sitting.fecha_aprobacion|date:"d/m/Y" }}
+                    {% else %}
+                        -
+                    {% endif %}
                             </small>
                         </div>
                     </div>
@@ -286,11 +286,11 @@
                             <i class="fas fa-calendar-times text-warning mb-1"></i>
                             <small class="text-muted">{% trans "Expiración" %}</small>
                             <small class="fw-bold">
-                                {% if sitting.fecha_aprobacion %}
-                                    {{ sitting.fecha_aprobacion|add_days:365|date:"d/m/Y" }}
-                                {% else %}
-                                    -
-                                {% endif %}
+                    {% if sitting.fecha_aprobacion %}
+                        {{ sitting.fecha_aprobacion|add_days:365|date:"d/m/Y" }}
+                    {% else %}
+                        -
+                    {% endif %}
                             </small>
                         </div>
                     </div>
@@ -306,20 +306,20 @@
                            class="btn btn-success btn-sm">
                             <i class="fas fa-download me-1"></i>
                             {% trans "Descargar Certificado" %}
-                        </a>
+                    </a>
                     {% else %}
                         <a href="{% url 'quiz_take' sitting.course.id sitting.quiz.slug %}" 
                            class="btn btn-warning btn-sm">
                             <i class="fas fa-redo me-1"></i>
                             {% trans "Reintentar Examen" %}
-                        </a>
+                    </a>
                     {% endif %}
                 </div>
                 {% endif %}
             </div>
         </div>
     </div>
-    {% empty %}
+            {% empty %}
     <div class="col-12">
         <div class="card border-0 shadow-sm">
             <div class="card-body text-center py-5">
@@ -329,7 +329,7 @@
             </div>
         </div>
     </div>
-    {% endfor %}
+            {% endfor %}
 </div>
 
 <!-- Modal para el formulario de anexo -->
