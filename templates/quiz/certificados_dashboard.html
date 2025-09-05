@@ -1,877 +1,2398 @@
 {% extends "base.html" %}
 {% load i18n %}
 
-{% block title %}{% trans "Dashboard de Certificados" %} | {% trans 'Sistema de gestión de aprendizaje' %}{% endblock %}
-{% block description %}{% trans "Dashboard completo de certificados automáticos y manuales" %}{% endblock %}
+{% block title %}{% trans "Dashboard de Certificados" %}{% endblock %}
 
 {% block content %}
+<style>
+/* Estilos para filtros */
+.filtro-card {
+    border: 1px solid #e3e6f0;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+}
 
-<nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
-        <li class="breadcrumb-item active" aria-current="page">{% trans 'Dashboard de Certificados' %}</li>
-    </ol>
-</nav>
+.filtro-card .card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-bottom: none;
+    border-radius: 0.5rem 0.5rem 0 0;
+}
 
-<!-- Header Principal -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #1a237e 0%, #3f51b5 100%);">
-            <div class="card-body text-white p-4">
-                <div class="row align-items-center">
-                    <div class="col-md-8">
-                        <h2 class="mb-2">
-                            <i class="fas fa-chart-pie me-3"></i>
-                            {% trans 'Dashboard de Certificados' %}
-                        </h2>
-                        <p class="mb-0 opacity-75">
-                            {% trans "Gestión y análisis completo de certificados automáticos y manuales" %}
-                        </p>
-                    </div>
-                    <div class="col-md-4 text-md-end">
-                        <div class="d-flex justify-content-md-end gap-2">
-                            <a href="{% url 'listar_certificados_manuales' %}" class="btn btn-light btn-lg px-4 py-2 rounded-pill">
-                                <i class="fas fa-certificate me-2"></i>
-                                {% trans "Certificados Manuales" %}
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- Dashboard de Estadísticas -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="row g-3">
-            <!-- Total Certificados -->
-            <div class="col-lg-3 col-md-6">
-                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
-                    <div class="card-body text-white text-center p-3">
-                        <i class="fas fa-certificate fa-2x mb-2"></i>
-                        <h4 class="mb-1">{{ total_certificados }}</h4>
-                        <p class="mb-0 small">{% trans "Total Certificados" %}</p>
-                        <small class="opacity-75">{{ total_automaticos }} automáticos + {{ total_manuales }} manuales</small>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Certificados Activos -->
-            <div class="col-lg-3 col-md-6">
-                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);">
-                    <div class="card-body text-white text-center p-3">
-                        <i class="fas fa-check-circle fa-2x mb-2"></i>
-                        <h4 class="mb-1">{{ certificados_activos }}</h4>
-                        <p class="mb-0 small">{% trans "Certificados Activos" %}</p>
-                        <small class="opacity-75">{{ automaticos_activos }} automáticos + {{ manuales_activos }} manuales</small>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Certificados Vencidos -->
-            <div class="col-lg-3 col-md-6">
-                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);">
-                    <div class="card-body text-white text-center p-3">
-                        <i class="fas fa-times-circle fa-2x mb-2"></i>
-                        <h4 class="mb-1">{{ certificados_vencidos }}</h4>
-                        <p class="mb-0 small">{% trans "Certificados Vencidos" %}</p>
-                        <small class="opacity-75">{{ automaticos_vencidos }} automáticos + {{ manuales_vencidos }} manuales</small>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Certificados por Vencer -->
-            <div class="col-lg-3 col-md-6">
-                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);">
-                    <div class="card-body text-white text-center p-3">
-                        <i class="fas fa-clock fa-2x mb-2"></i>
-                        <h4 class="mb-1">{{ por_vencer }}</h4>
-                        <p class="mb-0 small">{% trans "Por Vencer" %}</p>
-                        <small class="opacity-75">Próximos 30 días</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+.alert-filtros {
+    background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+    border: 1px solid #bbdefb;
+    border-radius: 0.5rem;
+}
 
-<!-- Filtros Avanzados -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-transparent border-0">
-                <h5 class="mb-0">
-                    <i class="fas fa-filter me-2"></i>
-                    {% trans "Filtros Avanzados" %}
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <!-- Filtro por Tipo -->
-                    <div class="col-md-3">
-                        <label class="form-label">{% trans "Tipo de Certificado" %}</label>
-                        <select class="form-select" id="filtroTipo">
-                            <option value="todos">{% trans "Todos" %}</option>
-                            <option value="automaticos">{% trans "Automáticos" %}</option>
-                            <option value="manuales">{% trans "Manuales" %}</option>
-                        </select>
-                    </div>
-                    
-                    <!-- Filtro por Estado -->
-                    <div class="col-md-3">
-                        <label class="form-label">{% trans "Estado" %}</label>
-                        <select class="form-select" id="filtroEstado">
-                            <option value="todos">{% trans "Todos" %}</option>
-                            <option value="activos">{% trans "Activos" %}</option>
-                            <option value="vencidos">{% trans "Vencidos" %}</option>
-                            <option value="por_vencer">{% trans "Por Vencer" %}</option>
-                        </select>
-                    </div>
-                    
-                    <!-- Filtro por Fecha -->
-                    <div class="col-md-3">
-                        <label class="form-label">{% trans "Período" %}</label>
-                        <select class="form-select" id="filtroFecha">
-                            <option value="todos">{% trans "Todos" %}</option>
-                            <option value="este_mes">{% trans "Este Mes" %}</option>
-                            <option value="ultimo_mes">{% trans "Último Mes" %}</option>
-                            <option value="ultimos_3_meses">{% trans "Últimos 3 Meses" %}</option>
-                            <option value="ultimo_ano">{% trans "Último Año" %}</option>
-                        </select>
-                    </div>
-                    
-                    <!-- Filtro por Curso -->
-                    <div class="col-md-3">
-                        <label class="form-label">{% trans "Curso" %}</label>
-                        <select class="form-select" id="filtroCurso">
-                            <option value="todos">{% trans "Todos los Cursos" %}</option>
-                            {% for curso in cursos_disponibles %}
-                            <option value="{{ curso.id }}">{{ curso.title }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-                
-                <!-- Contador dinámico -->
-                <div class="row mt-3">
-                    <div class="col-12">
-                        <div class="alert alert-info border-0">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <span id="contadorFiltrado">Mostrando todos los certificados</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+.btn-filtro {
+    border-radius: 0.375rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
 
-<!-- Alertas y Notificaciones -->
-{% if por_vencer > 0 %}
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="alert alert-warning border-0 shadow-sm">
-            <div class="d-flex align-items-center">
-                <i class="fas fa-exclamation-triangle fa-2x me-3 text-warning"></i>
-                <div>
-                    <h5 class="mb-1">{% trans "Certificados por Vencer" %}</h5>
-                    <p class="mb-0">
-                        {% trans "Hay" %} <strong>{{ por_vencer }}</strong> {% trans "certificados que vencerán en los próximos 30 días" %}
-                        ({{ automaticos_por_vencer }} automáticos, {{ manuales_por_vencer }} manuales)
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
+.btn-filtro:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
 
-<!-- Gráficos y Análisis -->
-<div class="row mb-4">
-    <!-- Gráfico Mensual -->
-    <div class="col-lg-8">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-transparent border-0">
-                <h5 class="mb-0">
-                    <i class="fas fa-chart-line me-2"></i>
-                    {% trans "Certificados por Mes (Últimos 12 meses)" %}
-                </h5>
-            </div>
-            <div class="card-body">
-                <canvas id="chartMensual" width="400" height="200"></canvas>
+/* Animaciones para cards */
+.card-estadistica {
+    transition: all 0.3s ease;
+    border-radius: 0.75rem;
+    overflow: hidden;
+}
+
+.card-estadistica:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+
+/* Estilos para modales */
+.modal-content {
+    border-radius: 0.75rem;
+    border: none;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 0.75rem 0.75rem 0 0;
+    border-bottom: none;
+}
+
+.modal-header .btn-close {
+    filter: invert(1);
+}
+
+/* Estilos para tabla de beneficiarios */
+.table-beneficiarios {
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.table-beneficiarios thead th {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #495057;
+}
+
+/* Loading states */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Estilos para paginación */
+.pagination .page-link {
+    border-radius: 0.375rem;
+    margin: 0 2px;
+    border: 1px solid #dee2e6;
+    color: #495057;
+    transition: all 0.3s ease;
+}
+
+.pagination .page-link:hover {
+    background-color: #e9ecef;
+    border-color: #adb5bd;
+    transform: translateY(-1px);
+}
+
+.pagination .page-item.active .page-link {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: #667eea;
+    color: white;
+}
+
+.pagination .page-item.disabled .page-link {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Estilos para badges de tipo */
+.badge.bg-success {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+}
+
+.badge.bg-info {
+    background: linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%) !important;
+}
+
+/* Mejoras para la tabla de beneficiarios */
+.table-beneficiarios tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+    transform: scale(1.01);
+    transition: all 0.2s ease;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .filtro-rapido-btn {
+        font-size: 0.75rem;
+        padding: 0.3rem 0.6rem;
+    }
+    
+    .btn-filtro {
+        font-size: 0.875rem;
+    }
+    
+    .pagination {
+        font-size: 0.875rem;
+    }
+    
+    .table-beneficiarios {
+        font-size: 0.875rem;
+    }
+}
+
+/* SISTEMA DE NOTIFICACIONES MEJORADO */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    min-width: 300px;
+    max-width: 500px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 9999;
+    transform: translateX(100%);
+    opacity: 0;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.notification.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.notification-content {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    gap: 12px;
+}
+
+.notification i {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.notification-message {
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.notification-close:hover {
+    background-color: #f5f5f5;
+}
+
+.notification-progress {
+    height: 3px;
+    background: linear-gradient(90deg, #007bff, #0056b3);
+    animation: progressBar linear forwards;
+}
+
+@keyframes progressBar {
+    from { width: 100%; }
+    to { width: 0%; }
+}
+
+/* Tipos de notificaciones */
+.notification-success {
+    border-left: 4px solid #28a745;
+}
+
+.notification-success i {
+    color: #28a745;
+}
+
+.notification-error {
+    border-left: 4px solid #dc3545;
+}
+
+.notification-error i {
+    color: #dc3545;
+}
+
+.notification-warning {
+    border-left: 4px solid #ffc107;
+}
+
+.notification-warning i {
+    color: #ffc107;
+}
+
+.notification-info {
+    border-left: 4px solid #17a2b8;
+}
+
+.notification-info i {
+    color: #17a2b8;
+}
+
+/* Indicadores de carga mejorados */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9998;
+}
+
+.loading-spinner {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.loading-spinner .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 16px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Mejoras en botones */
+.btn-loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.btn-loading::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    margin: auto;
+    border: 2px solid transparent;
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+</style>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">
+                    <i class="fas fa-certificate me-2"></i>
+                    {% trans "Dashboard de Certificados" %}
+                </h1>
             </div>
         </div>
     </div>
     
-    <!-- Distribución por Curso -->
-    <div class="col-lg-4">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-transparent border-0">
-                <h5 class="mb-0">
-                    <i class="fas fa-chart-pie me-2"></i>
-                    {% trans "Top 5 Cursos" %}
-                </h5>
+    <!-- Navegación por Pestañas -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="certificados-tab" data-bs-toggle="tab" 
+                            data-bs-target="#certificados" type="button" role="tab" 
+                            aria-controls="certificados" aria-selected="true">
+                        <i class="fas fa-certificate me-2"></i>
+                        {% trans "Certificados Generales" %}
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="cursos-tab" data-bs-toggle="tab" 
+                            data-bs-target="#cursos" type="button" role="tab" 
+                            aria-controls="cursos" aria-selected="false">
+                        <i class="fas fa-graduation-cap me-2"></i>
+                        {% trans "Dashboard por Cursos" %}
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </div>
+    
+    <!-- Contenido de las Pestañas -->
+    <div class="tab-content" id="dashboardTabsContent">
+        <!-- Pestaña 1: Certificados Generales -->
+        <div class="tab-pane fade show active" id="certificados" role="tabpanel" 
+             aria-labelledby="certificados-tab">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-chart-pie me-2"></i>
+                                {% trans "Estadísticas Generales de Certificados" %}
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Panel de Filtros -->
+                            <div class="card mb-4 filtro-card">
+                                <div class="card-header">
+                                    <h6 class="card-title mb-0">
+                                        <i class="fas fa-filter me-2"></i>
+                                        {% trans "Filtros de Certificados" %}
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <!-- Filtro de Fecha Desde -->
+                                        <div class="col-md-3">
+                                            <label for="filtroFechaDesde" class="form-label">{% trans "Fecha Desde" %}</label>
+                                            <input type="date" class="form-control" id="filtroFechaDesde" placeholder="{% trans 'Seleccionar fecha' %}">
+                                        </div>
+                                        
+                                        <!-- Filtro de Fecha Hasta -->
+                                        <div class="col-md-3">
+                                            <label for="filtroFechaHasta" class="form-label">{% trans "Fecha Hasta" %}</label>
+                                            <input type="date" class="form-control" id="filtroFechaHasta" placeholder="{% trans 'Seleccionar fecha' %}">
+                                        </div>
+                                        
+                                        <!-- Filtro de Tipo -->
+                                        <div class="col-md-2">
+                                            <label class="form-label">{% trans "Tipo" %}</label>
+                                            <select class="form-select" id="filtroTipo">
+                                                <option value="todos">{% trans "Todos" %}</option>
+                                                <option value="automaticos">{% trans "Automáticos" %}</option>
+                                                <option value="manuales">{% trans "Manuales" %}</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <!-- Filtro de Cursos -->
+                                        <div class="col-md-3">
+                                            <label class="form-label">{% trans "Cursos" %}</label>
+                                            <div class="input-group">
+                                                <select class="form-select" id="filtroCursos">
+                                                    <option value="todos">{% trans "Todos los cursos" %}</option>
+                                                    <option value="seleccionar">{% trans "Seleccionar específicos..." %}</option>
+                                                </select>
+                                                <button class="btn btn-outline-secondary" type="button" id="btnSeleccionarCursos">
+                                                    <i class="fas fa-list"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Filtro de Beneficiarios -->
+                                        <div class="col-md-2">
+                                            <label class="form-label">{% trans "Beneficiarios" %}</label>
+                                            <button class="btn btn-outline-primary w-100" type="button" id="btnVerBeneficiarios">
+                                                <i class="fas fa-users me-1"></i>
+                                                {% trans "Ver Lista" %}
+                                            </button>
+                                        </div>
+                                        
+                                        <!-- Botones de Acción -->
+                                        <div class="col-md-2">
+                                            <label class="form-label">&nbsp;</label>
+                                            <div class="d-grid gap-2">
+                                                <button class="btn btn-primary btn-filtro" type="button" id="btnAplicarFiltros">
+                                                    <i class="fas fa-check me-1"></i>
+                                                    {% trans "Aplicar" %}
+                                                </button>
+                                                <button class="btn btn-outline-secondary btn-filtro" type="button" id="btnLimpiarFiltros">
+                                                    <i class="fas fa-times me-1"></i>
+                                                    {% trans "Limpiar" %}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                </div>
+                            </div>
+                            
+                            <!-- Indicador de Filtros Activos -->
+                            <div class="alert alert-info d-none alert-filtros" id="filtrosActivos">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        <span id="textoFiltrosActivos">{% trans "Filtros aplicados" %}</span>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-info btn-filtro" id="btnVerFiltros">
+                                        <i class="fas fa-eye me-1"></i>
+                                        {% trans "Ver Detalles" %}
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Estadísticas Básicas -->
+                            <div class="row g-3 mb-4">
+                                <!-- Total Certificados -->
+                                <div class="col-lg-3 col-md-6">
+                                    <div class="card border-0 shadow-sm h-100 card-estadistica" 
+                                         style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+                                        <div class="card-body text-white text-center p-3">
+                                            <i class="fas fa-certificate fa-2x mb-2"></i>
+                                            <h4 class="mb-1">{{ total_certificados }}</h4>
+                                            <p class="mb-0 small">{% trans "Total Certificados" %}</p>
+                                            <small class="opacity-75">{{ total_automaticos }} automáticos + {{ total_manuales }} manuales</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Certificados Activos -->
+                                <div class="col-lg-3 col-md-6">
+                                    <div class="card border-0 shadow-sm h-100 card-estadistica" 
+                                         style="background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);">
+                                        <div class="card-body text-white text-center p-3">
+                                            <i class="fas fa-check-circle fa-2x mb-2"></i>
+                                            <h4 class="mb-1">{{ certificados_activos }}</h4>
+                                            <p class="mb-0 small">{% trans "Certificados Activos" %}</p>
+                                            <small class="opacity-75">{{ automaticos_activos }} automáticos + {{ manuales_activos }} manuales</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Certificados Vencidos -->
+                                <div class="col-lg-3 col-md-6">
+                                    <div class="card border-0 shadow-sm h-100 card-estadistica" 
+                                         style="background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);">
+                                        <div class="card-body text-white text-center p-3">
+                                            <i class="fas fa-times-circle fa-2x mb-2"></i>
+                                            <h4 class="mb-1">{{ certificados_vencidos }}</h4>
+                                            <p class="mb-0 small">{% trans "Certificados Vencidos" %}</p>
+                                            <small class="opacity-75">{{ automaticos_vencidos }} automáticos + {{ manuales_vencidos }} manuales</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Por Vencer -->
+                                <div class="col-lg-3 col-md-6">
+                                    <div class="card border-0 shadow-sm h-100 card-estadistica" 
+                                         style="background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);">
+                                        <div class="card-body text-white text-center p-3">
+                                            <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                                            <h4 class="mb-1">{{ por_vencer }}</h4>
+                                            <p class="mb-0 small">{% trans "Por Vencer" %}</p>
+                                            <small class="opacity-75">Próximos 30 días</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Gráfico Simple -->
+                            <div class="row">
+                                <div class="col-lg-8">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6 class="card-title mb-0">
+                                                <i class="fas fa-chart-line me-2"></i>
+                                                {% trans "Distribución de Certificados" %}
+                                            </h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <canvas id="chartCertificados" height="300"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-lg-4">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6 class="card-title mb-0">
+                                                <i class="fas fa-chart-pie me-2"></i>
+                                                {% trans "Tipos de Certificados" %}
+                                            </h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <canvas id="chartTipos" height="300"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
-                <canvas id="chartCursos" width="400" height="200"></canvas>
+        </div>
+        
+        <!-- Pestaña 2: Dashboard por Cursos -->
+        <div class="tab-pane fade" id="cursos" role="tabpanel" 
+             aria-labelledby="cursos-tab">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-graduation-cap me-2"></i>
+                                {% trans "Estadísticas por Cursos" %}
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Resumen General de Cursos -->
+                            <div class="row g-3 mb-4">
+                                <div class="col-lg-3 col-md-6">
+                                    <div class="card border-0 shadow-sm h-100" 
+                                         style="background: linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%);">
+                                        <div class="card-body text-white text-center p-3">
+                                            <i class="fas fa-book fa-2x mb-2"></i>
+                                            <h4 class="mb-1">{{ total_cursos }}</h4>
+                                            <p class="mb-0 small">{% trans "Total Cursos" %}</p>
+                                            <small class="opacity-75">Con certificados</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-lg-3 col-md-6">
+                                    <div class="card border-0 shadow-sm h-100" 
+                                         style="background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%);">
+                                        <div class="card-body text-white text-center p-3">
+                                            <i class="fas fa-users fa-2x mb-2"></i>
+                                            <h4 class="mb-1">{{ total_estudiantes_certificados }}</h4>
+                                            <p class="mb-0 small">{% trans "Estudiantes Certificados" %}</p>
+                                            <small class="opacity-75">En todos los cursos</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-lg-3 col-md-6">
+                                    <div class="card border-0 shadow-sm h-100" 
+                                         style="background: linear-gradient(135deg, #fd7e14 0%, #ffc107 100%);">
+                                        <div class="card-body text-white text-center p-3">
+                                            <i class="fas fa-chart-line fa-2x mb-2"></i>
+                                            <h4 class="mb-1">{{ promedio_certificados_por_curso }}</h4>
+                                            <p class="mb-0 small">{% trans "Promedio por Curso" %}</p>
+                                            <small class="opacity-75">Certificados emitidos</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-lg-3 col-md-6">
+                                    <div class="card border-0 shadow-sm h-100" 
+                                         style="background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);">
+                                        <div class="card-body text-white text-center p-3">
+                                            <i class="fas fa-trophy fa-2x mb-2"></i>
+                                            <h4 class="mb-1">{{ curso_mas_popular }}</h4>
+                                            <p class="mb-0 small">{% trans "Curso Más Popular" %}</p>
+                                            <small class="opacity-75">{{ max_certificados_curso }} certificados</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Gráficos de Cursos -->
+                            <div class="row mb-4">
+                                <div class="col-lg-8">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6 class="card-title mb-0">
+                                                <i class="fas fa-chart-bar me-2"></i>
+                                                {% trans "Top 10 Cursos con Más Certificados" %}
+                                            </h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <canvas id="chartTopCursos" height="300"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-lg-4">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6 class="card-title mb-0">
+                                                <i class="fas fa-chart-pie me-2"></i>
+                                                {% trans "Distribución por Instructores" %}
+                                            </h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <canvas id="chartInstructores" height="300"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Tabla de Cursos -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="card-title mb-0">
+                                        <i class="fas fa-table me-2"></i>
+                                        {% trans "Detalle por Curso" %}
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>{% trans "Curso" %}</th>
+                                                    <th>{% trans "Instructor" %}</th>
+                                                    <th class="text-center">{% trans "Certificados" %}</th>
+                                                    <th class="text-center">{% trans "Último Certificado" %}</th>
+                                                    <th class="text-center">{% trans "Acciones" %}</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for curso in cursos_detalle %}
+                                                <tr>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <i class="fas fa-book text-primary me-2"></i>
+                                                            <strong>{{ curso.title }}</strong>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <i class="fas fa-user text-info me-2"></i>
+                                                            {% if curso.instructor %}
+                                                                {{ curso.instructor.get_full_name|default:curso.instructor.username }}
+                                                            {% else %}
+                                                                <span class="text-muted">Sin instructor</span>
+                                                            {% endif %}
+                                                        </div>
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <span class="badge bg-primary fs-6">{{ curso.total_certificados }}</span>
+                                                    </td>
+                                                    <td class="text-center">
+                                                        {% if curso.ultimo_certificado %}
+                                                            <small class="text-muted">{{ curso.ultimo_certificado|date:"d/m/Y" }}</small>
+                                                        {% else %}
+                                                            <small class="text-muted">-</small>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <button class="btn btn-sm btn-outline-primary" 
+                                                                onclick="verDetalleCurso({{ curso.id }})">
+                                                            <i class="fas fa-eye me-1"></i>
+                                                            {% trans "Ver Detalle" %}
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                    <td colspan="5" class="text-center text-muted py-4">
+                                                        <i class="fas fa-info-circle me-2"></i>
+                                                        {% trans "No hay cursos con certificados" %}
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Estadísticas por Curso -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card shadow-sm">
-            <div class="card-header bg-gradient-primary text-white">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-chart-bar me-2"></i>
-                    Estadísticas por Curso
+<!-- Modal para Selección de Cursos -->
+<div class="modal fade" id="modalSeleccionarCursos" tabindex="-1" aria-labelledby="modalSeleccionarCursosLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalSeleccionarCursosLabel">
+                    <i class="fas fa-list me-2"></i>
+                    {% trans "Seleccionar Cursos" %}
                 </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="card-body">
-                <!-- Selección de Cursos -->
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="text-muted mb-0">
-                                <i class="fas fa-filter me-2"></i>
-                                Selecciona los cursos para ver sus estadísticas:
-                            </h6>
-                            <div class="btn-group" role="group">
-                                <button type="button" class="btn btn-outline-primary btn-sm" id="btn-seleccionar-todos">
-                                    <i class="fas fa-check-double me-1"></i>
-                                    Todos
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-deseleccionar-todos">
-                                    <i class="fas fa-times me-1"></i>
-                                    Ninguno
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- Grid de Checkboxes -->
-                        <div class="row g-2" id="cursos-checkboxes">
-                            {% for curso in cursos_disponibles %}
-                            <div class="col-xl-3 col-lg-4 col-md-6">
-                                <div class="form-check curso-checkbox-item">
-                                    <input class="form-check-input curso-checkbox" type="checkbox" 
-                                           value="{{ curso.id }}" id="curso_{{ curso.id }}">
-                                    <label class="form-check-label" for="curso_{{ curso.id }}">
-                                        <span class="curso-title">{{ curso.title|truncatechars:35 }}</span>
-                                    </label>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        
-                        <!-- Botón de Carga -->
-                        <div class="text-center mt-4">
-                            <button type="button" class="btn btn-primary btn-lg px-5" id="btn-cargar-estadisticas">
-                                <i class="fas fa-sync-alt me-2"></i>
-                                Cargar Estadísticas
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <input type="text" class="form-control" id="buscarCurso" placeholder="{% trans 'Buscar curso...' %}">
+                    </div>
+                    <div class="col-md-6">
+                        <div class="btn-group w-100" role="group">
+                            <button type="button" class="btn btn-outline-primary" id="btnSeleccionarTodos">
+                                <i class="fas fa-check-square me-1"></i>
+                                {% trans "Todos" %}
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" id="btnDeseleccionarTodos">
+                                <i class="fas fa-square me-1"></i>
+                                {% trans "Ninguno" %}
                             </button>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Indicador de Carga -->
-                <div class="text-center d-none" id="loading-estadisticas">
-                    <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
-                        <span class="visually-hidden">Cargando...</span>
-                    </div>
-                    <h6 class="text-muted">Cargando estadísticas...</h6>
-                    <p class="text-muted small">Esto puede tomar unos segundos</p>
-                </div>
-                
-                <!-- Contenedor de Estadísticas -->
-                <div id="estadisticas-contenido" class="d-none">
-                    <hr class="my-4">
-                    <h6 class="text-muted mb-3">
-                        <i class="fas fa-chart-pie me-2"></i>
-                        Resultados de los cursos seleccionados:
-                    </h6>
-                    <div class="row g-3" id="estadisticas-grid">
-                        <!-- Las estadísticas se cargarán aquí dinámicamente -->
-                    </div>
-                </div>
-                
-                <!-- Mensaje cuando no hay cursos seleccionados -->
-                <div id="mensaje-no-cursos" class="text-center text-muted py-5">
-                    <div class="mb-4">
-                        <i class="fas fa-chart-line fa-4x text-light"></i>
-                    </div>
-                    <h5 class="text-muted mb-2">Selecciona cursos para ver sus estadísticas</h5>
-                    <p class="text-muted mb-0">Usa los checkboxes de arriba para seleccionar los cursos que deseas analizar</p>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Certificados Recientes -->
-<div class="row mb-4">
-    <!-- Certificados Automáticos Recientes -->
-    <div class="col-lg-6">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-transparent border-0">
-                <h5 class="mb-0">
-                    <i class="fas fa-robot me-2"></i>
-                    {% trans "Certificados Automáticos Recientes" %}
-                </h5>
-            </div>
-            <div class="card-body">
-                {% if certificados_recientes.automaticos %}
-                    <div class="list-group list-group-flush">
-                        {% for sitting in certificados_recientes.automaticos %}
-                        <div class="list-group-item border-0 px-0">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">{{ sitting.user.get_full_name }}</h6>
-                                    <small class="text-muted">{{ sitting.quiz.course.title }}</small>
-                                </div>
-                                <div class="text-end">
-                                    <span class="badge bg-success">{{ sitting.get_percent_correct }}%</span>
-                                    <br>
-                                    <small class="text-muted">{{ sitting.fecha_aprobacion|date:"d/m/Y" }}</small>
-                                </div>
-                            </div>
+                <div class="row" id="listaCursos">
+                    {% for curso in cursos_disponibles %}
+                    <div class="col-md-6 mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input curso-checkbox" type="checkbox" 
+                                   value="{{ curso.id }}" id="curso_{{ curso.id }}">
+                            <label class="form-check-label" for="curso_{{ curso.id }}">
+                                <strong>{{ curso.title }}</strong>
+                                <br>
+                                <small class="text-muted">{{ curso.code }}</small>
+                            </label>
                         </div>
-                        {% endfor %}
                     </div>
-                {% else %}
-                    <div class="text-center py-4">
-                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                        <p class="text-muted">{% trans "No hay certificados automáticos recientes" %}</p>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    
-    <!-- Certificados Manuales Recientes -->
-    <div class="col-lg-6">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-transparent border-0">
-                <h5 class="mb-0">
-                    <i class="fas fa-hand-paper me-2"></i>
-                    {% trans "Certificados Manuales Recientes" %}
-                </h5>
-            </div>
-            <div class="card-body">
-                {% if certificados_recientes.manuales %}
-                    <div class="list-group list-group-flush">
-                        {% for certificado in certificados_recientes.manuales %}
-                        <div class="list-group-item border-0 px-0">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">{{ certificado.nombre_completo }}</h6>
-                                    <small class="text-muted">{{ certificado.curso.title }}</small>
-                                </div>
-                                <div class="text-end">
-                                    <span class="badge bg-info">{{ certificado.puntaje }}/20</span>
-                                    <br>
-                                    <small class="text-muted">{{ certificado.fecha_generacion|date:"d/m/Y" }}</small>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <div class="text-center py-4">
-                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                        <p class="text-muted">{% trans "No hay certificados manuales recientes" %}</p>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Acciones Rápidas -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-transparent border-0">
-                <h5 class="mb-0">
-                    <i class="fas fa-bolt me-2"></i>
-                    {% trans "Acciones Rápidas" %}
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-3">
-                        <a href="{% url 'generar_certificado_manual' %}" class="btn btn-primary w-100">
-                            <i class="fas fa-plus me-2"></i>
-                            {% trans "Generar Certificado Manual" %}
-                        </a>
-                    </div>
-                    <div class="col-md-3">
-                        <a href="{% url 'listar_certificados_manuales' %}" class="btn btn-info w-100">
-                            <i class="fas fa-list me-2"></i>
-                            {% trans "Ver Certificados Manuales" %}
-                        </a>
-                    </div>
-                    <div class="col-md-3">
-                        <a href="{% url 'quiz_marking' %}" class="btn btn-success w-100">
-                            <i class="fas fa-check-double me-2"></i>
-                            {% trans "Ver Exámenes Completos" %}
-                        </a>
-                    </div>
-                    <div class="col-md-3">
-                        <button class="btn btn-warning w-100" onclick="exportarReporte()">
-                            <i class="fas fa-download me-2"></i>
-                            {% trans "Exportar Reporte" %}
-                        </button>
-                    </div>
+                    {% endfor %}
                 </div>
             </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    {% trans "Cancelar" %}
+                </button>
+                <button type="button" class="btn btn-primary" id="btnConfirmarCursos">
+                    <i class="fas fa-check me-1"></i>
+                    {% trans "Confirmar Selección" %}
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Estilos CSS Mejorados -->
-<style>
-.card {
-    transition: all 0.3s ease;
-    border-radius: 12px;
-    overflow: hidden;
-}
+<!-- Modal para Vista de Beneficiarios -->
+<div class="modal fade" id="modalBeneficiarios" tabindex="-1" aria-labelledby="modalBeneficiariosLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalBeneficiariosLabel">
+                    <i class="fas fa-users me-2"></i>
+                    {% trans "Certificados por Beneficiario" %}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <input type="text" class="form-control" id="buscarBeneficiario" placeholder="{% trans 'Buscar beneficiario...' %}">
+                    </div>
+                    <div class="col-md-6">
+                        <div class="btn-group w-100" role="group">
+                            <button type="button" class="btn btn-outline-primary" id="btnExportarBeneficiarios">
+                                <i class="fas fa-download me-1"></i>
+                                {% trans "Exportar" %}
+                            </button>
+                            <button type="button" class="btn btn-outline-info" id="btnActualizarBeneficiarios">
+                                <i class="fas fa-sync me-1"></i>
+                                {% trans "Actualizar" %}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover table-beneficiarios" id="tablaBeneficiarios">
+                        <thead class="table-light">
+                            <tr>
+                                <th>{% trans "Beneficiario" %}</th>
+                                <th class="text-center">{% trans "Tipo" %}</th>
+                                <th class="text-center">{% trans "Total Certificados" %}</th>
+                                <th class="text-center">{% trans "Automáticos" %}</th>
+                                <th class="text-center">{% trans "Manuales" %}</th>
+                                <th class="text-center">{% trans "Último Certificado" %}</th>
+                                <th class="text-center">{% trans "Acciones" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cuerpoBeneficiarios">
+                            <!-- Los datos se cargarán dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Paginación -->
+                <nav aria-label="Paginación de beneficiarios" class="mt-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="text-muted">
+                            <span id="infoPaginacion">Mostrando 0 de 0 beneficiarios</span>
+                        </div>
+                        <ul class="pagination pagination-sm mb-0" id="paginacionBeneficiarios">
+                            <!-- Los botones de paginación se generarán dinámicamente -->
+                        </ul>
+                    </div>
+                </nav>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    {% trans "Cerrar" %}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
-}
-
-.opacity-75 {
-    opacity: 0.75;
-}
-
-.list-group-item:hover {
-    background-color: rgba(26, 35, 126, 0.05);
-}
-
-.badge {
-    border-radius: 20px;
-    font-size: 0.8em;
-    padding: 0.5em 0.8em;
-}
-
-/* Estilos para los checkboxes de cursos */
-.curso-checkbox-item {
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    padding: 12px 15px;
-    margin: 0;
-    transition: all 0.2s ease;
-    cursor: pointer;
-}
-
-.curso-checkbox-item:hover {
-    background: #e9ecef;
-    border-color: #1a237e;
-    transform: translateY(-1px);
-}
-
-.curso-checkbox-item .form-check-input {
-    margin-right: 12px;
-    transform: scale(1.2);
-}
-
-.curso-checkbox-item .form-check-input:checked {
-    background-color: #1a237e;
-    border-color: #1a237e;
-}
-
-.curso-checkbox-item .form-check-label {
-    cursor: pointer;
-    user-select: none;
-    font-weight: 500;
-    color: #495057;
-    margin: 0;
-    line-height: 1.4;
-}
-
-.curso-checkbox-item .form-check-input:checked + .form-check-label {
-    font-weight: 600;
-    color: #1a237e;
-}
-
-.curso-checkbox-item .form-check-input:checked ~ .curso-title {
-    color: #1a237e;
-    font-weight: 600;
-}
-
-/* Estilos para el loading */
-#loading-estadisticas {
-    min-height: 200px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: #f8f9fa;
-    border-radius: 12px;
-    margin: 20px 0;
-}
-
-/* Estilos para el mensaje inicial */
-#mensaje-no-cursos {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-radius: 12px;
-    border: 2px dashed #dee2e6;
-}
-
-/* Estilos para las estadísticas cargadas */
-#estadisticas-contenido {
-    animation: fadeIn 0.5s ease-in;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* Responsive para checkboxes */
-@media (max-width: 768px) {
-    .curso-checkbox-item {
-        padding: 10px 12px;
-    }
-    
-    .curso-checkbox-item .form-check-label {
-        font-size: 0.9rem;
-    }
-}
-
-/* Mejoras en botones */
-.btn-group .btn {
-    border-radius: 6px !important;
-    margin: 0 2px;
-}
-
-.btn-lg {
-    border-radius: 10px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-}
-
-/* Separador visual */
-hr {
-    border: none;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, #dee2e6, transparent);
-    margin: 2rem 0;
-}
-</style>
-
-<!-- JavaScript para Funcionalidad AJAX -->
+<!-- Scripts para gráficos -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Elementos del DOM
-    const btnCargarEstadisticas = document.getElementById('btn-cargar-estadisticas');
-    const btnSeleccionarTodos = document.getElementById('btn-seleccionar-todos');
-    const btnDeseleccionarTodos = document.getElementById('btn-deseleccionar-todos');
-    const cursoCheckboxes = document.querySelectorAll('.curso-checkbox');
-    const loadingEstadisticas = document.getElementById('loading-estadisticas');
-    const estadisticasContenido = document.getElementById('estadisticas-contenido');
-    const estadisticasGrid = document.getElementById('estadisticas-grid');
-    const mensajeNoCursos = document.getElementById('mensaje-no-cursos');
-    
-    // Event listeners
-    btnCargarEstadisticas.addEventListener('click', cargarEstadisticas);
-    btnSeleccionarTodos.addEventListener('click', seleccionarTodos);
-    btnDeseleccionarTodos.addEventListener('click', deseleccionarTodos);
-    
-    // Función para seleccionar todos los cursos
-    function seleccionarTodos() {
-        cursoCheckboxes.forEach(checkbox => {
-            checkbox.checked = true;
-        });
-        actualizarEstilosCheckboxes();
-    }
-    
-    // Función para deseleccionar todos los cursos
-    function deseleccionarTodos() {
-        cursoCheckboxes.forEach(checkbox => {
-            checkbox.checked = false;
-        });
-        actualizarEstilosCheckboxes();
-    }
-    
-    // Función para actualizar estilos de checkboxes
-    function actualizarEstilosCheckboxes() {
-        cursoCheckboxes.forEach(checkbox => {
-            const item = checkbox.closest('.curso-checkbox-item');
-            if (checkbox.checked) {
-                item.style.background = '#e3f2fd';
-                item.style.borderColor = '#1a237e';
-            } else {
-                item.style.background = '#f8f9fa';
-                item.style.borderColor = '#e9ecef';
+    // Gráfico de distribución de certificados (Pestaña 1)
+    const ctxCertificados = document.getElementById('chartCertificados');
+    if (ctxCertificados) {
+        // Usar datos reales del backend
+        const datosMensuales = {{ datos_mensuales|safe }};
+        
+        // Debug: mostrar datos en consola
+        console.log('Datos mensuales del backend:', datosMensuales);
+        
+        // Extraer labels y datos
+        const labels = datosMensuales.map(item => item.mes);
+        const automaticos = datosMensuales.map(item => item.automaticos);
+        const manuales = datosMensuales.map(item => item.manuales);
+        
+        console.log('Labels:', labels);
+        console.log('Automáticos:', automaticos);
+        console.log('Manuales:', manuales);
+        
+        window.chartCertificados = new Chart(ctxCertificados, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Automáticos',
+                    data: automaticos,
+                    backgroundColor: '#1a237e'
+                }, {
+                    label: 'Manuales',
+                    data: manuales,
+                    backgroundColor: '#28a745'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
             }
         });
     }
     
-    // Event listeners para checkboxes individuales
-    cursoCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', actualizarEstilosCheckboxes);
-    });
+    // Gráfico de tipos de certificados (Pestaña 1)
+    const ctxTipos = document.getElementById('chartTipos');
+    if (ctxTipos) {
+        window.chartTipos = new Chart(ctxTipos, {
+            type: 'doughnut',
+            data: {
+                labels: ['Automáticos', 'Manuales'],
+                datasets: [{
+                    data: [{{ total_automaticos }}, {{ total_manuales }}],
+                    backgroundColor: ['#1a237e', '#28a745'],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    }
+                }
+            }
+        });
+    }
     
-    // Función para cargar estadísticas
-    function cargarEstadisticas() {
-        const cursosSeleccionados = Array.from(cursoCheckboxes)
-            .filter(checkbox => checkbox.checked)
-            .map(checkbox => checkbox.value);
+    // Gráfico de top cursos (Pestaña 2)
+    const ctxTopCursos = document.getElementById('chartTopCursos');
+    if (ctxTopCursos) {
+        const cursosLabels = {{ cursos_labels|safe }};
+        const cursosData = {{ cursos_data|safe }};
         
-        if (cursosSeleccionados.length === 0) {
-            alert('Por favor selecciona al menos un curso');
+        new Chart(ctxTopCursos, {
+            type: 'bar',
+            data: {
+                labels: cursosLabels,
+                datasets: [{
+                    label: 'Certificados Emitidos',
+                    data: cursosData,
+                    backgroundColor: [
+                        '#1a237e', '#3f51b5', '#28a745', '#ffc107', '#dc3545',
+                        '#6f42c1', '#17a2b8', '#fd7e14', '#20c997', '#e83e8c'
+                    ],
+                    borderWidth: 1,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+    
+    // Gráfico de instructores (Pestaña 2)
+    const ctxInstructores = document.getElementById('chartInstructores');
+    if (ctxInstructores) {
+        const instructoresLabels = {{ instructores_labels|safe }};
+        const instructoresData = {{ instructores_data|safe }};
+        
+        new Chart(ctxInstructores, {
+            type: 'doughnut',
+            data: {
+                labels: instructoresLabels,
+                datasets: [{
+                    data: instructoresData,
+                    backgroundColor: [
+                        '#1a237e', '#3f51b5', '#28a745', '#ffc107', '#dc3545'
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    }
+                }
+            }
+        });
+    }
+});
+
+// Función para ver detalle del curso
+function verDetalleCurso(cursoId) {
+    // Aquí puedes implementar la lógica para mostrar el detalle del curso
+    alert('Ver detalle del curso ID: ' + cursoId);
+    // Ejemplo: window.location.href = '/curso/' + cursoId + '/detalle/';
+}
+
+// ===== SISTEMA DE FILTROS =====
+
+// Variables globales para filtros
+let filtrosActivos = {
+    tipo: 'todos',
+    cursos: [],
+    fechaDesde: null,
+    fechaHasta: null
+};
+
+let datosOriginales = {
+    total_certificados: {{ total_certificados|default:0 }},
+    total_automaticos: {{ total_automaticos|default:0 }},
+    total_manuales: {{ total_manuales|default:0 }},
+    certificados_activos: {{ certificados_activos|default:0 }},
+    certificados_vencidos: {{ certificados_vencidos|default:0 }},
+    por_vencer: {{ por_vencer|default:0 }},
+    automaticos_activos: {{ automaticos_activos|default:0 }},
+    manuales_activos: {{ manuales_activos|default:0 }},
+    automaticos_vencidos: {{ automaticos_vencidos|default:0 }},
+    manuales_vencidos: {{ manuales_vencidos|default:0 }}
+};
+
+// Inicializar eventos de filtros
+function inicializarFiltros() {
+    // Event listeners para filtros principales - SIN auto-aplicar
+    document.getElementById('filtroFechaDesde').addEventListener('change', manejarCambioFecha);
+    document.getElementById('filtroFechaHasta').addEventListener('change', manejarCambioFecha);
+    document.getElementById('filtroTipo').addEventListener('change', manejarCambioTipo);
+    document.getElementById('filtroCursos').addEventListener('change', manejarCambioCursos);
+    
+    // Event listeners para botones
+    document.getElementById('btnAplicarFiltros').addEventListener('click', aplicarFiltros);
+    document.getElementById('btnLimpiarFiltros').addEventListener('click', limpiarFiltros);
+    document.getElementById('btnSeleccionarCursos').addEventListener('click', abrirModalCursos);
+    document.getElementById('btnVerBeneficiarios').addEventListener('click', abrirModalBeneficiarios);
+    
+    
+    // Event listeners para modales
+    document.getElementById('btnConfirmarCursos').addEventListener('click', confirmarSeleccionCursos);
+    document.getElementById('btnSeleccionarTodos').addEventListener('click', seleccionarTodosCursos);
+    document.getElementById('btnDeseleccionarTodos').addEventListener('click', deseleccionarTodosCursos);
+    document.getElementById('buscarCurso').addEventListener('input', filtrarCursos);
+    document.getElementById('buscarBeneficiario').addEventListener('input', filtrarBeneficiarios);
+}
+
+// ===== MANEJADORES DE CAMBIOS DE FILTROS =====
+
+// Manejar cambio de fechas
+function manejarCambioFecha() {
+    console.log('Cambio en fechas detectado');
+    
+    const fechaDesde = document.getElementById('filtroFechaDesde').value;
+    const fechaHasta = document.getElementById('filtroFechaHasta').value;
+    
+    // Validar fechas individualmente
+    const validacion = validarFechas(fechaDesde, fechaHasta);
+    if (!validacion.valido) {
+        mostrarErrorFecha(validacion.mensaje);
+        return;
+    }
+    
+    // Actualizar estado interno
+    filtrosActivos.fechaDesde = fechaDesde || null;
+    filtrosActivos.fechaHasta = fechaHasta || null;
+    
+    console.log('Fechas actualizadas:', { fechaDesde, fechaHasta });
+    
+    // Mostrar indicador de cambio
+    mostrarIndicadorCambio();
+}
+
+// Manejar cambio de tipo
+function manejarCambioTipo() {
+    console.log('Cambio en tipo detectado');
+    
+    const tipo = document.getElementById('filtroTipo').value;
+    filtrosActivos.tipo = tipo;
+    
+    console.log('Tipo actualizado:', tipo);
+    
+    // Mostrar indicador de cambio
+    mostrarIndicadorCambio();
+}
+
+// Mostrar indicador de cambio
+function mostrarIndicadorCambio() {
+    const btnAplicar = document.getElementById('btnAplicarFiltros');
+    btnAplicar.classList.add('btn-warning');
+    btnAplicar.classList.remove('btn-primary');
+    btnAplicar.innerHTML = '<i class="fas fa-filter me-1"></i>Aplicar Filtros';
+}
+
+// Validar fechas individualmente
+function validarFechas(fechaDesde, fechaHasta) {
+    // Si ambas están vacías, es válido
+    if (!fechaDesde && !fechaHasta) {
+        return { valido: true };
+    }
+    
+    // Si solo una está llena, es inválido
+    if ((fechaDesde && !fechaHasta) || (!fechaDesde && fechaHasta)) {
+        return {
+            valido: false,
+            mensaje: 'Debe seleccionar ambas fechas o ninguna'
+        };
+    }
+    
+    // Validar formato de fechas
+    const fechaInicio = new Date(fechaDesde);
+    const fechaFin = new Date(fechaHasta);
+    
+    if (isNaN(fechaInicio.getTime()) || isNaN(fechaFin.getTime())) {
+        return {
+            valido: false,
+            mensaje: 'Formato de fecha inválido'
+        };
+    }
+    
+    // Validar rango
+    if (fechaInicio > fechaFin) {
+        return {
+            valido: false,
+            mensaje: 'La fecha de inicio debe ser anterior a la fecha de fin'
+        };
+    }
+    
+    // Validar que no sea muy antigua (más de 10 años)
+    const hace10Anos = new Date();
+    hace10Anos.setFullYear(hace10Anos.getFullYear() - 10);
+    
+    if (fechaInicio < hace10Anos) {
+        return {
+            valido: false,
+            mensaje: 'La fecha no puede ser anterior a hace 10 años'
+        };
+    }
+    
+    // Validar que no sea futura
+    const hoy = new Date();
+    hoy.setHours(23, 59, 59, 999); // Final del día actual
+    
+    if (fechaFin > hoy) {
+        return {
+            valido: false,
+            mensaje: 'La fecha no puede ser futura'
+        };
+    }
+    
+    return { valido: true };
+}
+
+// Mostrar error de fecha
+function mostrarErrorFecha(mensaje) {
+    // Crear o actualizar alerta de error
+    let alertaError = document.getElementById('alertaErrorFechas');
+    if (!alertaError) {
+        alertaError = document.createElement('div');
+        alertaError.id = 'alertaErrorFechas';
+        alertaError.className = 'alert alert-danger mt-2';
+        
+        const contenedorFechas = document.querySelector('.col-md-3:has(#filtroFechaDesde)').parentElement;
+        contenedorFechas.appendChild(alertaError);
+    }
+    
+    alertaError.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i>${mensaje}`;
+    alertaError.style.display = 'block';
+    
+    // Ocultar después de 5 segundos
+    setTimeout(() => {
+        if (alertaError) {
+            alertaError.style.display = 'none';
+        }
+    }, 5000);
+}
+
+
+
+// Manejar cambio de cursos
+function manejarCambioCursos() {
+    const cursos = document.getElementById('filtroCursos').value;
+    
+    if (cursos === 'seleccionar') {
+        abrirModalCursos();
+    }
+    
+    actualizarFiltros();
+}
+
+// Aplicar filtros - SISTEMA MEJORADO CON UX
+function aplicarFiltros() {
+    console.log('=== APLICANDO FILTROS CON DATOS REALES ===');
+    console.log('Filtros activos actuales:', { ...filtrosActivos });
+    
+    try {
+        // Mostrar estado de carga mejorado
+        const btnAplicar = document.getElementById('btnAplicarFiltros');
+        const originalText = btnAplicar.innerHTML;
+        btnAplicar.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Aplicando...';
+        btnAplicar.disabled = true;
+        btnAplicar.classList.add('btn-loading');
+        
+        // Mostrar indicador de carga global
+        mostrarCargando('Aplicando filtros...');
+        
+        // Sincronizar filtros activos con la interfaz
+        sincronizarFiltrosConInterfaz();
+        
+        // Validar filtros completos
+        const validacion = validarFiltrosCompletos(filtrosActivos);
+        if (!validacion.valido) {
+            ocultarCargando();
+            mostrarError(validacion.mensaje, 'error', 6000);
+            restaurarBoton(btnAplicar, originalText);
             return;
         }
         
-        // Mostrar loading
-        loadingEstadisticas.classList.remove('d-none');
-        estadisticasContenido.classList.add('d-none');
-        mensajeNoCursos.classList.add('d-none');
+        console.log('Filtros validados correctamente');
+        mostrarInfo('Procesando datos del servidor...', 2000);
         
-        // Preparar datos para enviar
-        const formData = new FormData();
-        cursosSeleccionados.forEach(id => {
-            formData.append('curso_ids[]', id);
-        });
+        // Aplicar filtros reales al backend
+        aplicarFiltrosReales(filtrosActivos)
+            .then(datosFiltrados => {
+                // Actualizar interfaz con datos reales
+                actualizarInterfaz(datosFiltrados);
+                actualizarGraficos(datosFiltrados);
+                mostrarFiltrosActivos();
+                
+                // Mostrar mensaje de éxito mejorado
+                mostrarExito('Filtros aplicados correctamente. Se encontraron ' + datosFiltrados.total_certificados + ' certificados.', 4000);
+                restaurarBoton(btnAplicar, originalText);
+                
+                // Limpiar indicadores de error
+                limpiarErrores();
+                ocultarCargando();
+                
+                console.log('=== FILTROS APLICADOS EXITOSAMENTE ===');
+                console.log('Datos reales del backend:', datosFiltrados);
+            })
+            .catch(error => {
+                console.error('Error al aplicar filtros reales:', error);
+                ocultarCargando();
+                
+                // Mensaje de error más específico
+                let mensajeError = 'Error al aplicar filtros. ';
+                if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
+                    mensajeError += 'Verifique su conexión a internet.';
+                } else if (error.message.includes('500')) {
+                    mensajeError += 'Error del servidor. Intente nuevamente en unos momentos.';
+                } else if (error.message.includes('404')) {
+                    mensajeError += 'Servicio no disponible. Contacte al administrador.';
+                } else {
+                    mensajeError += 'Por favor, intente nuevamente.';
+                }
+                
+                mostrarError(mensajeError, 'error', 8000);
+                restaurarBoton(btnAplicar, originalText);
+            });
         
-        // Realizar petición AJAX
-        fetch('{% url "estadisticas_por_curso_ajax" %}', {
+    } catch (error) {
+        console.error('Error crítico al aplicar filtros:', error);
+        ocultarCargando();
+        mostrarError('Error inesperado al aplicar filtros. Por favor, recargue la página e intente nuevamente.', 'error', 10000);
+        restaurarBoton(document.getElementById('btnAplicarFiltros'), 'Aplicar Filtros');
+    }
+}
+
+// Aplicar filtros reales al backend
+async function aplicarFiltrosReales(filtros) {
+    console.log('Enviando filtros al backend:', filtros);
+    
+    try {
+        // Validar que tenemos token CSRF
+        const csrfToken = getCookie('csrftoken');
+        if (!csrfToken) {
+            throw new Error('Token de seguridad no encontrado. Por favor, recargue la página.');
+        }
+        
+        // Configurar timeout para la petición
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 segundos timeout
+        
+        const response = await fetch('/es/quiz/certificados-dashboard/filtros/', {
             method: 'POST',
-            body: formData,
             headers: {
-                'X-CSRFToken': getCookie('csrftoken')
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                mostrarEstadisticas(data.estadisticas);
-            } else {
-                mostrarError(data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            mostrarError('Error al cargar las estadísticas');
-        })
-        .finally(() => {
-            loadingEstadisticas.classList.add('d-none');
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(filtros),
+            signal: controller.signal
         });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+            let errorMessage = `Error del servidor (${response.status})`;
+            
+            // Intentar obtener mensaje de error del servidor
+            try {
+                const errorData = await response.json();
+                if (errorData.error) {
+                    errorMessage = errorData.error;
+                } else if (errorData.message) {
+                    errorMessage = errorData.message;
+                }
+            } catch (e) {
+                // Si no se puede parsear el error, usar mensaje por defecto
+                if (response.status === 500) {
+                    errorMessage = 'Error interno del servidor. Intente nuevamente en unos momentos.';
+                } else if (response.status === 404) {
+                    errorMessage = 'Servicio no disponible. Contacte al administrador.';
+                } else if (response.status === 403) {
+                    errorMessage = 'No tiene permisos para realizar esta acción.';
+                }
+            }
+            
+            throw new Error(errorMessage);
+        }
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.message || 'Error desconocido del servidor');
+        }
+        
+        // Validar estructura de datos recibidos
+        if (!data.data || typeof data.data !== 'object') {
+            throw new Error('Datos recibidos del servidor no son válidos.');
+        }
+        
+        // Validar campos requeridos
+        const camposRequeridos = ['total_certificados', 'certificados_activos', 'certificados_vencidos'];
+        for (const campo of camposRequeridos) {
+            if (!(campo in data.data)) {
+                throw new Error(`Datos incompletos del servidor: falta el campo '${campo}'.`);
+            }
+        }
+        
+        console.log('Datos recibidos del backend:', data.data);
+        return data.data;
+        
+    } catch (error) {
+        console.error('Error en aplicarFiltrosReales:', error);
+        
+        // Manejar diferentes tipos de errores
+        if (error.name === 'AbortError') {
+            throw new Error('La operación tardó demasiado tiempo. Por favor, intente nuevamente.');
+        } else if (error.message.includes('Failed to fetch')) {
+            throw new Error('Error de conexión. Verifique su conexión a internet.');
+        } else if (error.message.includes('NetworkError')) {
+            throw new Error('Error de red. Verifique su conexión a internet.');
+        } else {
+            throw error;
+        }
+    }
+}
+
+// Función auxiliar para obtener CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Limpiar errores visuales
+function limpiarErrores() {
+    const alertaError = document.getElementById('alertaErrorFechas');
+    if (alertaError) {
+        alertaError.style.display = 'none';
+    }
+}
+
+// Función auxiliar para sincronizar filtros con la interfaz
+function sincronizarFiltrosConInterfaz() {
+    console.log('Sincronizando filtros con interfaz...');
+    
+    filtrosActivos.tipo = document.getElementById('filtroTipo').value;
+    filtrosActivos.fechaDesde = document.getElementById('filtroFechaDesde').value || null;
+    filtrosActivos.fechaHasta = document.getElementById('filtroFechaHasta').value || null;
+    
+    console.log('Filtros sincronizados:', { ...filtrosActivos });
+}
+
+// Función auxiliar para validar filtros
+function validarFiltros(filtros) {
+    console.log('Validando filtros...');
+    
+    // Validar fechas
+    if (filtros.fechaDesde && filtros.fechaHasta) {
+        if (new Date(filtros.fechaDesde) > new Date(filtros.fechaHasta)) {
+            return {
+                valido: false,
+                mensaje: 'La fecha de inicio debe ser anterior a la fecha de fin'
+            };
+        }
     }
     
-    // Función para mostrar estadísticas
-    function mostrarEstadisticas(estadisticas) {
-        if (estadisticas.length === 0) {
-            estadisticasGrid.innerHTML = `
-                <div class="col-12 text-center py-4">
-                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                    <p class="text-muted">No hay estadísticas disponibles para los cursos seleccionados</p>
-                </div>
-            `;
+    // Validar que si hay fecha desde, también haya fecha hasta
+    if (filtros.fechaDesde && !filtros.fechaHasta) {
+        return {
+            valido: false,
+            mensaje: 'Si selecciona una fecha de inicio, también debe seleccionar una fecha de fin'
+        };
+    }
+    
+    // Validar que si hay fecha hasta, también haya fecha desde
+    if (filtros.fechaHasta && !filtros.fechaDesde) {
+        return {
+            valido: false,
+            mensaje: 'Si selecciona una fecha de fin, también debe seleccionar una fecha de inicio'
+        };
+    }
+    
+    // Validar cursos seleccionados
+    if (filtros.cursos && filtros.cursos.length > 0) {
+        const cursosDisponibles = {{ cursos_disponibles_json|safe }};
+        const cursosValidos = filtros.cursos.every(id => 
+            cursosDisponibles.some(curso => curso.id === parseInt(id))
+        );
+        
+        if (!cursosValidos) {
+            return {
+                valido: false,
+                mensaje: 'Algunos cursos seleccionados no son válidos'
+            };
+        }
+    }
+    
+    return { valido: true };
+}
+
+// SISTEMA MEJORADO DE MANEJO DE ERRORES Y UX
+
+// Función auxiliar para mostrar error - MEJORADA
+function mostrarError(mensaje, tipo = 'error', duracion = 5000) {
+    console.error('Error:', mensaje);
+    
+    // Crear notificación elegante
+    const notificacion = crearNotificacion(mensaje, tipo, duracion);
+    document.body.appendChild(notificacion);
+    
+    // Animar entrada
+    setTimeout(() => {
+        notificacion.classList.add('show');
+    }, 100);
+    
+    // Auto-remover después de la duración
+    setTimeout(() => {
+        notificacion.classList.remove('show');
+        setTimeout(() => {
+            if (notificacion.parentNode) {
+                notificacion.parentNode.removeChild(notificacion);
+            }
+        }, 300);
+    }, duracion);
+}
+
+// Función auxiliar para mostrar éxito - MEJORADA
+function mostrarExito(mensaje, duracion = 3000) {
+    console.log('Éxito:', mensaje);
+    
+    const notificacion = crearNotificacion(mensaje, 'success', duracion);
+    document.body.appendChild(notificacion);
+    
+    setTimeout(() => {
+        notificacion.classList.add('show');
+    }, 100);
+    
+    setTimeout(() => {
+        notificacion.classList.remove('show');
+        setTimeout(() => {
+            if (notificacion.parentNode) {
+                notificacion.parentNode.removeChild(notificacion);
+            }
+        }, 300);
+    }, duracion);
+}
+
+// Función auxiliar para mostrar información - NUEVA
+function mostrarInfo(mensaje, duracion = 4000) {
+    console.log('Info:', mensaje);
+    
+    const notificacion = crearNotificacion(mensaje, 'info', duracion);
+    document.body.appendChild(notificacion);
+    
+    setTimeout(() => {
+        notificacion.classList.add('show');
+    }, 100);
+    
+    setTimeout(() => {
+        notificacion.classList.remove('show');
+        setTimeout(() => {
+            if (notificacion.parentNode) {
+                notificacion.parentNode.removeChild(notificacion);
+            }
+        }, 300);
+    }, duracion);
+}
+
+// Función para crear notificaciones elegantes - NUEVA
+function crearNotificacion(mensaje, tipo, duracion) {
+    const notificacion = document.createElement('div');
+    notificacion.className = `notification notification-${tipo}`;
+    
+    const iconos = {
+        'success': 'fas fa-check-circle',
+        'error': 'fas fa-exclamation-circle',
+        'warning': 'fas fa-exclamation-triangle',
+        'info': 'fas fa-info-circle'
+    };
+    
+    notificacion.innerHTML = `
+        <div class="notification-content">
+            <i class="${iconos[tipo]}"></i>
+            <span class="notification-message">${mensaje}</span>
+            <button class="notification-close" onclick="cerrarNotificacion(this)">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="notification-progress" style="animation-duration: ${duracion}ms;"></div>
+    `;
+    
+    return notificacion;
+}
+
+// Función para cerrar notificaciones - NUEVA
+function cerrarNotificacion(boton) {
+    const notificacion = boton.closest('.notification');
+    notificacion.classList.remove('show');
+    setTimeout(() => {
+        if (notificacion.parentNode) {
+            notificacion.parentNode.removeChild(notificacion);
+        }
+    }, 300);
+}
+
+// Función auxiliar para mostrar éxito
+function mostrarExito(btnAplicar, originalText) {
+    btnAplicar.innerHTML = '<i class="fas fa-check me-1"></i>Aplicado';
+    btnAplicar.classList.add('btn-success');
+    btnAplicar.classList.remove('btn-primary');
+    
+    setTimeout(() => {
+        btnAplicar.innerHTML = originalText;
+        btnAplicar.classList.remove('btn-success');
+        btnAplicar.classList.add('btn-primary');
+        btnAplicar.disabled = false;
+    }, 2000);
+}
+
+// Función auxiliar para restaurar botón - MEJORADA
+function restaurarBoton(btnAplicar, originalText) {
+    btnAplicar.innerHTML = originalText;
+    btnAplicar.disabled = false;
+    btnAplicar.classList.remove('btn-loading');
+}
+
+// Función para mostrar indicador de carga global - NUEVA
+function mostrarCargando(mensaje = 'Cargando...') {
+    // Remover cargando existente si hay uno
+    ocultarCargando();
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'loading-overlay';
+    overlay.id = 'loadingOverlay';
+    
+    overlay.innerHTML = `
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <div class="loading-text">${mensaje}</div>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+}
+
+// Función para ocultar indicador de carga global - NUEVA
+function ocultarCargando() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.remove();
+    }
+}
+
+// Función para limpiar errores visuales - NUEVA
+function limpiarErrores() {
+    // Remover clases de error de campos
+    const camposConError = document.querySelectorAll('.is-invalid, .error-field');
+    camposConError.forEach(campo => {
+        campo.classList.remove('is-invalid', 'error-field');
+    });
+    
+    // Remover mensajes de error existentes
+    const mensajesError = document.querySelectorAll('.error-message, .invalid-feedback');
+    mensajesError.forEach(mensaje => {
+        mensaje.remove();
+    });
+    
+    // Remover notificaciones de error existentes
+    const notificacionesError = document.querySelectorAll('.notification-error');
+    notificacionesError.forEach(notificacion => {
+        notificacion.remove();
+    });
+}
+
+// Limpiar filtros - MEJORADO CON UX
+function limpiarFiltros() {
+    try {
+        // Mostrar indicador de carga
+        mostrarCargando('Limpiando filtros...');
+        
+        // Resetear valores
+        document.getElementById('filtroTipo').value = 'todos';
+        document.getElementById('filtroCursos').value = 'todos';
+        document.getElementById('filtroFechaDesde').value = '';
+        document.getElementById('filtroFechaHasta').value = '';
+        
+        // Resetear filtros activos
+        filtrosActivos = {
+            tipo: 'todos',
+            cursos: [],
+            fechaDesde: null,
+            fechaHasta: null
+        };
+        
+        // Restaurar datos originales
+        actualizarInterfaz(datosOriginales);
+        actualizarGraficos(datosOriginales);
+        ocultarFiltrosActivos();
+        
+        // Limpiar errores visuales
+        limpiarErrores();
+        
+        // Ocultar carga y mostrar éxito
+        ocultarCargando();
+        mostrarExito('Filtros limpiados correctamente. Mostrando todos los certificados.', 3000);
+        
+        console.log('Filtros limpiados');
+    } catch (error) {
+        console.error('Error al limpiar filtros:', error);
+        ocultarCargando();
+        mostrarError('Error al limpiar filtros. Por favor, intente nuevamente.', 'error', 5000);
+    }
+}
+
+
+
+// ===== SISTEMA DE FILTRADO ROBUSTO =====
+
+// Filtrar datos - SISTEMA COMPLETAMENTE REESCRITO
+function filtrarDatos(datos, filtros) {
+    console.log('=== INICIANDO FILTRADO ROBUSTO ===');
+    console.log('Filtros recibidos:', filtros);
+    console.log('Datos originales:', datos);
+    
+    // Crear copia profunda de los datos originales
+    let datosFiltrados = JSON.parse(JSON.stringify(datos));
+    
+    // PASO 1: Validar filtros antes de procesar
+    const validacionFiltros = validarFiltrosCompletos(filtros);
+    if (!validacionFiltros.valido) {
+        console.error('Filtros inválidos:', validacionFiltros.mensaje);
+        throw new Error(validacionFiltros.mensaje);
+    }
+    
+    // PASO 2: Aplicar filtro de tipo (PRIMERO - más restrictivo)
+    if (filtros.tipo === 'automaticos') {
+        datosFiltrados = aplicarFiltroTipo(datosFiltrados, 'automaticos');
+        console.log('Aplicado: Solo automáticos');
+    } else if (filtros.tipo === 'manuales') {
+        datosFiltrados = aplicarFiltroTipo(datosFiltrados, 'manuales');
+        console.log('Aplicado: Solo manuales');
+    } else {
+        console.log('Aplicado: Ambos tipos');
+    }
+    
+    // PASO 3: Aplicar filtro de fechas (SEGUNDO)
+    if (filtros.fechaDesde && filtros.fechaHasta) {
+        datosFiltrados = aplicarFiltroFechas(datosFiltrados, filtros.fechaDesde, filtros.fechaHasta);
+        console.log('Aplicado: Filtro de fechas');
+    }
+    
+    // PASO 4: Aplicar filtro de cursos (TERCERO)
+    if (filtros.cursos && filtros.cursos.length > 0) {
+        datosFiltrados = aplicarFiltroCursosRobusto(datosFiltrados, filtros.cursos);
+        console.log('Aplicado: Filtro de cursos');
+    }
+    
+    // PASO 5: Recalcular totales para mantener consistencia
+    datosFiltrados = recalcularTotalesRobusto(datosFiltrados);
+    
+    console.log('=== FILTRADO COMPLETADO ===');
+    console.log('Datos filtrados resultantes:', datosFiltrados);
+    return datosFiltrados;
+}
+
+// Validar filtros completos
+function validarFiltrosCompletos(filtros) {
+    console.log('Validando filtros completos...');
+    
+    // Limpiar errores visuales previos
+    limpiarErrores();
+    
+    // Validar fechas
+    if (filtros.fechaDesde && filtros.fechaHasta) {
+        const validacionFechas = validarFechas(filtros.fechaDesde, filtros.fechaHasta);
+        if (!validacionFechas.valido) {
+            return validacionFechas;
+        }
+    }
+    
+    // Validar cursos
+    if (filtros.cursos && filtros.cursos.length > 0) {
+        const cursosDisponibles = {{ cursos_disponibles_json|safe }};
+        const cursosValidos = filtros.cursos.every(id => 
+            cursosDisponibles.some(curso => curso.id === parseInt(id))
+        );
+        
+        if (!cursosValidos) {
+            return {
+                valido: false,
+                mensaje: 'Algunos cursos seleccionados no son válidos. Por favor, verifique la selección.'
+            };
+        }
+    }
+    
+    // Validar que al menos un filtro esté activo
+    const tieneFiltros = filtros.tipo !== 'todos' || 
+                        (filtros.cursos && filtros.cursos.length > 0) || 
+                        filtros.fechaDesde || 
+                        filtros.fechaHasta;
+    
+    if (!tieneFiltros) {
+        return { 
+            valido: false, 
+            mensaje: 'Debe seleccionar al menos un filtro para aplicar. Por favor, configure los filtros deseados.' 
+        };
+    }
+    
+    return { valido: true };
+}
+
+// Aplicar filtro de tipo
+function aplicarFiltroTipo(datos, tipo) {
+    const datosFiltrados = { ...datos };
+    
+    if (tipo === 'automaticos') {
+        datosFiltrados.total_manuales = 0;
+        datosFiltrados.manuales_activos = 0;
+        datosFiltrados.manuales_vencidos = 0;
+    } else if (tipo === 'manuales') {
+        datosFiltrados.total_automaticos = 0;
+        datosFiltrados.automaticos_activos = 0;
+        datosFiltrados.automaticos_vencidos = 0;
+    }
+    
+    return datosFiltrados;
+}
+
+// Aplicar filtro de fechas - MEJORADO
+function aplicarFiltroFechas(datos, fechaDesde, fechaHasta) {
+    console.log('Aplicando filtro de fechas:', fechaDesde, 'a', fechaHasta);
+    
+    // Calcular días entre fechas
+    const fechaInicio = new Date(fechaDesde);
+    const fechaFin = new Date(fechaHasta);
+    const diasDiferencia = Math.ceil((fechaFin - fechaInicio) / (1000 * 60 * 60 * 24)) + 1;
+    
+    // Calcular factor basado en el rango de fechas
+    // Usar una función más realista que no cause problemas
+    let factorFechas = 1.0;
+    
+    if (diasDiferencia <= 1) {
+        factorFechas = 0.1; // Un día
+    } else if (diasDiferencia <= 7) {
+        factorFechas = 0.3; // Una semana
+    } else if (diasDiferencia <= 30) {
+        factorFechas = 0.6; // Un mes
+    } else if (diasDiferencia <= 90) {
+        factorFechas = 0.8; // Tres meses
+    } else if (diasDiferencia <= 365) {
+        factorFechas = 0.9; // Un año
+    } else {
+        factorFechas = 1.0; // Más de un año
+    }
+    
+    console.log(`Rango de fechas: ${diasDiferencia} días, Factor: ${factorFechas}`);
+    
+    // Aplicar factor a todos los valores numéricos
+    const datosFiltrados = { ...datos };
+    Object.keys(datosFiltrados).forEach(key => {
+        if (typeof datosFiltrados[key] === 'number' && key !== 'total_certificados') {
+            const valorOriginal = datosFiltrados[key];
+            datosFiltrados[key] = Math.max(0, Math.floor(datosFiltrados[key] * factorFechas));
+            console.log(`${key}: ${valorOriginal} → ${datosFiltrados[key]} (factor: ${factorFechas})`);
+        }
+    });
+    
+    return datosFiltrados;
+}
+
+// Aplicar filtro de cursos - ROBUSTO
+function aplicarFiltroCursosRobusto(datos, cursosSeleccionados) {
+    console.log('Aplicando filtro de cursos robusto:', cursosSeleccionados);
+    
+    const cursosDisponibles = {{ cursos_disponibles_json|safe }};
+    const cursosInfo = cursosDisponibles.filter(curso => cursosSeleccionados.includes(curso.id));
+    
+    const cursosConExamenes = cursosInfo.filter(curso => curso.tiene_examen);
+    const cursosConManuales = cursosInfo.filter(curso => curso.tiene_manuales);
+    
+    console.log('Cursos con exámenes:', cursosConExamenes.length);
+    console.log('Cursos con manuales:', cursosConManuales.length);
+    
+    const datosFiltrados = { ...datos };
+    
+    // Ajustar certificados automáticos
+    if (cursosConExamenes.length === 0) {
+        datosFiltrados.total_automaticos = 0;
+        datosFiltrados.automaticos_activos = 0;
+        datosFiltrados.automaticos_vencidos = 0;
+        console.log('Sin cursos con exámenes - eliminando automáticos');
+    } else {
+        const factorAutomaticos = cursosConExamenes.length / cursosSeleccionados.length;
+        datosFiltrados.total_automaticos = Math.floor(datosFiltrados.total_automaticos * factorAutomaticos);
+        datosFiltrados.automaticos_activos = Math.floor(datosFiltrados.automaticos_activos * factorAutomaticos);
+        datosFiltrados.automaticos_vencidos = Math.floor(datosFiltrados.automaticos_vencidos * factorAutomaticos);
+        console.log('Factor automáticos:', factorAutomaticos);
+    }
+    
+    // Ajustar certificados manuales
+    if (cursosConManuales.length === 0) {
+        datosFiltrados.total_manuales = 0;
+        datosFiltrados.manuales_activos = 0;
+        datosFiltrados.manuales_vencidos = 0;
+        console.log('Sin cursos con manuales - eliminando manuales');
+    } else {
+        const factorManuales = cursosConManuales.length / cursosSeleccionados.length;
+        datosFiltrados.total_manuales = Math.floor(datosFiltrados.total_manuales * factorManuales);
+        datosFiltrados.manuales_activos = Math.floor(datosFiltrados.manuales_activos * factorManuales);
+        datosFiltrados.manuales_vencidos = Math.floor(datosFiltrados.manuales_vencidos * factorManuales);
+        console.log('Factor manuales:', factorManuales);
+    }
+    
+    return datosFiltrados;
+}
+
+// Recalcular totales - ROBUSTO
+function recalcularTotalesRobusto(datos) {
+    console.log('Recalculando totales robusto...');
+    
+    const datosFiltrados = { ...datos };
+    
+    // Recalcular totales principales
+    datosFiltrados.total_certificados = datosFiltrados.total_automaticos + datosFiltrados.total_manuales;
+    datosFiltrados.certificados_activos = datosFiltrados.automaticos_activos + datosFiltrados.manuales_activos;
+    datosFiltrados.certificados_vencidos = datosFiltrados.automaticos_vencidos + datosFiltrados.manuales_vencidos;
+    
+    // Asegurar que no haya valores negativos
+    Object.keys(datosFiltrados).forEach(key => {
+        if (typeof datosFiltrados[key] === 'number') {
+            datosFiltrados[key] = Math.max(0, datosFiltrados[key]);
+        }
+    });
+    
+    console.log('Totales recalculados:', {
+        total_certificados: datosFiltrados.total_certificados,
+        certificados_activos: datosFiltrados.certificados_activos,
+        certificados_vencidos: datosFiltrados.certificados_vencidos
+    });
+    
+    return datosFiltrados;
+}
+
+// Función auxiliar para aplicar factor a datos
+function aplicarFactorADatos(datos, factor, tipo) {
+    console.log(`Aplicando factor ${tipo}:`, factor);
+    
+    Object.keys(datos).forEach(key => {
+        if (typeof datos[key] === 'number' && key !== 'total_certificados') {
+            const valorOriginal = datos[key];
+            datos[key] = Math.max(0, Math.floor(datos[key] * factor));
+            console.log(`${key}: ${valorOriginal} → ${datos[key]} (factor: ${factor})`);
+        }
+    });
+}
+
+// Función auxiliar para aplicar filtro de cursos
+function aplicarFiltroCursos(datos, cursosSeleccionados) {
+    console.log('Aplicando filtro de cursos:', cursosSeleccionados);
+    
+    const cursosDisponibles = {{ cursos_disponibles_json|safe }};
+    const cursosInfo = cursosDisponibles.filter(curso => cursosSeleccionados.includes(curso.id));
+    
+    const cursosConExamenes = cursosInfo.filter(curso => curso.tiene_examen);
+    const cursosConManuales = cursosInfo.filter(curso => curso.tiene_manuales);
+    
+    console.log('Cursos con exámenes:', cursosConExamenes.length);
+    console.log('Cursos con manuales:', cursosConManuales.length);
+    
+    // Ajustar certificados automáticos
+    if (cursosConExamenes.length === 0) {
+        datos.total_automaticos = 0;
+        datos.automaticos_activos = 0;
+        datos.automaticos_vencidos = 0;
+        console.log('Sin cursos con exámenes - eliminando automáticos');
+    } else {
+        const factorAutomaticos = cursosConExamenes.length / cursosSeleccionados.length;
+        datos.total_automaticos = Math.floor(datos.total_automaticos * factorAutomaticos);
+        datos.automaticos_activos = Math.floor(datos.automaticos_activos * factorAutomaticos);
+        datos.automaticos_vencidos = Math.floor(datos.automaticos_vencidos * factorAutomaticos);
+        console.log('Factor automáticos:', factorAutomaticos);
+    }
+    
+    // Ajustar certificados manuales
+    if (cursosConManuales.length === 0) {
+        datos.total_manuales = 0;
+        datos.manuales_activos = 0;
+        datos.manuales_vencidos = 0;
+        console.log('Sin cursos con manuales - eliminando manuales');
+    } else {
+        const factorManuales = cursosConManuales.length / cursosSeleccionados.length;
+        datos.total_manuales = Math.floor(datos.total_manuales * factorManuales);
+        datos.manuales_activos = Math.floor(datos.manuales_activos * factorManuales);
+        datos.manuales_vencidos = Math.floor(datos.manuales_vencidos * factorManuales);
+        console.log('Factor manuales:', factorManuales);
+    }
+}
+
+// Función auxiliar para recalcular totales
+function recalcularTotales(datos) {
+    console.log('Recalculando totales...');
+    
+    const totalesOriginales = {
+        total_certificados: datos.total_certificados,
+        certificados_activos: datos.certificados_activos,
+        certificados_vencidos: datos.certificados_vencidos
+    };
+    
+    datos.total_certificados = datos.total_automaticos + datos.total_manuales;
+    datos.certificados_activos = datos.automaticos_activos + datos.manuales_activos;
+    datos.certificados_vencidos = datos.automaticos_vencidos + datos.manuales_vencidos;
+    
+    console.log('Totales recalculados:', {
+        antes: totalesOriginales,
+        después: {
+            total_certificados: datos.total_certificados,
+            certificados_activos: datos.certificados_activos,
+            certificados_vencidos: datos.certificados_vencidos
+        }
+    });
+}
+
+// Obtener factor de período
+function obtenerFactorPeriodo(periodo) {
+    switch(periodo) {
+        case 'hoy': return 0.1;
+        case 'semana': return 0.3;
+        case 'mes': return 0.8;
+        case 'ano': return 1.0;
+        default: return 1.0;
+    }
+}
+
+// Actualizar interfaz
+function actualizarInterfaz(datos) {
+    // Actualizar cards de estadísticas
+    const cards = document.querySelectorAll('.row.g-3 .col-lg-3 .card-body h4');
+    const smalls = document.querySelectorAll('.row.g-3 .col-lg-3 .card-body small');
+    
+    if (cards.length >= 4) {
+        cards[0].textContent = datos.total_certificados;
+        cards[1].textContent = datos.certificados_activos;
+        cards[2].textContent = datos.certificados_vencidos;
+        cards[3].textContent = datos.por_vencer;
+        
+        if (smalls.length >= 3) {
+            smalls[0].textContent = `${datos.total_automaticos} automáticos + ${datos.total_manuales} manuales`;
+            smalls[1].textContent = `${datos.automaticos_activos} automáticos + ${datos.manuales_activos} manuales`;
+            smalls[2].textContent = `${datos.automaticos_vencidos} automáticos + ${datos.manuales_vencidos} manuales`;
+        }
+    }
+}
+
+// Actualizar gráficos - CON DATOS REALES
+function actualizarGraficos(datos) {
+    try {
+        console.log('Actualizando gráficos con datos reales:', datos);
+        
+        // Actualizar gráfico de tipos
+        if (window.chartTipos && window.chartTipos.data && window.chartTipos.data.datasets) {
+            window.chartTipos.data.datasets[0].data = [datos.total_automaticos, datos.total_manuales];
+            window.chartTipos.update('active');
+            console.log('Gráfico de tipos actualizado:', [datos.total_automaticos, datos.total_manuales]);
         } else {
-            estadisticasGrid.innerHTML = estadisticas.map(estadistica => `
-                <div class="col-lg-4 col-md-6 mb-3">
-                    <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <h6 class="mb-0 fw-bold">${estadistica.curso_titulo}</h6>
-                                <span class="badge bg-primary">${estadistica.total_curso}</span>
-                            </div>
-                            
-                            <div class="row text-center mb-3">
-                                <div class="col-4">
-                                    <div class="text-success">
-                                        <i class="fas fa-check-circle"></i>
-                                        <div class="small fw-bold">${estadistica.total_activos}</div>
-                                        <div class="small text-muted">Activos</div>
-                                    </div>
-                                </div>
-                                <div class="col-4">
-                                    <div class="text-danger">
-                                        <i class="fas fa-times-circle"></i>
-                                        <div class="small fw-bold">${estadistica.total_vencidos}</div>
-                                        <div class="small text-muted">Vencidos</div>
-                                    </div>
-                                </div>
-                                <div class="col-4">
-                                    <div class="text-info">
-                                        <i class="fas fa-robot"></i>
-                                        <div class="small fw-bold">${estadistica.total_automaticos}</div>
-                                        <div class="small text-muted">Automáticos</div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            ${estadistica.ultimo_certificado ? `
-                            <div class="border-top pt-2">
-                                <small class="text-muted">
-                                    <i class="fas fa-clock me-1"></i>
-                                    Último: ${estadistica.ultimo_certificado.tipo} - ${estadistica.ultimo_certificado.usuario}
-                                    ${estadistica.ultimo_certificado.fecha ? `<br><span class="ms-3">${estadistica.ultimo_certificado.fecha}</span>` : ''}
-                                </small>
-                            </div>
-                            ` : ''}
+            console.log('Gráfico de tipos no disponible para actualizar');
+        }
+        
+        // Actualizar gráfico mensual con datos reales del backend
+        if (window.chartCertificados && window.chartCertificados.data && window.chartCertificados.data.datasets) {
+            // Usar datos mensuales reales del backend
+            if (datos.datos_mensuales) {
+                const labels = datos.datos_mensuales.map(item => item.mes);
+                const automaticos = datos.datos_mensuales.map(item => item.automaticos);
+                const manuales = datos.datos_mensuales.map(item => item.manuales);
+                
+                // Actualizar labels y datos
+                window.chartCertificados.data.labels = labels;
+                window.chartCertificados.data.datasets[0].data = automaticos;
+                window.chartCertificados.data.datasets[1].data = manuales;
+                window.chartCertificados.update('active');
+                
+                console.log('Gráfico mensual actualizado con datos reales:', {
+                    labels: labels,
+                    automaticos: automaticos,
+                    manuales: manuales
+                });
+            } else {
+                console.log('No hay datos mensuales en la respuesta del backend');
+            }
+        } else {
+            console.log('Gráfico mensual no disponible para actualizar');
+        }
+    } catch (error) {
+        console.error('Error al actualizar gráficos:', error);
+    }
+}
+
+// Generar datos mensuales filtrados
+function generarDatosMensualesFiltrados(datos) {
+    // Obtener datos originales mensuales
+    const datosMensuales = {{ datos_mensuales|safe }};
+    
+    // Aplicar factores de filtrado basados en los datos actuales
+    const factorTotalFiltrado = datos.total_certificados / {{ total_certificados|default:1 }};
+    const factorAutomaticosFiltrado = datos.total_automaticos / {{ total_automaticos|default:1 }};
+    const factorManualesFiltrado = datos.total_manuales / {{ total_manuales|default:1 }};
+    
+    console.log('Factores de filtrado mensual:', {
+        factorTotal: factorTotalFiltrado,
+        factorAutomaticos: factorAutomaticosFiltrado,
+        factorManuales: factorManualesFiltrado
+    });
+    
+    const labelsFiltrados = datosMensuales.map(item => item.mes);
+    const automaticosFiltrados = datosMensuales.map(item => Math.max(0, Math.floor(item.automaticos * factorAutomaticosFiltrado)));
+    const manualesFiltrados = datosMensuales.map(item => Math.max(0, Math.floor(item.manuales * factorManualesFiltrado)));
+    
+    console.log('Datos mensuales filtrados:', {
+        labels: labelsFiltrados,
+        automaticos: automaticosFiltrados,
+        manuales: manualesFiltrados
+    });
+    
+    return {
+        labels: labelsFiltrados,
+        automaticos: automaticosFiltrados,
+        manuales: manualesFiltrados
+    };
+}
+
+// Mostrar filtros activos
+function mostrarFiltrosActivos() {
+    const alert = document.getElementById('filtrosActivos');
+    const texto = document.getElementById('textoFiltrosActivos');
+    
+    let textoFiltros = 'Filtros aplicados: ';
+    const filtros = [];
+    
+    if (filtrosActivos.fechaDesde && filtrosActivos.fechaHasta) {
+        filtros.push(`Fechas: ${filtrosActivos.fechaDesde} a ${filtrosActivos.fechaHasta}`);
+    } else if (filtrosActivos.fechaDesde) {
+        filtros.push(`Desde: ${filtrosActivos.fechaDesde}`);
+    } else if (filtrosActivos.fechaHasta) {
+        filtros.push(`Hasta: ${filtrosActivos.fechaHasta}`);
+    }
+    
+    if (filtrosActivos.tipo !== 'todos') {
+        const tipoTexto = {
+            'automaticos': 'Solo Automáticos',
+            'manuales': 'Solo Manuales'
+        };
+        filtros.push(`Tipo: ${tipoTexto[filtrosActivos.tipo] || filtrosActivos.tipo}`);
+    }
+    
+    if (filtrosActivos.cursos.length > 0) {
+        // Obtener información de los cursos seleccionados
+        const cursosDisponibles = {{ cursos_disponibles_json|safe }};
+        const cursosSeleccionados = filtrosActivos.cursos.map(id => parseInt(id));
+        const cursosInfo = cursosDisponibles.filter(curso => cursosSeleccionados.includes(curso.id));
+        
+        const cursosConExamenes = cursosInfo.filter(curso => curso.tiene_examen).length;
+        const cursosConManuales = cursosInfo.filter(curso => curso.tiene_manuales).length;
+        
+        let infoCursos = `${filtrosActivos.cursos.length} cursos seleccionados`;
+        if (cursosConExamenes > 0) infoCursos += ` (${cursosConExamenes} con exámenes)`;
+        if (cursosConManuales > 0) infoCursos += ` (${cursosConManuales} con manuales)`;
+        
+        filtros.push(`Cursos: ${infoCursos}`);
+    }
+    
+    if (filtrosActivos.fechaDesde && filtrosActivos.fechaHasta) {
+        filtros.push(`Fechas: ${filtrosActivos.fechaDesde} - ${filtrosActivos.fechaHasta}`);
+    }
+    
+    if (filtros.length === 0) {
+        alert.classList.add('d-none');
+        return;
+    }
+    
+    textoFiltros += filtros.join(' • ');
+    texto.textContent = textoFiltros;
+    alert.classList.remove('d-none');
+}
+
+// Ocultar filtros activos
+function ocultarFiltrosActivos() {
+    document.getElementById('filtrosActivos').classList.add('d-none');
+}
+
+// ===== MODALES =====
+
+// Abrir modal de cursos
+function abrirModalCursos() {
+    const modal = new bootstrap.Modal(document.getElementById('modalSeleccionarCursos'));
+    modal.show();
+}
+
+// Abrir modal de beneficiarios
+function abrirModalBeneficiarios() {
+    const modal = new bootstrap.Modal(document.getElementById('modalBeneficiarios'));
+    cargarBeneficiarios();
+    modal.show();
+}
+
+// Confirmar selección de cursos
+function confirmarSeleccionCursos() {
+    const checkboxes = document.querySelectorAll('.curso-checkbox:checked');
+    filtrosActivos.cursos = Array.from(checkboxes).map(cb => cb.value);
+    
+    console.log('Cursos seleccionados:', filtrosActivos.cursos);
+    
+    // Actualizar texto del select
+    const select = document.getElementById('filtroCursos');
+    if (filtrosActivos.cursos.length > 0) {
+        select.value = 'seleccionar';
+        select.options[1].text = `${filtrosActivos.cursos.length} cursos seleccionados`;
+    } else {
+        select.value = 'todos';
+    }
+    
+    // Cerrar modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('modalSeleccionarCursos'));
+    modal.hide();
+    
+    // Aplicar filtros inmediatamente
+    aplicarFiltros();
+}
+
+// Seleccionar todos los cursos
+function seleccionarTodosCursos() {
+    document.querySelectorAll('.curso-checkbox').forEach(cb => {
+        cb.checked = true;
+    });
+}
+
+// Deseleccionar todos los cursos
+function deseleccionarTodosCursos() {
+    document.querySelectorAll('.curso-checkbox').forEach(cb => {
+        cb.checked = false;
+    });
+}
+
+// Filtrar cursos en el modal
+function filtrarCursos() {
+    const busqueda = document.getElementById('buscarCurso').value.toLowerCase();
+    document.querySelectorAll('#listaCursos .col-md-6').forEach(item => {
+        const texto = item.textContent.toLowerCase();
+        item.style.display = texto.includes(busqueda) ? 'block' : 'none';
+    });
+}
+
+// Variables globales para paginación
+let paginaActual = 1;
+let totalPaginas = 1;
+
+// Cargar beneficiarios
+function cargarBeneficiarios(page = 1) {
+    const tbody = document.getElementById('cuerpoBeneficiarios');
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center"><i class="fas fa-spinner fa-spin me-2"></i>Cargando beneficiarios...</td></tr>';
+    
+    // Hacer petición AJAX para obtener datos reales
+    fetch(`/es/quiz/certificados-dashboard/beneficiarios/?page=${page}`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarBeneficiarios(data.beneficiarios, data.pagination);
+            paginaActual = page;
+        } else {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No se encontraron beneficiarios</td></tr>';
+        }
+    })
+    .catch(error => {
+        console.error('Error al cargar beneficiarios:', error);
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Error al cargar los datos</td></tr>';
+    });
+}
+
+// Mostrar beneficiarios en la tabla
+function mostrarBeneficiarios(beneficiarios, pagination) {
+    const tbody = document.getElementById('cuerpoBeneficiarios');
+    
+    if (beneficiarios.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No hay beneficiarios registrados</td></tr>';
+        return;
+    }
+    
+    let html = '';
+    beneficiarios.forEach(beneficiario => {
+        const nombre = beneficiario.nombre || 'Usuario sin nombre';
+        const tipo = beneficiario.tipo || 'N/A';
+        const totalCertificados = beneficiario.total_certificados || 0;
+        const automaticos = beneficiario.automaticos || 0;
+        const manuales = beneficiario.manuales || 0;
+        const ultimoCertificado = beneficiario.ultimo_certificado || 'N/A';
+        
+        // Determinar el color del badge según el tipo
+        const tipoBadgeClass = tipo === 'Participante' ? 'bg-success' : 'bg-info';
+        const tipoIcon = tipo === 'Participante' ? 'fa-user-graduate' : 'fa-certificate';
+        
+        html += `
+            <tr>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <i class="fas ${tipoIcon} text-primary me-2"></i>
+                        <div>
+                            <strong>${nombre}</strong>
+                            <br>
+                            <small class="text-muted">${beneficiario.email || 'No disponible'}</small>
                         </div>
                     </div>
-                </div>
-            `).join('');
-        }
-        
-        estadisticasContenido.classList.remove('d-none');
-    }
-    
-    // Función para mostrar error
-    function mostrarError(mensaje) {
-        estadisticasGrid.innerHTML = `
-            <div class="col-12">
-                <div class="alert alert-danger" role="alert">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    ${mensaje}
-                </div>
-            </div>
+                </td>
+                <td class="text-center">
+                    <span class="badge ${tipoBadgeClass}">${tipo}</span>
+                </td>
+                <td class="text-center"><span class="badge bg-primary">${totalCertificados}</span></td>
+                <td class="text-center"><span class="badge bg-success">${automaticos}</span></td>
+                <td class="text-center"><span class="badge bg-info">${manuales}</span></td>
+                <td class="text-center"><small class="text-muted">${ultimoCertificado}</small></td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-outline-primary" onclick="verDetalleBeneficiario('${beneficiario.id}')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </td>
+            </tr>
         `;
-        estadisticasContenido.classList.remove('d-none');
+    });
+    
+    tbody.innerHTML = html;
+    
+    // Actualizar información de paginación
+    actualizarInfoPaginacion(pagination);
+    
+    // Generar botones de paginación
+    generarPaginacion(pagination);
+}
+
+// Actualizar información de paginación
+function actualizarInfoPaginacion(pagination) {
+    const infoElement = document.getElementById('infoPaginacion');
+    if (pagination) {
+        const inicio = ((pagination.current_page - 1) * pagination.per_page) + 1;
+        const fin = Math.min(pagination.current_page * pagination.per_page, pagination.total_items);
+        infoElement.textContent = `Mostrando ${inicio}-${fin} de ${pagination.total_items} beneficiarios`;
+    }
+}
+
+// Generar botones de paginación
+function generarPaginacion(pagination) {
+    const paginacionElement = document.getElementById('paginacionBeneficiarios');
+    
+    if (!pagination || pagination.total_pages <= 1) {
+        paginacionElement.innerHTML = '';
+        return;
     }
     
-    // Función para obtener el token CSRF
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
+    let html = '';
+    
+    // Botón anterior
+    if (pagination.has_previous) {
+        html += `
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="cargarBeneficiarios(${pagination.current_page - 1}); return false;">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+            </li>
+        `;
+    } else {
+        html += `
+            <li class="page-item disabled">
+                <span class="page-link"><i class="fas fa-chevron-left"></i></span>
+            </li>
+        `;
     }
+    
+    // Números de página
+    const startPage = Math.max(1, pagination.current_page - 2);
+    const endPage = Math.min(pagination.total_pages, pagination.current_page + 2);
+    
+    for (let i = startPage; i <= endPage; i++) {
+        if (i === pagination.current_page) {
+            html += `
+                <li class="page-item active">
+                    <span class="page-link">${i}</span>
+                </li>
+            `;
+        } else {
+            html += `
+                <li class="page-item">
+                    <a class="page-link" href="#" onclick="cargarBeneficiarios(${i}); return false;">${i}</a>
+                </li>
+            `;
+        }
+    }
+    
+    // Botón siguiente
+    if (pagination.has_next) {
+        html += `
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="cargarBeneficiarios(${pagination.current_page + 1}); return false;">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </li>
+        `;
+    } else {
+        html += `
+            <li class="page-item disabled">
+                <span class="page-link"><i class="fas fa-chevron-right"></i></span>
+            </li>
+        `;
+    }
+    
+    paginacionElement.innerHTML = html;
+}
+
+// Función para ver detalle del beneficiario
+function verDetalleBeneficiario(beneficiarioId) {
+    // Aquí puedes implementar la lógica para mostrar el detalle del beneficiario
+    alert('Ver detalle del beneficiario ID: ' + beneficiarioId);
+}
+
+// Filtrar beneficiarios
+function filtrarBeneficiarios() {
+    const busqueda = document.getElementById('buscarBeneficiario').value.toLowerCase();
+    document.querySelectorAll('#tablaBeneficiarios tbody tr').forEach(row => {
+        const texto = row.textContent.toLowerCase();
+        row.style.display = texto.includes(busqueda) ? '' : 'none';
+    });
+}
+
+// Actualizar filtros (función auxiliar)
+function actualizarFiltros() {
+    // Aplicar filtros automáticamente cuando cambien los valores
+    aplicarFiltros();
+}
+
+// Inicializar cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', function() {
+    inicializarFiltros();
 });
 </script>
-
-<!-- JavaScript para Gráficos -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-    // Datos para el gráfico mensual
-    const datosMensuales = {{ datos_mensuales|safe }};
-    const labels = datosMensuales.map(item => item.mes);
-    const automaticos = datosMensuales.map(item => item.automaticos);
-    const manuales = datosMensuales.map(item => item.manuales);
-    
-    // Gráfico mensual
-    const ctxMensual = document.getElementById('chartMensual').getContext('2d');
-    new Chart(ctxMensual, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: '{% trans "Automáticos" %}',
-                data: automaticos,
-                borderColor: '#28a745',
-                backgroundColor: 'rgba(40, 167, 69, 0.1)',
-                tension: 0.4
-            }, {
-                label: '{% trans "Manuales" %}',
-                data: manuales,
-                borderColor: '#007bff',
-                backgroundColor: 'rgba(0, 123, 255, 0.1)',
-                tension: 0.4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'top',
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            }
-        }
-    });
-    
-    // Datos para el gráfico de cursos
-    const distribucionCursos = {{ distribucion_cursos|safe }};
-    const cursosLabels = distribucionCursos.automaticos.map(item => item.quiz__course__title || 'Sin título').slice(0, 5);
-    const cursosData = distribucionCursos.automaticos.map(item => item.total).slice(0, 5);
-    
-    // Gráfico de cursos
-    const ctxCursos = document.getElementById('chartCursos').getContext('2d');
-    new Chart(ctxCursos, {
-        type: 'doughnut',
-        data: {
-            labels: cursosLabels,
-            data: cursosData,
-            backgroundColor: [
-                '#28a745',
-                '#007bff',
-                '#ffc107',
-                '#dc3545',
-                '#6f42c1'
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                }
-            }
-        }
-    });
-    
-    // Función para exportar reporte
-    function exportarReporte() {
-        // Implementar exportación de reporte
-        alert('{% trans "Función de exportación en desarrollo" %}');
-    }
-    
-    // Funciones para filtros dinámicos
-    function actualizarFiltros() {
-        const tipo = document.getElementById('filtroTipo').value;
-        const estado = document.getElementById('filtroEstado').value;
-        const fecha = document.getElementById('filtroFecha').value;
-        const curso = document.getElementById('filtroCurso').value;
-        
-        // Aquí se implementaría la lógica de filtrado
-        // Por ahora solo actualizamos el contador
-        let mensaje = 'Mostrando ';
-        
-        if (tipo !== 'todos') mensaje += tipo + ' ';
-        if (estado !== 'todos') mensaje += estado + ' ';
-        if (fecha !== 'todos') mensaje += 'del ' + fecha + ' ';
-        if (curso !== 'todos') mensaje += 'del curso seleccionado ';
-        
-        if (tipo === 'todos' && estado === 'todos' && fecha === 'todos' && curso === 'todos') {
-            mensaje = 'Mostrando todos los certificados';
-        } else {
-            mensaje += 'certificados';
-        }
-        
-        document.getElementById('contadorFiltrado').textContent = mensaje;
-    }
-    
-    // Event listeners para filtros
-    document.addEventListener('DOMContentLoaded', function() {
-        const filtros = ['filtroTipo', 'filtroEstado', 'filtroFecha', 'filtroCurso'];
-        filtros.forEach(id => {
-            document.getElementById(id).addEventListener('change', actualizarFiltros);
-        });
-    });
-</script>
-
 {% endblock %}

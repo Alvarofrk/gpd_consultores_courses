@@ -34,5 +34,7 @@ urlpatterns = [
    
     # path('mc-question/add/<int:pk>/<quiz_pk>/', MCQuestionCreate.as_view(), name='mc_create'),
     path('certificados-dashboard/', views.CertificadosDashboardView.as_view(), name='certificados_dashboard'),
+    path('certificados-dashboard/beneficiarios/', views.BeneficiariosAjaxView.as_view(), name='beneficiarios_ajax'),
+    path('certificados-dashboard/filtros/', views.CertificadosFiltrosAjaxView.as_view(), name='certificados_filtros_ajax'),
     path('estadisticas-por-curso-ajax/', views.CertificadosEstadisticasAjaxView.as_view(), name='estadisticas_por_curso_ajax'),
 ]
