@@ -752,18 +752,36 @@ def download_courses_pdf(request):
             messages.error(request, "No tienes cursos inscritos para generar el PDF.")
             return redirect('user_course_list')
         
-        # OPTIMIZACIÓN: Usar las mismas optimizaciones que user_course_list
-        from .optimizations import CourseOptimizations, CourseCache
-        
-        # Verificar caché primero
-        cached_data = CourseCache.get_cached_bulk_progress(request.user.id)
-        
-        if cached_data and len(cached_data.get('course_ids', [])) == len(courses):
-            # Usar datos del caché si están disponibles y actualizados
-            status_data = cached_data.get('status_data', {})
-        else:
-            # Obtener estado de todos los cursos en consultas optimizadas
-            status_data = CourseOptimizations.get_bulk_course_status(courses, request.user)
+        # SIMPLIFICACIÓN: Usar consultas directas más simples para evitar timeouts
+        # Obtener solo los datos necesarios para el PDF
+        status_data = {}
+        for course in courses:
+            # Calcular progreso básico sin optimizaciones complejas
+            videos = UploadVideo.objects.filter(course=course)
+            documents = Upload.objects.filter(course=course)
+            
+            total_content = videos.count() + documents.count()
+            if total_content == 0:
+                status_data[course.id] = 'not_started'
+                continue
+                
+            completed_videos = VideoCompletion.objects.filter(
+                user=request.user, video__in=videos
+            ).count()
+            completed_docs = DocumentCompletion.objects.filter(
+                user=request.user, document__in=documents
+            ).count()
+            
+            completed_content = completed_videos + completed_docs
+            progress = round((completed_content / total_content) * 100, 1) if total_content > 0 else 0
+            
+            # Estado simplificado
+            if progress >= 100:
+                status_data[course.id] = 'course_completed'
+            elif progress > 0:
+                status_data[course.id] = 'material_in_progress'
+            else:
+                status_data[course.id] = 'not_started'
         
         # Crear el PDF
         response = HttpResponse(content_type='application/pdf')
@@ -813,53 +831,9 @@ def download_courses_pdf(request):
             fontName='Helvetica'
         )
         
-        # ENCABEZADO: Agregar logos arriba de todo
-        try:
-            # Usar ruta correcta para archivos estáticos
-            if settings.DEBUG:
-                logo1_path = os.path.join(settings.STATICFILES_DIRS[0], "img", "logo1.jpg")
-                logoaniversario_path = os.path.join(settings.STATICFILES_DIRS[0], "img", "logoaniversario.png")
-            else:
-                logo1_path = os.path.join(settings.STATIC_ROOT, "img", "logo1.jpg")
-                logoaniversario_path = os.path.join(settings.STATIC_ROOT, "img", "logoaniversario.png")
-            
-            # Crear tabla para los logos (2 columnas)
-            logo_data = []
-            logo_row = []
-            
-            # Logo 1 (tamaño normal)
-            if os.path.exists(logo1_path):
-                logo1 = Image(logo1_path, width=2*inch, height=1.5*inch)
-                logo_row.append(logo1)
-            else:
-                logo_row.append(Paragraph("Logo GPD", styles['Normal']))
-            
-            # Logo aniversario (más pequeño)
-            if os.path.exists(logoaniversario_path):
-                logoaniversario = Image(logoaniversario_path, width=1.5*inch, height=1.125*inch)  # 25% más pequeño
-                logo_row.append(logoaniversario)
-            else:
-                logo_row.append(Paragraph("Logo Aniversario", styles['Normal']))
-            
-            logo_data.append(logo_row)
-            
-            # Crear tabla con los logos
-            logo_table = Table(logo_data, colWidths=[3*inch, 3*inch])
-            logo_table.setStyle(TableStyle([
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-                ('TOPPADDING', (0, 0), (-1, -1), 0),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
-            ]))
-            
-            elements.append(logo_table)
-            elements.append(Spacer(1, 20))
-        except Exception as e:
-            # Si no encuentra los logos, continúa sin ellos
-            elements.append(Paragraph("CONSOLIDADO DE CURSOS GPD", title_style))
-            elements.append(Spacer(1, 20))
+        # ENCABEZADO SIMPLIFICADO: Solo texto para evitar problemas de imágenes
+        elements.append(Paragraph("CONSOLIDADO DE CURSOS GPD", title_style))
+        elements.append(Spacer(1, 20))
         
         # Título principal
         elements.append(Paragraph("CONSOLIDADO DE CURSOS", title_style))

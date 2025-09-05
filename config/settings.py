@@ -270,15 +270,14 @@ LOGGING = {
 # WhiteNoise configuration
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-# Cache configuration
-# https://docs.djangoproject.com/en/4.2/topics/cache/
+# Cache configuration - Simplified for production stability
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
         'LOCATION': 'unique-snowflake',
         'OPTIONS': {
-            'MAX_ENTRIES': 1000,
-            'CULL_FREQUENCY': 3,
+            'MAX_ENTRIES': 500,  # Reduced for stability
+            'CULL_FREQUENCY': 2,  # More aggressive cleanup
         }
     }
 }

@@ -11,17 +11,21 @@ pip install -r requirements.txt
 # Install gunicorn if not already installed
 pip install gunicorn
 
+# Verify gunicorn configuration
+if [ -f "gunicorn.conf.py" ]; then
+    echo "✅ Gunicorn configuration found"
+else
+    echo "❌ Gunicorn configuration not found"
+fi
+
 # Collect static files
 python manage.py collectstatic --no-input
 
 # Apply database migrations
 python manage.py migrate
 
-# Create cache table
-python manage.py createcachetable
-
-# Clear cache to ensure fresh start
-python manage.py clear_cache --all
+# Cache is handled automatically by Django
+# No need for createcachetable or clear_cache commands
 
 # Verify static files
 ls -la staticfiles/
