@@ -639,29 +639,150 @@ class QuizUserProgressView(TemplateView):
 @method_decorator([login_required, lecturer_required], name="dispatch")
 class QuizMarkingList(ListView):
     model = Sitting
-    template_name = "quiz/quiz_marking_list.html"
+    template_name = "quiz/sitting_list.html"
     paginate_by = 20  # 20 exámenes por página
 
     def get_queryset(self):
-        queryset = Sitting.objects.filter(complete=True).order_by('-end')  # Ordenar por fecha más reciente
+        from django.db.models import Count, F, Q
+        
+        # OPTIMIZACIÓN: Usar select_related para eliminar N+1 queries
+        # MODIFICACIÓN: Solo mostrar exámenes aprobados (completos = aprobados)
+        # Nota: No podemos usar max_score directamente en ORM porque es un @property
+        queryset = Sitting.objects.filter(complete=True).select_related(
+            'user', 'quiz', 'quiz__course'
+        ).prefetch_related('quiz__question_set').order_by('-end')
+        
+        # Filtro por instructor si no es superusuario
         if not self.request.user.is_superuser:
             queryset = queryset.filter(
                 quiz__course__allocated_course__lecturer__pk=self.request.user.id
             )
+        
+        # OPTIMIZACIÓN: Anotar campos calculados para evitar consultas en template
+        # CORREGIDO: Contar solo intentos completados del usuario para ese quiz específico
+        queryset = queryset.annotate(
+            # CORREGIDO: Contar intentos totales completados para este usuario y quiz específico
+            # Usar el mismo quiz del sitting actual, no todos los quizzes del usuario
+            total_attempts=Count(
+                'user__sitting',
+                filter=Q(quiz=F('quiz'), complete=True),
+                distinct=True
+            )
+        )
+        
+        # Para approved_attempts, necesitamos calcularlo en Python después de obtener los datos
+        # porque max_score es un @property que no se puede usar en ORM
+        
+        # OPTIMIZACIÓN: Usar filtros más eficientes
         quiz_filter = self.request.GET.get("quiz_filter")
         if quiz_filter:
-            queryset = queryset.filter(quiz__title__icontains=quiz_filter)
+            # Usar istartswith en lugar de icontains para mejor rendimiento
+            queryset = queryset.filter(quiz__title__istartswith=quiz_filter)
+        
         user_filter = self.request.GET.get("user_filter")
         if user_filter:
-            queryset = queryset.filter(user__username__icontains=user_filter)
+            # Usar istartswith en lugar de icontains para mejor rendimiento
+            queryset = queryset.filter(user__username__istartswith=user_filter)
+        
         return queryset
 
+    def get_queryset_with_approved_attempts(self):
+        """
+        Obtiene el queryset optimizado, filtra solo exámenes aprobados y calcula approved_attempts
+        CORREGIDO: Solo devuelve UN registro por usuario+quiz (unicidad real)
+        """
+        queryset = self.get_queryset()
+        
+        # Convertir a lista para poder iterar y filtrar aprobados
+        sittings_list = list(queryset)
+        
+        # Filtrar solo exámenes aprobados y calcular approved_attempts
+        # CORREGIDO: Implementar unicidad real - solo un registro por usuario+quiz
+        approved_sittings = []
+        certificados_unicos = set()
+        
+        for sitting in sittings_list:
+            # Verificar si está aprobado usando la lógica del modelo
+            if sitting.get_percent_correct >= sitting.quiz.pass_mark:
+                # Crear clave única: usuario + quiz
+                clave_unica = f"{sitting.user.id}_{sitting.quiz.id}"
+                
+                # Solo agregar si no hemos visto esta combinación antes
+                if clave_unica not in certificados_unicos:
+                    certificados_unicos.add(clave_unica)
+                    
+                    # CORREGIDO: Obtener todos los intentos del usuario para este quiz específico
+                    user_quiz_attempts = Sitting.objects.filter(
+                        user=sitting.user,
+                        quiz=sitting.quiz,  # Solo este quiz específico
+                        complete=True
+                    ).order_by('start')
+                    
+                    # CORREGIDO: Contar cuántos están aprobados para este quiz específico
+                    approved_count = 0
+                    for attempt in user_quiz_attempts:
+                        if attempt.get_percent_correct >= attempt.quiz.pass_mark:
+                            approved_count += 1
+                    
+                    # CORREGIDO: Recalcular total_attempts para este quiz específico
+                    sitting.total_attempts = user_quiz_attempts.count()
+                    sitting.approved_attempts = approved_count
+                    approved_sittings.append(sitting)
+        
+        return approved_sittings
+
+    def get(self, request, *args, **kwargs):
+        """
+        Sobrescribir get para usar el queryset con solo exámenes aprobados
+        """
+        # Obtener el queryset con solo exámenes aprobados
+        self.object_list = self.get_queryset_with_approved_attempts()
+        
+        # Aplicar paginación manualmente
+        from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+        
+        paginator = Paginator(self.object_list, self.paginate_by)
+        page = request.GET.get('page')
+        
+        try:
+            object_list = paginator.page(page)
+        except PageNotAnInteger:
+            object_list = paginator.page(1)
+        except EmptyPage:
+            object_list = paginator.page(paginator.num_pages)
+        
+        context = self.get_context_data(object_list=object_list)
+        return self.render_to_response(context)
+
     def get_context_data(self, **kwargs):
+        from django.core.cache import cache
+        
         context = super().get_context_data(**kwargs)
-        # Agregar información adicional para el template
-        context['total_exams'] = self.get_queryset().count()
-        context['current_page'] = self.request.GET.get('page', 1)
+        
+        # CORREGIDO: Usar object_list (ya filtrado y único) en lugar de queryset
+        # Eliminar caché que puede causar inconsistencias
+        object_list = kwargs.get('object_list', [])
+        
+        # Calcular estadísticas correctas basadas en object_list
+        total_exams = len(object_list) if hasattr(object_list, '__len__') else 0
+        
+        # Calcular usuarios únicos correctamente
+        usuarios_unicos = set()
+        if hasattr(object_list, '__iter__'):
+            for sitting in object_list:
+                usuarios_unicos.add(sitting.user.id)
+        
+        stats = {
+            'total_exams': total_exams,
+            'total_approved': total_exams,  # Todos son aprobados (ya filtrados)
+            'total_failed': 0,  # No hay fallidos en esta vista
+            'unique_users': len(usuarios_unicos),
+            'current_page': self.request.GET.get('page', 1),
+        }
+        
+        context.update(stats)
         return context
+
 
 
 @method_decorator([login_required, lecturer_required], name="dispatch")
@@ -1080,6 +1201,7 @@ class CertificadosDashboardView(TemplateView):
         ).select_related('quiz', 'course', 'user')
         
         # Filtrar aprobados usando Python (ya que get_max_score es un método)
+        # CORREGIDO: Solo incluir sittings que realmente aprobaron
         sittings_aprobados = []
         for sitting in sittings_completados:
             if sitting.get_percent_correct >= sitting.quiz.pass_mark:
@@ -1089,12 +1211,27 @@ class CertificadosDashboardView(TemplateView):
         certificados_manuales = ManualCertificate.objects.all()
         
         # Estadísticas generales
-        context['total_automaticos'] = len(sittings_aprobados)
+        # CORREGIDO: Solo contar un examen aprobado por usuario por quiz (evitar duplicados)
+        certificados_unicos = set()
+        for s in sittings_aprobados:
+            if s.fecha_aprobacion:
+                # Crear clave única: usuario + quiz
+                clave_unica = f"{s.user.id}_{s.quiz.id}"
+                certificados_unicos.add(clave_unica)
+        
+        context['total_automaticos'] = len(certificados_unicos)
         context['total_manuales'] = certificados_manuales.count()
         context['total_certificados'] = context['total_automaticos'] + context['total_manuales']
         
         # Certificados activos (no vencidos) - LÓGICA UNIFICADA
-        automaticos_activos = len([s for s in sittings_aprobados if is_certificate_active(s, hoy)])
+        # CORREGIDO: Solo contar certificados únicos que tienen fecha_aprobacion válida
+        certificados_activos_unicos = set()
+        for s in sittings_aprobados:
+            if s.fecha_aprobacion and is_certificate_active(s, hoy):
+                clave_unica = f"{s.user.id}_{s.quiz.id}"
+                certificados_activos_unicos.add(clave_unica)
+        
+        automaticos_activos = len(certificados_activos_unicos)
         manuales_activos = len([c for c in certificados_manuales if is_certificate_active(c, hoy)])
         
         context['automaticos_activos'] = automaticos_activos
@@ -1102,7 +1239,14 @@ class CertificadosDashboardView(TemplateView):
         context['certificados_activos'] = automaticos_activos + manuales_activos
         
         # Certificados vencidos - LÓGICA UNIFICADA
-        automaticos_vencidos = len([s for s in sittings_aprobados if is_certificate_expired(s, hoy)])
+        # CORREGIDO: Solo contar certificados únicos que tienen fecha_aprobacion válida
+        certificados_vencidos_unicos = set()
+        for s in sittings_aprobados:
+            if s.fecha_aprobacion and is_certificate_expired(s, hoy):
+                clave_unica = f"{s.user.id}_{s.quiz.id}"
+                certificados_vencidos_unicos.add(clave_unica)
+        
+        automaticos_vencidos = len(certificados_vencidos_unicos)
         manuales_vencidos = len([c for c in certificados_manuales if is_certificate_expired(c, hoy)])
         
         context['automaticos_vencidos'] = automaticos_vencidos
@@ -1110,14 +1254,28 @@ class CertificadosDashboardView(TemplateView):
         context['certificados_vencidos'] = automaticos_vencidos + manuales_vencidos
         
         # Certificados del mes actual
-        context['automaticos_mes'] = len([s for s in sittings_aprobados if s.fecha_aprobacion and datetime_to_date(s.fecha_aprobacion) >= inicio_mes])
+        # CORREGIDO: Solo contar certificados únicos del mes
+        certificados_mes_unicos = set()
+        for s in sittings_aprobados:
+            if s.fecha_aprobacion and datetime_to_date(s.fecha_aprobacion) >= inicio_mes:
+                clave_unica = f"{s.user.id}_{s.quiz.id}"
+                certificados_mes_unicos.add(clave_unica)
+        
+        context['automaticos_mes'] = len(certificados_mes_unicos)
         context['manuales_mes'] = certificados_manuales.filter(
             fecha_generacion__gte=inicio_mes
         ).count()
         context['certificados_mes'] = context['automaticos_mes'] + context['manuales_mes']
         
         # Certificados por vencer (próximos 30 días) - LÓGICA UNIFICADA
-        automaticos_por_vencer = len([s for s in sittings_aprobados if is_certificate_expiring_soon(s, hoy, 30)])
+        # CORREGIDO: Solo contar certificados únicos que tienen fecha_aprobacion válida
+        certificados_por_vencer_unicos = set()
+        for s in sittings_aprobados:
+            if s.fecha_aprobacion and is_certificate_expiring_soon(s, hoy, 30):
+                clave_unica = f"{s.user.id}_{s.quiz.id}"
+                certificados_por_vencer_unicos.add(clave_unica)
+        
+        automaticos_por_vencer = len(certificados_por_vencer_unicos)
         manuales_por_vencer = len([c for c in certificados_manuales if is_certificate_expiring_soon(c, hoy, 30)])
         
         context['automaticos_por_vencer'] = automaticos_por_vencer
@@ -1125,39 +1283,22 @@ class CertificadosDashboardView(TemplateView):
         context['por_vencer'] = automaticos_por_vencer + manuales_por_vencer
         
         # Datos para gráficos y filtros
-        context['datos_mensuales'] = self.get_datos_mensuales()
-        context['distribucion_cursos'] = self.get_distribucion_cursos()
-        context['certificados_recientes'] = self.get_certificados_recientes()
+        context['datos_mensuales'] = self.get_datos_mensuales(sittings_aprobados, certificados_manuales)
+        context['distribucion_cursos'] = self.get_distribucion_cursos(sittings_aprobados)
+        context['certificados_recientes'] = self.get_certificados_recientes(sittings_aprobados)
         
         # Cursos para el template (QuerySet) y para JavaScript (JSON)
         context['cursos_disponibles'] = self.get_cursos_disponibles()
         context['cursos_disponibles_json'] = self.get_cursos_disponibles_json()
         
         # Datos para la pestaña de cursos
-        context.update(self.get_datos_cursos())
+        context.update(self.get_datos_cursos(sittings_aprobados, certificados_manuales))
         
         return context
     
-    def get_datos_mensuales(self):
+    def get_datos_mensuales(self, sittings_aprobados, certificados_manuales):
         """Obtener datos de certificados por mes (últimos 12 meses)"""
         from datetime import date, timedelta
-        
-        # Obtener todos los sittings aprobados - OPTIMIZADO CON ORM
-        from django.db.models import F
-        
-        # Obtener sittings completados con información del quiz
-        sittings_completados = Sitting.objects.filter(
-            complete=True
-        ).select_related('quiz', 'course', 'user')
-        
-        # Filtrar aprobados usando Python (ya que get_max_score es un método)
-        sittings_aprobados = []
-        for sitting in sittings_completados:
-            if sitting.get_percent_correct >= sitting.quiz.pass_mark:
-                sittings_aprobados.append(sitting)
-        
-        # Obtener certificados manuales
-        certificados_manuales = ManualCertificate.objects.all()
         
         datos = []
         for i in range(12):
@@ -1165,13 +1306,16 @@ class CertificadosDashboardView(TemplateView):
             inicio_mes = fecha.replace(day=1)
             fin_mes = (inicio_mes + timedelta(days=32)).replace(day=1) - timedelta(days=1)
             
-            # Certificados automáticos del mes (usar fecha de finalización)
-            automaticos = 0
+            # Certificados automáticos del mes (usar fecha_aprobacion)
+            # CORREGIDO: Solo contar certificados únicos del mes
+            certificados_mes_unicos = set()
             for sitting in sittings_aprobados:
-                if sitting.end:
-                    sitting_date = sitting.end.date() if hasattr(sitting.end, 'date') else sitting.end
+                if sitting.fecha_aprobacion:
+                    sitting_date = sitting.fecha_aprobacion.date() if hasattr(sitting.fecha_aprobacion, 'date') else sitting.fecha_aprobacion
                     if inicio_mes <= sitting_date <= fin_mes:
-                        automaticos += 1
+                        clave_unica = f"{sitting.user.id}_{sitting.quiz.id}"
+                        certificados_mes_unicos.add(clave_unica)
+            automaticos = len(certificados_mes_unicos)
             
             # Certificados manuales del mes
             manuales = 0
@@ -1190,29 +1334,20 @@ class CertificadosDashboardView(TemplateView):
         
         return list(reversed(datos))
     
-    def get_distribucion_cursos(self):
+    def get_distribucion_cursos(self, sittings_aprobados):
         """Obtener distribución de certificados por curso"""
         from collections import Counter
         
-        # Certificados automáticos por curso - OPTIMIZADO CON ORM
-        from django.db.models import F, Count
-        
-        # Obtener sittings completados con información del quiz
-        sittings_completados = Sitting.objects.filter(
-            complete=True
-        ).select_related('quiz', 'course', 'user')
-        
-        # Filtrar aprobados usando Python (ya que get_max_score es un método)
-        sittings_aprobados = []
-        for sitting in sittings_completados:
-            if sitting.get_percent_correct >= sitting.quiz.pass_mark:
-                sittings_aprobados.append(sitting)
-        
         # Agrupar por curso
+        # CORREGIDO: Solo contar certificados únicos por curso
         from collections import Counter
         cursos_automaticos = Counter()
+        certificados_por_curso = set()
         for sitting in sittings_aprobados:
-            cursos_automaticos[sitting.quiz.course.title] += 1
+            clave_unica = f"{sitting.user.id}_{sitting.quiz.id}"
+            if clave_unica not in certificados_por_curso:
+                certificados_por_curso.add(clave_unica)
+                cursos_automaticos[sitting.quiz.course.title] += 1
         
         automaticos_por_curso = [
             {'quiz__course__title': curso, 'total': total} 
@@ -1229,25 +1364,26 @@ class CertificadosDashboardView(TemplateView):
             'manuales': list(manuales_por_curso)
         }
     
-    def get_certificados_recientes(self):
+    def get_certificados_recientes(self, sittings_aprobados):
         """Obtener certificados más recientes"""
         from datetime import date, timedelta
         
-        # Certificados automáticos recientes - OPTIMIZADO CON ORM
-        from django.db.models import F
-        
-        # Obtener sittings completados con información del quiz
-        sittings_completados = Sitting.objects.filter(
-            complete=True
-        ).select_related('user', 'quiz__course', 'quiz').order_by('-fecha_aprobacion')
-        
-        # Filtrar aprobados usando Python (ya que get_max_score es un método)
+        # Certificados automáticos recientes - usar datos ya calculados
+        # CORREGIDO: Solo incluir sittings únicos que realmente aprobaron y tienen fecha_aprobacion
         automaticos_recientes = []
-        for sitting in sittings_completados:
-            if sitting.get_percent_correct >= sitting.quiz.pass_mark:
-                automaticos_recientes.append(sitting)
-                if len(automaticos_recientes) >= 10:
-                    break
+        certificados_unicos = set()
+        
+        # Ordenar por fecha_aprobacion descendente
+        sittings_ordenados = sorted(sittings_aprobados, key=lambda x: x.fecha_aprobacion or x.end, reverse=True)
+        
+        for sitting in sittings_ordenados:
+            if sitting.fecha_aprobacion:
+                clave_unica = f"{sitting.user.id}_{sitting.quiz.id}"
+                if clave_unica not in certificados_unicos:
+                    certificados_unicos.add(clave_unica)
+                    automaticos_recientes.append(sitting)
+                    if len(automaticos_recientes) >= 10:
+                        break
         
         # Certificados manuales recientes
         manuales_recientes = ManualCertificate.objects.all().select_related('curso', 'generado_por').order_by('-fecha_generacion')[:10]
@@ -1290,7 +1426,7 @@ class CertificadosDashboardView(TemplateView):
         
         return json.dumps(cursos_data)
     
-    def get_datos_cursos(self):
+    def get_datos_cursos(self, sittings_aprobados, certificados_manuales):
         """Obtener datos para la pestaña de cursos"""
         from course.models import Course
         from django.db.models import Count, Max
@@ -1298,38 +1434,36 @@ class CertificadosDashboardView(TemplateView):
         # Obtener todos los cursos
         cursos_query = Course.objects.all()
         
-        # Obtener sittings aprobados - OPTIMIZADO CON ORM
-        from django.db.models import F
-        
-        # Obtener sittings completados con información del quiz
-        sittings_completados = Sitting.objects.filter(
-            complete=True
-        ).select_related('quiz', 'course', 'user')
-        
-        # Filtrar aprobados usando Python (ya que get_max_score es un método)
-        sittings_aprobados = []
-        for sitting in sittings_completados:
-            if sitting.get_percent_correct >= sitting.quiz.pass_mark:
-                sittings_aprobados.append(sitting)
-        
         # Obtener cursos que tienen certificados (sittings aprobados)
+        # CORREGIDO: Solo contar certificados únicos por curso
         cursos_con_certificados = []
+        certificados_por_curso = {}
+        
         for curso in cursos_query:
-            certificados_curso = [s for s in sittings_aprobados if s.quiz.course == curso]
-            if certificados_curso:
+            certificados_curso_unicos = set()
+            for s in sittings_aprobados:
+                if s.quiz.course == curso and s.fecha_aprobacion:
+                    clave_unica = f"{s.user.id}_{s.quiz.id}"
+                    certificados_curso_unicos.add(clave_unica)
+            
+            if certificados_curso_unicos:
                 cursos_con_certificados.append(curso)
+                certificados_por_curso[curso.id] = len(certificados_curso_unicos)
         
         # Estadísticas generales de cursos
         total_cursos = len(cursos_con_certificados)
         
-        # Total de estudiantes certificados
-        usuarios_unicos = set(sitting.user for sitting in sittings_aprobados)
+        # Total de estudiantes certificados (únicos)
+        usuarios_unicos = set()
+        for s in sittings_aprobados:
+            if s.fecha_aprobacion:
+                usuarios_unicos.add(s.user)
         total_estudiantes_certificados = len(usuarios_unicos)
         
         # Promedio de certificados por curso
         promedio_certificados_por_curso = 0
         if total_cursos > 0:
-            total_certificados = len(sittings_aprobados)
+            total_certificados = sum(certificados_por_curso.values())
             promedio_certificados_por_curso = round(total_certificados / total_cursos, 1)
         
         # Curso más popular
@@ -1339,7 +1473,7 @@ class CertificadosDashboardView(TemplateView):
             curso_mas_certificados = None
             max_certificados = 0
             for curso in cursos_con_certificados:
-                certificados_count = len([s for s in sittings_aprobados if s.quiz.course == curso])
+                certificados_count = certificados_por_curso.get(curso.id, 0)
                 if certificados_count > max_certificados:
                     max_certificados = certificados_count
                     curso_mas_certificados = curso

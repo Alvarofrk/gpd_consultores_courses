@@ -170,8 +170,12 @@ def course_single(request, slug):
 
 @login_required
 def course_video_navigation(request, slug, video_id=None):
+    from .optimizations import CourseOptimizations
+    
     course = get_object_or_404(Course, slug=slug)
-    videos = UploadVideo.objects.filter(course=course).order_by("order", "timestamp")
+    
+    # OPTIMIZACIÓN: Usar método optimizado para obtener videos con información de completado
+    videos = CourseOptimizations.get_optimized_videos_with_completion(course, request.user)
     documents = Upload.objects.filter(course=course).order_by("upload_time")
 
     # Si no hay videos pero hay documentos, mostrar el primer documento
@@ -184,32 +188,43 @@ def course_video_navigation(request, slug, video_id=None):
         messages.error(request, "Este curso no tiene contenido disponible (videos o documentos).")
         return redirect('course_single', slug=slug)
 
+    # Convertir QuerySet a lista para acceso por índice (necesario para la lógica existente)
+    videos_list = list(videos)
+
     # Encuentra el video actual o selecciona el primero si no hay un video_id
     if video_id:
-        current_video = get_object_or_404(videos, id=video_id)
+        current_video = get_object_or_404(UploadVideo, id=video_id, course=course)
+        # Encontrar el índice del video actual en la lista optimizada
+        try:
+            current_index = next(i for i, v in enumerate(videos_list) if v.id == current_video.id)
+        except StopIteration:
+            # Si no se encuentra, usar el primer video
+            current_video = videos_list[0] if videos_list else None
+            current_index = 0
     else:
-        current_video = videos.first()
+        current_video = videos_list[0] if videos_list else None
+        current_index = 0
 
     # Si no hay video actual, redirigir al primer video
     if current_video is None:
-        return redirect('course_video_navigation', slug=slug, video_id=videos.first().id)
+        return redirect('course_single', slug=slug)
 
-    # Obtener el índice del video actual y los videos anterior y siguiente
-    current_index = list(videos).index(current_video)
-    previous_video = videos[current_index - 1] if current_index > 0 else None
-    next_video = videos[current_index + 1] if current_index < len(videos) - 1 else None
+    # Obtener videos anterior y siguiente usando índices
+    previous_video = videos_list[current_index - 1] if current_index > 0 else None
+    next_video = videos_list[current_index + 1] if current_index < len(videos_list) - 1 else None
 
     # Verificar si es el último video
-    is_last_video = current_index == len(videos) - 1
+    is_last_video = current_index == len(videos_list) - 1
 
     # Obtener el documento correspondiente al video actual, si existe
-    current_document = documents[current_index] if current_index < len(documents) else None
+    documents_list = list(documents)
+    current_document = documents_list[current_index] if current_index < len(documents_list) else None
 
-    # Verificar si el video actual está completado
-    is_completed = current_video.is_completed_by(request.user) if current_video else False
+    # OPTIMIZACIÓN: is_completed ya viene calculado en la consulta optimizada
+    is_completed = current_video.is_completed if hasattr(current_video, 'is_completed') else False
 
-    # Obtener la lista de videos completados por el usuario
-    completed_videos = [video for video in videos if video.is_completed_by(request.user)]
+    # OPTIMIZACIÓN: completed_videos ya viene calculado en la consulta optimizada
+    completed_videos = [video for video in videos_list if getattr(video, 'is_completed', False)]
 
     # Verificar si se puede avanzar al siguiente video
     can_proceed = is_completed or current_index == 0 or request.user.is_staff or request.user.is_lecturer
@@ -218,15 +233,19 @@ def course_video_navigation(request, slug, video_id=None):
     if not request.user.is_staff and not request.user.is_lecturer:
         # Si no es el primer video, verificar si el anterior está completado
         if current_index > 0:
-            previous_video = videos[current_index - 1]
-            if not previous_video.is_completed_by(request.user):
-                return redirect('course_video_navigation', slug=slug, video_id=previous_video.id)
+            previous_video_obj = videos_list[current_index - 1]
+            if not getattr(previous_video_obj, 'is_completed', False):
+                return redirect('course_video_navigation', slug=slug, video_id=previous_video_obj.id)
 
     # Manejar la marca de completado
     if request.method == 'POST' and 'mark_completed' in request.POST:
         if not is_completed:
             VideoCompletion.objects.create(user=request.user, video=current_video)
             is_completed = True
+            # Actualizar el estado en la lista para evitar consultas adicionales
+            current_video.is_completed = True
+            # Invalidar caché de progreso del usuario
+            CourseCache.invalidate_user_progress_cache(request.user.id)
         return redirect('course_video_navigation', slug=slug, video_id=current_video.id)
 
     return render(
@@ -241,11 +260,11 @@ def course_video_navigation(request, slug, video_id=None):
             "current_document": current_document,
             "is_completed": is_completed,
             "can_proceed": can_proceed,
-            "videos": videos,
+            "videos": videos_list,  # Usar la lista optimizada
             "completed_videos": completed_videos,
             "current_user": request.user,
             "current_index": current_index,
-            "total_videos": len(videos),
+            "total_videos": len(videos_list),
         },
     )
 
@@ -255,32 +274,44 @@ def course_document_navigation(request, slug, document_id=None):
     """
     Vista para navegar por documentos cuando no hay videos en el curso
     """
+    from .optimizations import CourseOptimizations
+    
     course = get_object_or_404(Course, slug=slug)
-    documents = Upload.objects.filter(course=course).order_by("upload_time")
+    
+    # OPTIMIZACIÓN: Usar método optimizado para obtener documentos con información de completado
+    documents = CourseOptimizations.get_optimized_documents_with_completion(course, request.user)
     
     # Si no hay documentos, redirigir al curso
     if not documents.exists():
         messages.error(request, "Este curso no tiene documentos disponibles.")
         return redirect('course_single', slug=slug)
     
+    # Convertir QuerySet a lista para acceso por índice
+    document_list = list(documents)
+    
     # Encuentra el documento actual o selecciona el primero si no hay un document_id
     if document_id:
-        current_document = get_object_or_404(documents, id=document_id)
+        current_document = get_object_or_404(Upload, id=document_id, course=course)
+        # Encontrar el índice del documento actual en la lista optimizada
+        try:
+            current_index = next(i for i, d in enumerate(document_list) if d.id == current_document.id)
+        except StopIteration:
+            # Si no se encuentra, usar el primer documento
+            current_document = document_list[0] if document_list else None
+            current_index = 0
     else:
-        current_document = documents.first()
+        current_document = document_list[0] if document_list else None
+        current_index = 0
     
-    # Obtener documentos anterior y siguiente
-    document_list = list(documents)
-    current_index = document_list.index(current_document)
-    
+    # Obtener documentos anterior y siguiente usando índices
     previous_document = document_list[current_index - 1] if current_index > 0 else None
     next_document = document_list[current_index + 1] if current_index < len(document_list) - 1 else None
     
     # Verificar si es el último documento
     is_last_document = current_index == len(document_list) - 1
     
-    # Verificar si el documento actual está completado
-    is_completed = current_document.is_completed_by(request.user)
+    # OPTIMIZACIÓN: is_completed ya viene calculado en la consulta optimizada
+    is_completed = current_document.is_completed if hasattr(current_document, 'is_completed') else False
     
     # Verificar si se puede avanzar al siguiente documento
     can_proceed = is_completed or current_index == 0 or request.user.is_staff or request.user.is_lecturer
@@ -289,15 +320,19 @@ def course_document_navigation(request, slug, document_id=None):
     if not request.user.is_staff and not request.user.is_lecturer:
         # Si no es el primer documento, verificar si el anterior está completado
         if current_index > 0:
-            previous_document = document_list[current_index - 1]
-            if not previous_document.is_completed_by(request.user):
-                return redirect('course_document_navigation', slug=slug, document_id=previous_document.id)
+            previous_document_obj = document_list[current_index - 1]
+            if not getattr(previous_document_obj, 'is_completed', False):
+                return redirect('course_document_navigation', slug=slug, document_id=previous_document_obj.id)
     
     # Manejar la marca de completado
     if request.method == 'POST' and 'mark_completed' in request.POST:
         if not is_completed:
             current_document.mark_as_completed(request.user)
             is_completed = True
+            # Actualizar el estado en la lista para evitar consultas adicionales
+            current_document.is_completed = True
+            # Invalidar caché de progreso del usuario
+            CourseCache.invalidate_user_progress_cache(request.user.id)
         return redirect('course_document_navigation', slug=slug, document_id=current_document.id)
     
     # Preparar contexto para PowerPoint
@@ -707,192 +742,224 @@ def course_drop(request):
 @login_required
 @student_required
 def download_courses_pdf(request):
-    # Obtener los cursos que el estudiante tiene registrados
-    student = get_object_or_404(Student, student__pk=request.user.id)
-    taken_courses = TakenCourse.objects.filter(student=student).order_by('course__title')
-    
-    # Crear el PDF
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'filename="consolidado_cursos_gpd.pdf"'
-    
-    # Crear el documento PDF en landscape para mejor aprovechamiento del espacio
-    doc = SimpleDocTemplate(response, pagesize=landscape(letter), 
-                           topMargin=0.3*inch,  # Margen superior reducido
-                           bottomMargin=0.5*inch,
-                           leftMargin=0.5*inch,
-                           rightMargin=0.5*inch)
-    elements = []
-    
-    # Estilos modernos
-    styles = getSampleStyleSheet()
-    
-    # Estilo para el título principal
-    title_style = ParagraphStyle(
-        'ModernTitle',
-        parent=styles['Heading1'],
-        fontSize=28,
-        spaceAfter=30,
-        textColor=colors.HexColor('#033b80'),  # Azul GPD
-        alignment=1,  # Centrado
-        fontName='Helvetica-Bold',
-        leading=32
-    )
-    
-    # Estilo para información del sistema
-    info_style = ParagraphStyle(
-        'SystemInfo',
-        parent=styles['Normal'],
-        fontSize=10,
-        spaceAfter=15,
-        textColor=colors.HexColor('#6c757d'),
-        alignment=2,  # Derecha
-        fontName='Helvetica'
-    )
-    
-    # Estilo para el pie de página
-    footer_style = ParagraphStyle(
-        'Footer',
-        parent=styles['Normal'],
-        fontSize=8,
-        textColor=colors.HexColor('#6c757d'),
-        alignment=1,
-        fontName='Helvetica'
-    )
-    
-    # ENCABEZADO: Agregar logos arriba de todo
     try:
-        logo1_path = settings.STATICFILES_DIRS[0] + "/img/logo1.jpg"
-        logoaniversario_path = settings.STATICFILES_DIRS[0] + "/img/logoaniversario.png"
+        # Obtener los cursos que el estudiante tiene registrados
+        student = get_object_or_404(Student, student__pk=request.user.id)
+        taken_courses = TakenCourse.objects.filter(student=student).select_related('course').order_by('course__title')
+        courses = [taken_course.course for taken_course in taken_courses]
         
-        # Crear tabla para los logos (2 columnas)
-        logo_data = []
-        logo_row = []
+        if not courses:
+            messages.error(request, "No tienes cursos inscritos para generar el PDF.")
+            return redirect('user_course_list')
         
-        # Logo 1 (tamaño normal)
-        if os.path.exists(logo1_path):
-            logo1 = Image(logo1_path, width=2*inch, height=1.5*inch)
-            logo_row.append(logo1)
+        # OPTIMIZACIÓN: Usar las mismas optimizaciones que user_course_list
+        from .optimizations import CourseOptimizations, CourseCache
+        
+        # Verificar caché primero
+        cached_data = CourseCache.get_cached_bulk_progress(request.user.id)
+        
+        if cached_data and len(cached_data.get('course_ids', [])) == len(courses):
+            # Usar datos del caché si están disponibles y actualizados
+            status_data = cached_data.get('status_data', {})
         else:
-            logo_row.append("")
+            # Obtener estado de todos los cursos en consultas optimizadas
+            status_data = CourseOptimizations.get_bulk_course_status(courses, request.user)
         
-        # Logo aniversario (más pequeño)
-        if os.path.exists(logoaniversario_path):
-            logoaniversario = Image(logoaniversario_path, width=1.5*inch, height=1.125*inch)  # 25% más pequeño
-            logo_row.append(logoaniversario)
-        else:
-            logo_row.append("")
+        # Crear el PDF
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'filename="consolidado_cursos_gpd.pdf"'
         
-        logo_data.append(logo_row)
+        # Crear el documento PDF en landscape para mejor aprovechamiento del espacio
+        doc = SimpleDocTemplate(response, pagesize=landscape(letter), 
+                               topMargin=0.3*inch,  # Margen superior reducido
+                               bottomMargin=0.5*inch,
+                               leftMargin=0.5*inch,
+                               rightMargin=0.5*inch)
+        elements = []
         
-        # Crear tabla con los logos
-        logo_table = Table(logo_data, colWidths=[3*inch, 3*inch])
-        logo_table.setStyle(TableStyle([
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 0),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-            ('TOPPADDING', (0, 0), (-1, -1), 0),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
-        ]))
+        # Estilos modernos
+        styles = getSampleStyleSheet()
         
-        elements.append(logo_table)
+        # Estilo para el título principal
+        title_style = ParagraphStyle(
+            'ModernTitle',
+            parent=styles['Heading1'],
+            fontSize=28,
+            spaceAfter=30,
+            textColor=colors.HexColor('#033b80'),  # Azul GPD
+            alignment=1,  # Centrado
+            fontName='Helvetica-Bold',
+            leading=32
+        )
+        
+        # Estilo para información del sistema
+        info_style = ParagraphStyle(
+            'SystemInfo',
+            parent=styles['Normal'],
+            fontSize=10,
+            spaceAfter=15,
+            textColor=colors.HexColor('#6c757d'),
+            alignment=2,  # Derecha
+            fontName='Helvetica'
+        )
+        
+        # Estilo para el pie de página
+        footer_style = ParagraphStyle(
+            'Footer',
+            parent=styles['Normal'],
+            fontSize=8,
+            textColor=colors.HexColor('#6c757d'),
+            alignment=1,
+            fontName='Helvetica'
+        )
+        
+        # ENCABEZADO: Agregar logos arriba de todo
+        try:
+            # Usar ruta correcta para archivos estáticos
+            if settings.DEBUG:
+                logo1_path = os.path.join(settings.STATICFILES_DIRS[0], "img", "logo1.jpg")
+                logoaniversario_path = os.path.join(settings.STATICFILES_DIRS[0], "img", "logoaniversario.png")
+            else:
+                logo1_path = os.path.join(settings.STATIC_ROOT, "img", "logo1.jpg")
+                logoaniversario_path = os.path.join(settings.STATIC_ROOT, "img", "logoaniversario.png")
+            
+            # Crear tabla para los logos (2 columnas)
+            logo_data = []
+            logo_row = []
+            
+            # Logo 1 (tamaño normal)
+            if os.path.exists(logo1_path):
+                logo1 = Image(logo1_path, width=2*inch, height=1.5*inch)
+                logo_row.append(logo1)
+            else:
+                logo_row.append(Paragraph("Logo GPD", styles['Normal']))
+            
+            # Logo aniversario (más pequeño)
+            if os.path.exists(logoaniversario_path):
+                logoaniversario = Image(logoaniversario_path, width=1.5*inch, height=1.125*inch)  # 25% más pequeño
+                logo_row.append(logoaniversario)
+            else:
+                logo_row.append(Paragraph("Logo Aniversario", styles['Normal']))
+            
+            logo_data.append(logo_row)
+            
+            # Crear tabla con los logos
+            logo_table = Table(logo_data, colWidths=[3*inch, 3*inch])
+            logo_table.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+            ]))
+            
+            elements.append(logo_table)
+            elements.append(Spacer(1, 20))
+        except Exception as e:
+            # Si no encuentra los logos, continúa sin ellos
+            elements.append(Paragraph("CONSOLIDADO DE CURSOS GPD", title_style))
+            elements.append(Spacer(1, 20))
+        
+        # Título principal
+        elements.append(Paragraph("CONSOLIDADO DE CURSOS", title_style))
+        
+        # Información del estudiante
+        student_name = f"{student.student.first_name} {student.student.last_name}"
+        student_info = Paragraph(f"Participante: {student_name}", info_style)
+        elements.append(student_info)
+        
+        # Información de generación
+        current_date = datetime.now().strftime('%d/%m/%Y')
+        current_time = datetime.now().strftime('%H:%M')
+        elements.append(Paragraph(f"Generado el: {current_date} a las {current_time}", info_style))
+        
+        # Estadísticas
+        total_courses = len(courses)
+        elements.append(Paragraph(f"Total de cursos inscritos: {total_courses}", info_style))
         elements.append(Spacer(1, 20))
-    except Exception as e:
-        print(f"Error cargando logos: {e}")
-        pass  # Si no encuentra los logos, continúa sin ellos
-    
-    # Título principal
-    elements.append(Paragraph("CONSOLIDADO DE CURSOS", title_style))
-    
-    # Información del estudiante
-    student_name = f"{student.student.first_name} {student.student.last_name}"
-    student_info = Paragraph(f"Participante: {student_name}", info_style)
-    elements.append(student_info)
-    
-    # Información de generación
-    current_date = datetime.now().strftime('%d/%m/%Y')
-    current_time = datetime.now().strftime('%H:%M')
-    elements.append(Paragraph(f"Generado el: {current_date} a las {current_time}", info_style))
-    
-    # Estadísticas
-    total_courses = taken_courses.count()
-    elements.append(Paragraph(f"Total de cursos inscritos: {total_courses}", info_style))
-    elements.append(Spacer(1, 20))
-    
-    # Tabla de cursos con diseño moderno (sin fechas)
-    headers = ['#', 'Código', 'Nombre del Curso', 'Estado']
-    
-    data = [headers]  # Primera fila son los headers
-    
-    # Agregar datos de cursos usando la misma lógica que "Mis Cursos"
-    for i, taken_course in enumerate(taken_courses, 1):
-        course = taken_course.course
-        # Usar exactamente la misma lógica que user_course_list
-        course_status = course.get_course_status_for_user(request.user)
         
-        # Determinar el estado para mostrar en el PDF
-        if course_status == 'course_completed':
-            pdf_status = "Completo"
-        elif course_status == 'material_in_progress':
-            pdf_status = "En Curso"
-        elif course_status == 'exam_available':
-            pdf_status = "En Curso"
-        elif course_status == 'exam_failed':
-            pdf_status = "En Curso"
-        else:
-            pdf_status = "Inscrito"
+        # Tabla de cursos con diseño moderno (sin fechas)
+        headers = ['#', 'Código', 'Nombre del Curso', 'Estado']
         
-        data.append([
-            str(i),
-            course.code,
-            course.title,
-            pdf_status
+        data = [headers]  # Primera fila son los headers
+        
+        # OPTIMIZACIÓN: Usar datos pre-calculados en lugar de consultas individuales
+        for i, taken_course in enumerate(taken_courses, 1):
+            course = taken_course.course
+            course_id = course.id
+            
+            # Usar datos optimizados en lugar de get_course_status_for_user()
+            course_status = status_data.get(course_id, 'not_started')
+            
+            # Determinar el estado para mostrar en el PDF
+            if course_status == 'course_completed':
+                pdf_status = "Completo"
+            elif course_status == 'material_in_progress':
+                pdf_status = "En Curso"
+            elif course_status == 'exam_available':
+                pdf_status = "En Curso"
+            elif course_status == 'exam_failed':
+                pdf_status = "En Curso"
+            else:
+                pdf_status = "Inscrito"
+            
+            data.append([
+                str(i),
+                course.code,
+                course.title,
+                pdf_status
+            ])
+        
+        # Crear tabla con anchos de columna optimizados (sin columnas de fechas)
+        col_widths = [40, 100, 350, 120]  # Anchos en puntos ajustados
+        table = Table(data, colWidths=col_widths)
+        
+        # Estilo moderno para la tabla con letras más pequeñas
+        table_style = TableStyle([
+            # Header styling
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#033b80')),  # Azul GPD
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),  # Reducido de 11 a 9
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 10),  # Reducido de 12 a 10
+            ('TOPPADDING', (0, 0), (-1, 0), 10),  # Reducido de 12 a 10
+            ('LINEBELOW', (0, 0), (-1, 0), 2, colors.HexColor('#042042')),
+            
+            # Data rows styling con letras más pequeñas
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 7),  # Reducido de 9 a 7
+            ('TOPPADDING', (0, 1), (-1, -1), 6),  # Reducido de 8 a 6
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 6),  # Reducido de 8 a 6
+            ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # Número centrado
+            ('ALIGN', (1, 1), (1, -1), 'CENTER'),  # Código centrado
+            ('ALIGN', (2, 1), (2, -1), 'LEFT'),    # Nombre a la izquierda
+            ('ALIGN', (3, 1), (3, -1), 'CENTER'),  # Estado centrado
+            
+            # Grid styling
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e9ecef')),
+            ('LINEBELOW', (0, -1), (-1, -1), 1, colors.HexColor('#033b80')),
+            
+            # Alternating row colors
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')])
         ])
-    
-    # Crear tabla con anchos de columna optimizados (sin columnas de fechas)
-    col_widths = [40, 100, 350, 120]  # Anchos en puntos ajustados
-    table = Table(data, colWidths=col_widths)
-    
-    # Estilo moderno para la tabla con letras más pequeñas
-    table_style = TableStyle([
-        # Header styling
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#033b80')),  # Azul GPD
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 9),  # Reducido de 11 a 9
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),  # Reducido de 12 a 10
-        ('TOPPADDING', (0, 0), (-1, 0), 10),  # Reducido de 12 a 10
-        ('LINEBELOW', (0, 0), (-1, 0), 2, colors.HexColor('#042042')),
         
-        # Data rows styling con letras más pequeñas
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 7),  # Reducido de 9 a 7
-        ('TOPPADDING', (0, 1), (-1, -1), 6),  # Reducido de 8 a 6
-        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),  # Reducido de 8 a 6
-        ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # Número centrado
-        ('ALIGN', (1, 1), (1, -1), 'CENTER'),  # Código centrado
-        ('ALIGN', (2, 1), (2, -1), 'LEFT'),    # Nombre a la izquierda
-        ('ALIGN', (3, 1), (3, -1), 'CENTER'),  # Estado centrado
+        table.setStyle(table_style)
+        elements.append(table)
         
-        # Grid styling
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e9ecef')),
-        ('LINEBELOW', (0, -1), (-1, -1), 1, colors.HexColor('#033b80')),
+        # Espacio final (sin pie de página)
+        elements.append(Spacer(1, 30))
         
-        # Alternating row colors
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')])
-    ])
-    
-    table.setStyle(table_style)
-    elements.append(table)
-    
-    # Espacio final (sin pie de página)
-    elements.append(Spacer(1, 30))
-    
-    # Construir el PDF
-    doc.build(elements)
-    
-    return response
+        # Construir el PDF
+        doc.build(elements)
+        
+        return response
+        
+    except Exception as e:
+        # Manejo de errores robusto
+        messages.error(request, f"Error generando PDF: {str(e)}")
+        return redirect('user_course_list')
 # ########################################################
 # User Course List View
 # ########################################################
@@ -905,11 +972,68 @@ def user_course_list(request):
         return render(request, "course/user_course_list.html", {"courses": courses})
 
     if request.user.is_student:
+        from .optimizations import CourseOptimizations, CourseCache
+        
         student = get_object_or_404(Student, student__pk=request.user.id)
-        taken_courses = TakenCourse.objects.filter(student=student)
+        
+        # Optimización: Obtener taken_courses con select_related para evitar consultas adicionales
+        taken_courses = TakenCourse.objects.filter(student=student).select_related('course')
+        courses = [taken_course.course for taken_course in taken_courses]
         
         # Calcular estadísticas del estudiante
-        total_courses = taken_courses.count()
+        total_courses = len(courses)
+        
+        if total_courses == 0:
+            context = {
+                "student": student, 
+                "taken_courses": taken_courses,
+                "courses_with_progress": [],
+                "total_courses": 0,
+                "completed_courses": 0,
+                "in_progress_courses": 0,
+                "exam_available_courses": 0,
+                "exam_failed_courses": 0,
+                "not_started_courses": 0,
+                "avg_progress": 0,
+            }
+            return render(request, "course/user_course_list.html", context)
+        
+        # OPTIMIZACIÓN CRÍTICA: Obtener todos los datos en consultas agrupadas
+        # En lugar de 241 consultas, ahora solo ~15 consultas
+        
+        # Verificar caché primero
+        cached_data = CourseCache.get_cached_bulk_progress(request.user.id)
+        
+        if cached_data and len(cached_data.get('course_ids', [])) == len(courses):
+            # Usar datos del caché si están disponibles y actualizados
+            progress_data = cached_data.get('progress_data', {})
+            content_data = cached_data.get('content_data', {})
+            status_data = cached_data.get('status_data', {})
+            exam_data = cached_data.get('exam_data', {})
+        else:
+            # 1. Obtener progreso de todos los cursos en una sola consulta
+            progress_data = CourseOptimizations.get_bulk_progress_for_courses(courses, request.user)
+            
+            # 2. Obtener resumen de contenido de todos los cursos en una sola consulta
+            content_data = CourseOptimizations.get_bulk_content_summary(courses)
+            
+            # 3. Obtener estado de todos los cursos en consultas optimizadas
+            status_data = CourseOptimizations.get_bulk_course_status(courses, request.user)
+            
+            # 4. Obtener información de exámenes de todos los cursos en consultas optimizadas
+            exam_data = CourseOptimizations.get_bulk_exam_info(courses, request.user)
+            
+            # Guardar en caché
+            cache_data = {
+                'course_ids': [course.id for course in courses],
+                'progress_data': progress_data,
+                'content_data': content_data,
+                'status_data': status_data,
+                'exam_data': exam_data,
+            }
+            CourseCache.set_cached_bulk_progress(request.user.id, cache_data)
+        
+        # Procesar datos y construir respuesta
         completed_courses = 0
         in_progress_courses = 0
         exam_available_courses = 0
@@ -917,15 +1041,35 @@ def user_course_list(request):
         total_progress = 0
         
         courses_with_progress = []
+        
         for taken_course in taken_courses:
             course = taken_course.course
-            material_progress = course.get_progress_for_user(request.user)
-            content_summary = course.get_content_summary()
-            completion_summary = course.get_user_completion_summary(request.user)
+            course_id = course.id
             
-            # Obtener estado completo del curso (incluyendo examen)
-            course_status = course.get_course_status_for_user(request.user)
-            exam_info = course.get_exam_info_for_user(request.user)
+            # Obtener datos desde las consultas optimizadas
+            progress_info = progress_data.get(course_id, {'progress': 0})
+            material_progress = progress_info['progress']
+            
+            content_summary = content_data.get(course_id, {
+                'total_videos': 0,
+                'total_documents': 0,
+                'total_content': 0,
+                'has_videos': False,
+                'has_documents': False,
+            })
+            
+            # Construir completion_summary desde progress_info
+            completion_summary = {
+                'completed_videos': progress_info.get('completed_videos', 0),
+                'completed_documents': progress_info.get('completed_documents', 0),
+                'completed_content': progress_info.get('completed_content', 0),
+                'total_videos': progress_info.get('total_videos', 0),
+                'total_documents': progress_info.get('total_documents', 0),
+                'total_content': progress_info.get('total_content', 0),
+            }
+            
+            course_status = status_data.get(course_id, 'not_started')
+            exam_info = exam_data.get(course_id)
             
             # Contar cursos por estado
             if course_status == 'course_completed':
