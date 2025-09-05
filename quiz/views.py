@@ -112,8 +112,13 @@ def generar_certificado(request, sitting_id):
         messages.info(request, "La descarga de certificados está disponible solo para administradores.")
         return redirect('quiz_progress')
     
-    # Obtener el examen y validar que el usuario tiene permiso
-    sitting = get_object_or_404(Sitting, id=sitting_id, user=request.user)
+    # Obtener el examen y validar permisos
+    if request.user.is_staff or request.user.is_superuser:
+        # Administradores pueden descargar cualquier certificado
+        sitting = get_object_or_404(Sitting, id=sitting_id)
+    else:
+        # Participantes solo pueden descargar sus propios certificados
+        sitting = get_object_or_404(Sitting, id=sitting_id, user=request.user)
 
     # Verificar que el examen esté completo y aprobado
     if not sitting.complete or sitting.get_percent_correct < 80:
