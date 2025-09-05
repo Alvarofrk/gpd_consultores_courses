@@ -31,6 +31,9 @@ urlpatterns = [
     path('generar-certificado-manual/', views.generar_certificado_manual, name='generar_certificado_manual'),
     path('descargar-certificado-manual/<int:cert_id>/', views.descargar_certificado_manual, name='descargar_certificado_manual'),
     path('editar-certificado-manual/<int:pk>/', views.ManualCertificateUpdateView.as_view(), name='editar_certificado_manual'),
+    
+    # URL para editar fecha de aprobación (modo libre)
+    path('editar-fecha-aprobacion/<int:pk>/', views.SittingDateUpdateView.as_view(), name='editar_fecha_aprobacion'),
    
     # path('mc-question/add/<int:pk>/<quiz_pk>/', MCQuestionCreate.as_view(), name='mc_create'),
     path('certificados-dashboard/', views.CertificadosDashboardView.as_view(), name='certificados_dashboard'),

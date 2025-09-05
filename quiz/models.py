@@ -355,6 +355,42 @@ class Sitting(models.Model):
             self.fecha_aprobacion = now()
         self.save()
 
+    def update_approval_date_freely(self, new_date, user, reason=None, request=None):
+        """
+        Actualizar fecha_aprobacion de forma completamente libre
+        SIN RESTRICCIONES TEMPORALES - Solo para exámenes aprobados
+        """
+        # Solo validación básica: que sea un examen aprobado
+        if not self.complete or not self.check_if_passed:
+            raise ValueError("Solo se puede cambiar fecha_aprobacion de exámenes aprobados")
+        
+        # Registrar cambio
+        old_date = self.fecha_aprobacion
+        self.fecha_aprobacion = new_date
+        self.save()
+        
+        # Crear log de auditoría detallado
+        SittingAuditLog.objects.create(
+            sitting=self,
+            field_changed='fecha_aprobacion',
+            old_value=old_date.isoformat() if old_date else None,
+            new_value=new_date.isoformat(),
+            changed_by=user,
+            reason=reason,
+            ip_address=request.META.get('REMOTE_ADDR') if request else None,
+            user_agent=request.META.get('HTTP_USER_AGENT') if request else None
+        )
+        
+        # Invalidar caché relacionado
+        from django.core.cache import cache
+        cache.delete_many([
+            f"quiz_marking_stats_{self.user.id}_*",
+            f"certificados_dashboard_*",
+            f"sitting_{self.id}_*"
+        ])
+        
+        return True
+
     def add_incorrect_question(self, question):
         incorrect_ids = self.get_incorrect_questions
         incorrect_ids.append(question.id)
@@ -580,3 +616,28 @@ class ManualCertificate(models.Model):
     def esta_vencido(self):
         from datetime import date
         return date.today() > self.fecha_vencimiento
+
+
+class SittingAuditLog(models.Model):
+    """Log de auditoría para cambios en fecha_aprobacion de exámenes"""
+    sitting = models.ForeignKey(Sitting, on_delete=models.CASCADE, related_name='audit_logs')
+    field_changed = models.CharField(max_length=50, verbose_name="Campo Modificado")
+    old_value = models.TextField(null=True, blank=True, verbose_name="Valor Anterior")
+    new_value = models.TextField(null=True, blank=True, verbose_name="Valor Nuevo")
+    changed_by = models.ForeignKey(
+        'accounts.User', 
+        on_delete=models.CASCADE, 
+        verbose_name="Modificado por"
+    )
+    changed_at = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Cambio")
+    reason = models.TextField(blank=True, null=True, verbose_name="Motivo del Cambio")
+    ip_address = models.GenericIPAddressField(null=True, blank=True, verbose_name="Dirección IP")
+    user_agent = models.TextField(blank=True, null=True, verbose_name="User Agent")
+    
+    class Meta:
+        ordering = ['-changed_at']
+        verbose_name = "Log de Auditoría de Examen"
+        verbose_name_plural = "Logs de Auditoría de Exámenes"
+    
+    def __str__(self):
+        return f"{self.sitting} - {self.field_changed} - {self.changed_at.strftime('%d/%m/%Y %H:%M')}"

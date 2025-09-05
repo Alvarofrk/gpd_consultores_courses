@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}Editar Fecha de Aprobación - Modo Libre{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Editar Fecha de Aprobación - MODO LIBRE
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <strong>⚠️ ADVERTENCIA:</strong> 
+                        Estás editando la fecha de aprobación en modo completamente libre.
+                        No hay restricciones temporales. Usa con precaución.
+                    </div>
+                    
+                    <!-- Información del examen -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">Información del Examen</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Usuario:</strong> {{ sitting.user.get_full_name }}<br>
+                                    <strong>Curso:</strong> {{ sitting.course.title }}<br>
+                                    <strong>Examen:</strong> {{ sitting.quiz.title }}
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Puntaje:</strong> {{ sitting.get_percent_correct }}%<br>
+                                    <strong>Inicio:</strong> {{ sitting.start|date:"d/m/Y H:i" }}<br>
+                                    <strong>Fin:</strong> {{ sitting.end|date:"d/m/Y H:i" }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <strong>Nueva Fecha de Aprobación</strong>
+                            </label>
+                            {{ form.fecha_aprobacion }}
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Puede ser cualquier fecha, pasada o futura. Sin restricciones.
+                            </div>
+                            {% if form.fecha_aprobacion.errors %}
+                                <div class="text-danger">{{ form.fecha_aprobacion.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <strong>Motivo del Cambio</strong>
+                            </label>
+                            <textarea name="reason" class="form-control" rows="3" 
+                                    placeholder="Explica por qué se cambia la fecha... (Obligatorio)"></textarea>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Este motivo quedará registrado en el log de auditoría.
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-save me-1"></i>Actualizar Fecha
+                            </button>
+                            <a href="{% url 'quiz_marking' %}" class="btn btn-secondary">
+                                <i class="fas fa-times me-1"></i>Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6><i class="fas fa-history me-2"></i>Historial de Cambios</h6>
+                </div>
+                <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+                    {% if audit_logs %}
+                        {% for log in audit_logs %}
+                        <div class="border-bottom pb-2 mb-2">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <small class="text-muted">
+                                    {{ log.changed_at|date:"d/m/Y H:i" }}
+                                </small>
+                                <span class="badge bg-info">{{ log.field_changed }}</span>
+                            </div>
+                            <div class="fw-bold">{{ log.changed_by.get_full_name }}</div>
+                            <div class="small">
+                                <strong>Antes:</strong> 
+                                {% if log.old_value %}
+                                    {{ log.old_value|date:"d/m/Y H:i" }}
+                                {% else %}
+                                    <em>N/A</em>
+                                {% endif %}<br>
+                                <strong>Después:</strong> 
+                                {% if log.new_value %}
+                                    {{ log.new_value|date:"d/m/Y H:i" }}
+                                {% else %}
+                                    <em>N/A</em>
+                                {% endif %}
+                            </div>
+                            {% if log.reason %}
+                            <div class="small text-muted mt-1">
+                                <i class="fas fa-comment me-1"></i>{{ log.reason }}
+                            </div>
+                            {% endif %}
+                            {% if log.ip_address %}
+                            <div class="small text-muted">
+                                <i class="fas fa-globe me-1"></i>{{ log.ip_address }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-muted text-center">
+                            <i class="fas fa-info-circle me-1"></i>
+                            No hay cambios registrados
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Información adicional -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6><i class="fas fa-info-circle me-2"></i>Información Importante</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled small">
+                        <li><i class="fas fa-check text-success me-1"></i> Solo exámenes aprobados</li>
+                        <li><i class="fas fa-check text-success me-1"></i> Fecha completamente libre</li>
+                        <li><i class="fas fa-check text-success me-1"></i> Log de auditoría completo</li>
+                        <li><i class="fas fa-check text-success me-1"></i> Invalidación de caché automática</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Validación del formulario
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const reasonField = document.querySelector('textarea[name="reason"]');
+    
+    form.addEventListener('submit', function(e) {
+        if (!reasonField.value.trim()) {
+            e.preventDefault();
+            alert('Por favor, proporciona un motivo para el cambio.');
+            reasonField.focus();
+            return false;
+        }
+        
+        // Confirmación adicional
+        if (!confirm('¿Estás seguro de que quieres cambiar la fecha de aprobación? Este cambio será registrado en el log de auditoría.')) {
+            e.preventDefault();
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

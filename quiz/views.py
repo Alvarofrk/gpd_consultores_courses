@@ -19,10 +19,10 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from babel.dates import format_datetime
-from .models import Sitting 
+from .models import Sitting, SittingAuditLog 
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from .forms import AnexoForm, ManualCertificateForm
+from .forms import AnexoForm, ManualCertificateForm, SittingDateUpdateForm
 from django.views.generic import (
     CreateView,
     DetailView,
@@ -1815,6 +1815,39 @@ class CertificadosEstadisticasAjaxView(View):
                 'success': False,
                 'message': f'Error al cargar estadísticas: {str(e)}'
             })
+
+@method_decorator([login_required, admin_required], name="dispatch")
+class SittingDateUpdateView(UpdateView):
+    """Vista para editar fecha_aprobacion de forma completamente libre"""
+    model = Sitting
+    form_class = SittingDateUpdateForm
+    template_name = 'quiz/update_sitting_date.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['sitting'] = self.object
+        context['audit_logs'] = SittingAuditLog.objects.filter(
+            sitting=self.object
+        ).order_by('-changed_at')[:10]
+        return context
+    
+    def form_valid(self, form):
+        new_date = form.cleaned_data['fecha_aprobacion']
+        reason = self.request.POST.get('reason', '')
+        
+        try:
+            self.object.update_approval_date_freely(
+                new_date, 
+                self.request.user, 
+                reason,
+                self.request
+            )
+            messages.success(self.request, "Fecha de aprobación actualizada correctamente")
+            return redirect('quiz_marking')
+        except ValueError as e:
+            messages.error(self.request, str(e))
+            return self.form_invalid(form)
+
 
 @method_decorator([login_required, lecturer_required], name="dispatch")
 class CertificadosFiltrosAjaxView(View):

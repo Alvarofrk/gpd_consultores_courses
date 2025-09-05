@@ -181,6 +181,11 @@
 							<a href="{% url 'generar_certificado' sitting.id %}" class="btn btn-sm btn-success" title="{% trans 'Descargar certificado' %}">
 								<i class="fas fa-download"></i>
 							</a>
+							{% if user.is_superuser %}
+								<a href="{% url 'editar_fecha_aprobacion' pk=sitting.id %}" class="btn btn-sm btn-warning" title="{% trans 'Editar fecha de aprobación (Modo Libre)' %}">
+									<i class="fas fa-edit"></i>
+								</a>
+							{% endif %}
 						{% endif %}
 					</div>
 				</td>

@@ -3,7 +3,7 @@ from django.forms.widgets import RadioSelect, Textarea
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.utils.translation import gettext_lazy as _
 from django.forms.models import inlineformset_factory
-from .models import Question, Quiz, MCQuestion, Choice, ManualCertificate
+from .models import Question, Quiz, MCQuestion, Choice, ManualCertificate, Sitting
 import os
 from django.conf import settings
 from django.core.validators import ValidationError
@@ -182,3 +182,35 @@ class ManualCertificateForm(forms.ModelForm):
         if ManualCertificate.objects.filter(dni=dni, curso=curso).exists():
             raise ValidationError(f"Ya existe un certificado para {dni} en el curso {curso.title}")
         return dni
+
+
+class SittingDateUpdateForm(forms.ModelForm):
+    """Formulario para editar fecha_aprobacion sin restricciones temporales"""
+    
+    class Meta:
+        model = Sitting
+        fields = ['fecha_aprobacion']
+        widgets = {
+            'fecha_aprobacion': forms.DateTimeInput(attrs={
+                'type': 'datetime-local', 
+                'class': 'form-control'
+            })
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk and self.instance.fecha_aprobacion:
+            # Convertir a formato datetime-local
+            dt = self.instance.fecha_aprobacion
+            self.initial['fecha_aprobacion'] = dt.strftime('%Y-%m-%dT%H:%M')
+    
+    def clean_fecha_aprobacion(self):
+        from datetime import datetime
+        fecha = self.cleaned_data.get('fecha_aprobacion')
+        # Solo validar que sea una fecha válida - SIN RESTRICCIONES TEMPORALES
+        if fecha and not isinstance(fecha, datetime):
+            try:
+                fecha = datetime.fromisoformat(fecha)
+            except ValueError:
+                raise ValidationError("Formato de fecha inválido")
+        return fecha
