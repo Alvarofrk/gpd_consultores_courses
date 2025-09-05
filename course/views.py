@@ -31,6 +31,7 @@ from course.models import (
     Upload,
     UploadVideo,
     VideoCompletion,
+    DocumentCompletion,
 )
 from result.models import TakenCourse
 
