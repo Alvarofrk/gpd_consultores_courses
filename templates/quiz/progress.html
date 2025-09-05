@@ -302,11 +302,10 @@
                 {% if request.user.is_student %}
                 <div class="d-grid">
                     {% if sitting.get_percent_correct >= 80 %}
-                        <a href="{% url 'generar_certificado' sitting.id %}" 
-                           class="btn btn-success btn-sm">
-                            <i class="fas fa-download me-1"></i>
-                            {% trans "Descargar Certificado" %}
-                    </a>
+                        <button class="btn btn-success btn-sm" disabled>
+                            <i class="fas fa-check me-1"></i>
+                            {% trans "APROBADO" %}
+                        </button>
                     {% else %}
                         <a href="{% url 'quiz_take' sitting.course.id sitting.quiz.slug %}" 
                            class="btn btn-warning btn-sm">

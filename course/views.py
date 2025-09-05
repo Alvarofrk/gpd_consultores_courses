@@ -833,11 +833,8 @@ def download_courses_pdf(request):
         )
         
         # ENCABEZADO SIMPLIFICADO: Solo texto para evitar problemas de imágenes
-        elements.append(Paragraph("CONSOLIDADO DE CURSOS GPD", title_style))
-        elements.append(Spacer(1, 20))
-        
-        # Título principal
         elements.append(Paragraph("CONSOLIDADO DE CURSOS", title_style))
+        elements.append(Spacer(1, 20))
         
         # Información del estudiante
         student_name = f"{student.student.first_name} {student.student.last_name}"

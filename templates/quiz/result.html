@@ -117,9 +117,9 @@
 
     {% if percent >= 80 %}
       <div class="text-center mt-4">
-        <a href="{% url 'generar_certificado' sitting.id %}" class="btn btn-gpd">
-          <i class="fas fa-download"></i> {% trans "Descargar Certificado" %}
-        </a>
+        <button class="btn btn-gpd" disabled>
+          <i class="fas fa-check"></i> {% trans "APROBADO" %}
+        </button>
       </div>
     {% else %}
     <div class="text-center mt-4">

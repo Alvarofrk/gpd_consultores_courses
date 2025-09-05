@@ -106,6 +106,12 @@ def formatear_fecha_larga(fecha):
     return f"{dia} de {mes} del {año}"
 
 def generar_certificado(request, sitting_id):
+    # FUNCIONALIDAD DESHABILITADA PARA PARTICIPANTES
+    # Solo administradores pueden descargar certificados
+    if not request.user.is_staff and not request.user.is_superuser:
+        messages.info(request, "La descarga de certificados está disponible solo para administradores.")
+        return redirect('quiz_progress')
+    
     # Obtener el examen y validar que el usuario tiene permiso
     sitting = get_object_or_404(Sitting, id=sitting_id, user=request.user)
 
