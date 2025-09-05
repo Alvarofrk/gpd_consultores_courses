@@ -20,6 +20,9 @@ python manage.py migrate
 # Create cache table
 python manage.py createcachetable
 
+# Clear cache to ensure fresh start
+python manage.py clear_cache --all
+
 # Verify static files
 ls -la staticfiles/
 
