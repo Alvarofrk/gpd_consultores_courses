@@ -24,8 +24,15 @@
           <div id="message-wrapper"></div>
         </div>
         <div class="mb-3">
-          <label for="email_id" class="form-label">{{ form.email.label }}</label>
+          <label for="email_id" class="form-label">
+            {{ form.email.label }}
+            <small class="text-muted">(Opcional)</small>
+          </label>
           {{ form.email }}
+          <div class="form-text">
+            <i class="fas fa-info-circle"></i>
+            Si no proporcionas un email, se usará "sinespecificar@gmail.com" que podrás cambiar después.
+          </div>
         </div>
         <div class="mb-3">
           <label for="password1_id" class="form-label">{{ form.password1.label }}</label>
@@ -109,5 +116,26 @@
       }
     })
   })
+
+  // Mejorar UX del campo email
+  document.addEventListener('DOMContentLoaded', function() {
+    const emailField = document.getElementById('id_email');
+    
+    if (emailField) {
+      // Si el campo está vacío al perder el foco, restaurar el predeterminado
+      emailField.addEventListener('blur', function() {
+        if (this.value.trim() === '') {
+          this.value = 'sinespecificar@gmail.com';
+        }
+      });
+      
+      // Si el usuario hace clic y es el valor predeterminado, seleccionar todo
+      emailField.addEventListener('focus', function() {
+        if (this.value === 'sinespecificar@gmail.com') {
+          this.select();
+        }
+      });
+    }
+  });
 </script>
 {% endblock js %}

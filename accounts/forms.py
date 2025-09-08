@@ -233,9 +233,12 @@ class StudentAddForm(UserCreationForm):
             attrs={
                 "type": "email",
                 "class": "form-control",
+                "placeholder": "sinespecificar@gmail.com"
             }
         ),
         label="Correo electrónico",
+        required=False,
+        help_text="Si no proporcionas un email, se usará uno predeterminado"
     )
 
     # Nuevo campo para selección de cursos
@@ -280,11 +283,23 @@ class StudentAddForm(UserCreationForm):
         super().__init__(*args, **kwargs)
         # Importar Course aquí para evitar importación circular
         self.fields['courses'].queryset = Course.objects.all().order_by('title')
+        
+        # Establecer valor predeterminado para email solo en GET (no en POST)
+        if not self.data:
+            self.fields['email'].initial = "sinespecificar@gmail.com"
 
     def clean_email(self):
-        email = self.cleaned_data['email']
+        email = self.cleaned_data.get('email')
+        
+        # Si está vacío, generar email predeterminado único
+        if not email or email.strip() == "":
+            from accounts.utils import generate_default_email
+            email = generate_default_email()
+        
+        # Validar unicidad
         if User.objects.filter(email__iexact=email, is_active=True).exists():
             raise forms.ValidationError("Este correo electrónico ya está en uso, por favor utiliza otro.")
+        
         return email
 
     class Meta(UserCreationForm.Meta):

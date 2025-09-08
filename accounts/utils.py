@@ -11,6 +11,20 @@ def generate_password(username):
     # return get_user_model().objects.make_random_password()
 
 
+def generate_default_email():
+    """Genera un email predeterminado único"""
+    base_email = "sinespecificar@gmail.com"
+    
+    # Si el email base no existe, usarlo
+    if not get_user_model().objects.filter(email__iexact=base_email, is_active=True).exists():
+        return base_email
+    
+    # Si existe, agregar un sufijo único
+    import time
+    timestamp = int(time.time())
+    return f"sinespecificar{timestamp}@gmail.com"
+
+
 # def generate_student_id():
 #     # Generate a username based on first and last name and registration date
 #     registered_year = datetime.now().strftime("%Y")

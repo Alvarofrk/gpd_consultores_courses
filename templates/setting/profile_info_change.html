@@ -24,6 +24,12 @@
                 <div class="form-title">{% trans 'Correo Electrónico' %} &amp; {% trans 'Información Personal' %}</div>
                 <div class="card-body">
                     {{ form.email|as_crispy_field }}
+                    {% if user.email and "sinespecificar" in user.email %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            Este es un email temporal. Te recomendamos cambiarlo por tu email real.
+                        </div>
+                    {% endif %}
                     {{ form.first_name|as_crispy_field }}
                     {{ form.last_name|as_crispy_field }}
                     {{ form.gender|as_crispy_field }}
