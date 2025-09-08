@@ -291,8 +291,8 @@ class StudentAddForm(UserCreationForm):
     def clean_email(self):
         email = self.cleaned_data.get('email')
         
-        # Si está vacío, generar email predeterminado único
-        if not email or email.strip() == "":
+        # Si está vacío o es el valor predeterminado sin cambios, generar email único
+        if not email or email.strip() == "" or email.strip() == "sinespecificar@gmail.com":
             from accounts.utils import generate_default_email
             email = generate_default_email()
         
