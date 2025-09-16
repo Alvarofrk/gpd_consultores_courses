@@ -309,16 +309,19 @@ def cotizaciones_list_view(request):
     estado = request.GET.get('estado')
     fecha_desde = request.GET.get('fecha_desde')
     fecha_hasta = request.GET.get('fecha_hasta')
-    cliente = request.GET.get('cliente')
+    empresa = request.GET.get('empresa')
+    numero_cotizacion = request.GET.get('numero_cotizacion')
     
     if estado:
         cotizaciones = cotizaciones.filter(estado=estado)
     if fecha_desde:
-        cotizaciones = cotizaciones.filter(fecha__gte=fecha_desde)
+        cotizaciones = cotizaciones.filter(fecha_cotizacion__gte=fecha_desde)
     if fecha_hasta:
-        cotizaciones = cotizaciones.filter(fecha__lte=fecha_hasta)
-    if cliente:
-        cotizaciones = cotizaciones.filter(cliente__icontains=cliente)
+        cotizaciones = cotizaciones.filter(fecha_cotizacion__lte=fecha_hasta)
+    if empresa:
+        cotizaciones = cotizaciones.filter(empresa__icontains=empresa)
+    if numero_cotizacion:
+        cotizaciones = cotizaciones.filter(cotizacion__icontains=numero_cotizacion)
     
     # Paginación
     paginator = Paginator(cotizaciones, 10)  # 10 items por página
@@ -336,7 +339,8 @@ def cotizaciones_list_view(request):
         'estado_actual': estado,
         'fecha_desde': fecha_desde,
         'fecha_hasta': fecha_hasta,
-        'cliente': cliente,
+        'empresa': empresa,
+        'numero_cotizacion': numero_cotizacion,
     }
     return render(request, 'core/cotizaciones_list.html', context)
 

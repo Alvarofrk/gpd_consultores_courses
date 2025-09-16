@@ -22,6 +22,86 @@
 
 {% include 'snippets/messages.html' %}
 
+<!-- Filtros de búsqueda -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h6 class="mb-0">
+            <i class="fas fa-search me-2"></i>{% trans 'Filtros de Búsqueda' %}
+            <button class="btn btn-sm btn-outline-secondary float-end" type="button" data-bs-toggle="collapse" data-bs-target="#filtrosCollapse" aria-expanded="false" aria-controls="filtrosCollapse">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </h6>
+    </div>
+    <div class="collapse" id="filtrosCollapse">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="numero_cotizacion" class="form-label">{% trans 'Número de Cotización' %}</label>
+                    <input type="text" name="numero_cotizacion" id="numero_cotizacion" 
+                           class="form-control" value="{{ numero_cotizacion|default:'' }}" 
+                           placeholder="Ej: COT-2024-001">
+                </div>
+                <div class="col-md-3">
+                    <label for="empresa" class="form-label">{% trans 'Empresa' %}</label>
+                    <input type="text" name="empresa" id="empresa" 
+                           class="form-control" value="{{ empresa|default:'' }}" 
+                           placeholder="Nombre de la empresa">
+                </div>
+                <div class="col-md-2">
+                    <label for="estado" class="form-label">{% trans 'Estado' %}</label>
+                    <select name="estado" id="estado" class="form-select">
+                        <option value="">{% trans 'Todos' %}</option>
+                        {% for value, label in estados %}
+                            <option value="{{ value }}" {% if estado_actual == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="fecha_desde" class="form-label">{% trans 'Desde' %}</label>
+                    <input type="date" name="fecha_desde" id="fecha_desde" 
+                           class="form-control" value="{{ fecha_desde|default:'' }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="fecha_hasta" class="form-label">{% trans 'Hasta' %}</label>
+                    <input type="date" name="fecha_hasta" id="fecha_hasta" 
+                           class="form-control" value="{{ fecha_hasta|default:'' }}">
+                </div>
+                <div class="col-12">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search me-1"></i>{% trans 'Buscar' %}
+                        </button>
+                        <a href="{% url 'cotizaciones_list' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-1"></i>{% trans 'Limpiar' %}
+                        </a>
+                        {% if numero_cotizacion or empresa or estado_actual or fecha_desde or fecha_hasta %}
+                            <span class="badge bg-info align-self-center">
+                                <i class="fas fa-filter me-1"></i>{% trans 'Filtros activos' %}
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Indicador de resultados -->
+{% if numero_cotizacion or empresa or estado_actual or fecha_desde or fecha_hasta %}
+<div class="alert alert-info mb-3">
+    <i class="fas fa-info-circle me-2"></i>
+    <strong>Resultados filtrados:</strong>
+    {% if numero_cotizacion %}Número: "{{ numero_cotizacion }}"{% endif %}
+    {% if empresa %}Empresa: "{{ empresa }}"{% endif %}
+    {% if estado_actual %}Estado: {{ estado_actual|title }}{% endif %}
+    {% if fecha_desde %}Desde: {{ fecha_desde|date:"d/m/Y" }}{% endif %}
+    {% if fecha_hasta %}Hasta: {{ fecha_hasta|date:"d/m/Y" }}{% endif %}
+    <a href="{% url 'cotizaciones_list' %}" class="btn btn-sm btn-outline-secondary ms-2">
+        <i class="fas fa-times me-1"></i>Limpiar filtros
+    </a>
+</div>
+{% endif %}
+
 <div class="table-responsive table-shadow table-light table-striped m-0 mt-4">
     <table class="table">
         <thead>
@@ -276,6 +356,53 @@
                 }
             });
         });
+    });
+    
+    // Funcionalidad para los filtros
+    document.addEventListener('DOMContentLoaded', function() {
+        // Auto-expandir filtros si hay parámetros de búsqueda
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasFilters = urlParams.get('numero_cotizacion') || 
+                          urlParams.get('empresa') || 
+                          urlParams.get('estado') || 
+                          urlParams.get('fecha_desde') || 
+                          urlParams.get('fecha_hasta');
+        
+        if (hasFilters) {
+            const collapseElement = document.getElementById('filtrosCollapse');
+            if (collapseElement) {
+                collapseElement.classList.add('show');
+            }
+        }
+        
+        // Limpiar filtros con confirmación
+        const clearButton = document.querySelector('a[href="{% url "cotizaciones_list" %}"]');
+        if (clearButton) {
+            clearButton.addEventListener('click', function(e) {
+                if (hasFilters) {
+                    if (!confirm('¿Estás seguro de que quieres limpiar todos los filtros?')) {
+                        e.preventDefault();
+                    }
+                }
+            });
+        }
+        
+        // Búsqueda rápida en tiempo real (opcional)
+        const numeroInput = document.getElementById('numero_cotizacion');
+        const empresaInput = document.getElementById('empresa');
+        
+        if (numeroInput) {
+            numeroInput.addEventListener('input', function() {
+                if (this.value.length >= 3) {
+                    // Auto-buscar después de 3 caracteres
+                    setTimeout(() => {
+                        if (this.value.length >= 3) {
+                            this.form.submit();
+                        }
+                    }, 1000);
+                }
+            });
+        }
     });
 </script>
 {% endblock js %} 

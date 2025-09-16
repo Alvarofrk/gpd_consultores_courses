@@ -57,8 +57,18 @@
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col-md-4 mb-3">
-                                        <label for="{{ form.cotizacion.id_for_label }}" class="form-label">Cotización</label>
+                                        <label for="{{ form.cotizacion.id_for_label }}" class="form-label">
+                                            Número de Cotización
+                                            {% if not form.instance.pk %}
+                                                <small class="text-muted">(Generado automáticamente)</small>
+                                            {% endif %}
+                                        </label>
                                         {{ form.cotizacion|add_class:"form-control" }}
+                                        {% if form.cotizacion.help_text %}
+                                            <div class="form-text">
+                                                <i class="fas fa-info-circle me-1"></i>{{ form.cotizacion.help_text }}
+                                            </div>
+                                        {% endif %}
                                         {% if form.cotizacion.errors %}
                                             <div class="text-danger small mt-1">{{ form.cotizacion.errors.0 }}</div>
                                         {% endif %}

@@ -87,6 +87,18 @@ class CotizacionForm(forms.ModelForm):
         self.fields['fecha_servicio'].required = False
         self.fields['validez_cotizacion'].required = False
         self.fields['monto_cancelado'].required = False
+        
+        # Si es una nueva cotización, generar número automático
+        if not self.instance.pk:
+            from .utils import generate_next_cotization_number
+            self.fields['cotizacion'].initial = generate_next_cotization_number()
+            self.fields['cotizacion'].widget.attrs['readonly'] = True
+            self.fields['cotizacion'].help_text = "Número generado automáticamente"
+        else:
+            # Para edición, permitir modificar
+            self.fields['cotizacion'].widget.attrs['readonly'] = False
+            self.fields['cotizacion'].help_text = "Puede modificar el número si es necesario"
+        
         if self.instance and self.instance.pk:
             if self.instance.fecha_cotizacion:
                 self.fields['fecha_cotizacion'].initial = self.instance.fecha_cotizacion.strftime('%Y-%m-%d')
@@ -98,6 +110,21 @@ class CotizacionForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+        
+        # Validar unicidad del número de cotización
+        cotizacion = cleaned_data.get('cotizacion')
+        if cotizacion:
+            from .models import Cotizacion
+            existing = Cotizacion.objects.filter(cotizacion=cotizacion)
+            if self.instance.pk:
+                existing = existing.exclude(pk=self.instance.pk)
+            
+            if existing.exists():
+                from django.core.exceptions import ValidationError
+                raise ValidationError({
+                    'cotizacion': 'Este número de cotización ya existe. Por favor, use un número diferente.'
+                })
+        
         if not cleaned_data.get('fecha_cotizacion') and self.instance and self.instance.pk:
             cleaned_data['fecha_cotizacion'] = self.instance.fecha_cotizacion
         if not cleaned_data.get('fecha_servicio') and self.instance and self.instance.pk:
