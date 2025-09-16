@@ -135,11 +135,10 @@ class EditCourseAllocationForm(forms.ModelForm):
 class UploadFormFile(forms.ModelForm):
     upload_type = forms.ChoiceField(
         choices=[
-            ('file', 'Subir archivo desde mi PC'),
             ('url', 'Usar enlace externo (Google Drive, Dropbox, etc.)')
         ],
         widget=forms.RadioSelect(attrs={"class": "form-check-input"}),
-        initial='file',
+        initial='url',
         label="Tipo de subida"
     )
     
@@ -169,20 +168,11 @@ class UploadFormFile(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         upload_type = cleaned_data.get('upload_type')
-        file = cleaned_data.get('file')
         external_url = cleaned_data.get('external_url')
         
-        if upload_type == 'file' and not file:
-            raise ValidationError('Debes seleccionar un archivo para subir.')
-        
+        # Solo validar URL ya que no hay opción de archivo
         if upload_type == 'url' and not external_url:
             raise ValidationError('Debes proporcionar una URL externa.')
-        
-        if upload_type == 'file' and external_url:
-            raise ValidationError('No puedes subir un archivo y proporcionar una URL al mismo tiempo.')
-        
-        if upload_type == 'url' and file:
-            raise ValidationError('No puedes proporcionar una URL y subir un archivo al mismo tiempo.')
         
         return cleaned_data
 

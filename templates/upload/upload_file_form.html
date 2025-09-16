@@ -27,27 +27,14 @@
 
                 <div class="card-body">
                     <form action="" method="POST" enctype="multipart/form-data">{% csrf_token %}
-                        <!-- Tipo de subida -->
+                        <!-- Tipo de subida (solo URL) -->
                         <div class="form-group mb-4">
-                            <label class="form-label fw-bold">Tipo de subida:</label>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="upload_type" id="upload_file" value="file" checked onchange="toggleUploadFields()">
-                                        <label class="form-check-label" for="upload_file">
-                                            <i class="fas fa-upload me-2"></i>Subir archivo desde mi PC
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="upload_type" id="upload_url" value="url" onchange="toggleUploadFields()">
-                                        <label class="form-check-label" for="upload_url">
-                                            <i class="fas fa-link me-2"></i>Usar enlace externo
-                                        </label>
-                                    </div>
-                                </div>
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Subida de documentos:</strong> Solo se permite el uso de enlaces externos (Google Drive, Dropbox, etc.)
                             </div>
+                            <!-- Campo oculto para mantener compatibilidad -->
+                            <input type="hidden" name="upload_type" value="url">
                         </div>
 
                         <!-- Título -->
@@ -59,26 +46,20 @@
                             {% endif %}
                         </div>
 
-                        <!-- Campo de archivo -->
-                        <div class="form-group mb-3" id="file-field">
-                            <label for="{{ form.file.id_for_label }}" class="form-label">Seleccionar archivo:</label>
-                            {{ form.file }}
-                            {% if form.file.errors %}
-                                <div class="text-danger">{{ form.file.errors }}</div>
-                            {% endif %}
-                            <div class="form-text">Formatos válidos: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, ZIP, RAR, 7ZIP</div>
-                        </div>
-
-                        <!-- Campo de URL -->
-                        <div class="form-group mb-3" id="url-field" style="display: none;">
-                            <label for="{{ form.external_url.id_for_label }}" class="form-label">URL externa:</label>
+                        <!-- Campo de URL (única opción disponible) -->
+                        <div class="form-group mb-3">
+                            <label for="{{ form.external_url.id_for_label }}" class="form-label">
+                                <i class="fas fa-link me-2"></i>URL externa del documento:
+                            </label>
                             {{ form.external_url }}
                             {% if form.external_url.errors %}
                                 <div class="text-danger">{{ form.external_url.errors }}</div>
                             {% endif %}
                             <div class="form-text">
                                 <i class="fas fa-info-circle me-1"></i>
-                                Para Google Drive: usa el enlace de "Vista previa" o "Compartir"
+                                <strong>Google Drive:</strong> Usa el enlace de "Vista previa" o "Compartir"<br>
+                                <strong>Dropbox:</strong> Usa el enlace de "Compartir"<br>
+                                <strong>Otros:</strong> Cualquier enlace directo al archivo
                             </div>
                         </div>
 
@@ -104,28 +85,19 @@
     </div>
 
     <script>
-    function toggleUploadFields() {
-        const fileRadio = document.getElementById('upload_file');
-        const urlRadio = document.getElementById('upload_url');
-        const fileField = document.getElementById('file-field');
-        const urlField = document.getElementById('url-field');
-        
-        if (fileRadio.checked) {
-            fileField.style.display = 'block';
-            urlField.style.display = 'none';
-            // Limpiar el campo de URL
-            document.querySelector('input[name="external_url"]').value = '';
-        } else if (urlRadio.checked) {
-            fileField.style.display = 'none';
-            urlField.style.display = 'block';
-            // Limpiar el campo de archivo
-            document.querySelector('input[name="file"]').value = '';
-        }
-    }
-    
-    // Inicializar al cargar la página
+    // JavaScript simplificado ya que solo se usa URL externa
     document.addEventListener('DOMContentLoaded', function() {
-        toggleUploadFields();
+        // Asegurar que el campo de archivo esté vacío
+        const fileInput = document.querySelector('input[name="file"]');
+        if (fileInput) {
+            fileInput.value = '';
+        }
+        
+        // Enfocar el campo de URL
+        const urlInput = document.querySelector('input[name="external_url"]');
+        if (urlInput) {
+            urlInput.focus();
+        }
     });
     </script>
 

@@ -628,12 +628,8 @@ def handle_file_upload(request, slug):
             upload = form.save(commit=False)
             upload.course = course
             
-            # Limpiar campos según el tipo de subida
-            upload_type = form.cleaned_data.get('upload_type')
-            if upload_type == 'file':
-                upload.external_url = None
-            elif upload_type == 'url':
-                upload.file = None
+            # Solo usar URL externa (archivo local deshabilitado)
+            upload.file = None
             
             upload.save()
             messages.success(request, f"{upload.title} ha sido subido correctamente.")
