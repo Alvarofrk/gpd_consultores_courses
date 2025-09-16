@@ -154,6 +154,11 @@ def course_single(request, slug):
     files = Upload.objects.filter(course__slug=slug)
     videos = UploadVideo.objects.filter(course__slug=slug)
     lecturers = CourseAllocation.objects.filter(courses__pk=course.id)
+    
+    # Si hay contenido (videos o documentos), redirigir a la vista unificada
+    if videos.exists() or files.exists():
+        return redirect('course_unified_navigation_first', slug=slug)
+    
     return render(
         request,
         "course/course_single.html",
@@ -167,6 +172,121 @@ def course_single(request, slug):
         },
     )
 
+
+
+@login_required
+def course_unified_navigation(request, slug, content_id=None, content_type=None):
+    """
+    Vista unificada que maneja tanto videos como documentos
+    Elimina la necesidad de dos rutas separadas y resuelve el problema módulo 2→3
+    """
+    from .optimizations import CourseUnifiedNavigation, CourseCache
+    
+    course = get_object_or_404(Course, slug=slug)
+    
+    # Obtener todo el contenido del curso ordenado
+    unified_content = CourseUnifiedNavigation.get_unified_course_content(course, request.user)
+    
+    # Si no hay contenido, mostrar mensaje de error
+    if not unified_content:
+        messages.error(request, "Este curso no tiene contenido disponible (videos o documentos).")
+        return redirect('course_single', slug=slug)
+    
+    # Determinar el contenido actual
+    current_content = CourseUnifiedNavigation.get_current_content(unified_content, content_id, content_type)
+    
+    if not current_content:
+        messages.error(request, "El contenido solicitado no existe o no está disponible.")
+        return redirect('course_single', slug=slug)
+    
+    # Validación de acceso unificada
+    can_access, redirect_content = CourseUnifiedNavigation.validate_content_access(
+        request.user, current_content, unified_content
+    )
+    
+    if not can_access and redirect_content:
+        # Redirigir al contenido anterior sin completar
+        return redirect('course_unified_navigation', 
+                       slug=slug, 
+                       content_id=redirect_content['id'], 
+                       content_type=redirect_content['type'])
+    
+    # Obtener navegación
+    previous_content, next_content = CourseUnifiedNavigation.get_navigation_content(
+        unified_content, current_content
+    )
+    
+    # Obtener índice actual
+    current_index = CourseUnifiedNavigation.get_content_index(unified_content, current_content)
+    
+    # Verificar si es el último contenido
+    is_last_content = current_index == len(unified_content) - 1
+    
+    # Verificar si se puede avanzar al siguiente contenido
+    can_proceed = (current_content['is_completed'] or 
+                   current_index == 0 or 
+                   request.user.is_staff or 
+                   request.user.is_lecturer)
+    
+    # Manejar la marca de completado
+    if request.method == 'POST' and 'mark_completed' in request.POST:
+        if not current_content['is_completed']:
+            if current_content['type'] == 'video':
+                VideoCompletion.objects.create(user=request.user, video=current_content['object'])
+                # Sincronizar documento relacionado automáticamente
+                CourseUnifiedNavigation.sync_document_completion_when_video_completed(
+                    request.user, current_content['object']
+                )
+            else:  # document
+                current_content['object'].mark_as_completed(request.user)
+            
+            # Actualizar el estado en la lista
+            current_content['is_completed'] = True
+            # Invalidar caché de progreso del usuario
+            CourseCache.invalidate_user_progress_cache(request.user.id)
+        
+        return redirect('course_unified_navigation', 
+                       slug=slug, 
+                       content_id=current_content['id'], 
+                       content_type=current_content['type'])
+    
+    # Preparar contexto para PowerPoint si es un documento
+    powerpoint_data = None
+    if (current_content['type'] == 'document' and 
+        current_content['object'].get_extension_short() == 'powerpoint'):
+        
+        if current_content['object'].has_embedded_videos():
+            powerpoint_data = {
+                'has_videos': True,
+                'slide_count': current_content['object'].get_slide_count(),
+                'message': 'Esta presentación contiene videos embebidos que no se pueden reproducir en el navegador. Te recomendamos descargar el archivo para una experiencia completa.'
+            }
+        else:
+            slides_html = current_content['object'].convert_pptx_to_html()
+            if slides_html:
+                powerpoint_data = {
+                    'has_videos': False,
+                    'slides_html': slides_html,
+                    'slide_count': len(slides_html),
+                    'current_slide': 1
+                }
+    
+    context = {
+        'course': course,
+        'current_content': current_content,
+        'previous_content': previous_content,
+        'next_content': next_content,
+        'unified_content': unified_content,
+        'is_last_content': is_last_content,
+        'is_completed': current_content['is_completed'],
+        'can_proceed': can_proceed,
+        'current_index': current_index,
+        'total_content': len(unified_content),
+        'powerpoint_data': powerpoint_data,
+        'current_user': request.user,
+    }
+    
+    return render(request, 'course/unified_navigation.html', context)
 
 
 @login_required
@@ -1085,6 +1205,91 @@ def user_course_list(request):
 
     # For other users
     return render(request, "course/user_course_list.html")
+
+@login_required
+def mark_content_completed_ajax(request, slug, content_id, content_type):
+    """
+    Endpoint AJAX optimizado para marcar contenido como completado
+    Sin recargas de página, respuesta inmediata
+    """
+    from django.http import JsonResponse
+    from django.views.decorators.csrf import csrf_exempt
+    from django.views.decorators.http import require_http_methods
+    import json
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        course = get_object_or_404(Course, slug=slug)
+        
+        # Validación rápida de acceso
+        if not request.user.is_staff and not request.user.is_lecturer:
+            # Verificar acceso secuencial (optimizado)
+            from .optimizations import CourseUnifiedNavigation
+            unified_content = CourseUnifiedNavigation.get_unified_course_content(course, request.user)
+            current_content = CourseUnifiedNavigation.get_current_content(unified_content, content_id, content_type)
+            
+            if not current_content:
+                return JsonResponse({'error': 'Content not found'}, status=404)
+            
+            can_access, redirect_content = CourseUnifiedNavigation.validate_content_access(
+                request.user, current_content, unified_content
+            )
+            
+            if not can_access:
+                return JsonResponse({'error': 'Access denied - complete previous content first'}, status=403)
+        
+        # Marcar como completado (operación atómica)
+        is_completed = False
+        if content_type == 'video':
+            video = get_object_or_404(UploadVideo, id=content_id, course=course)
+            completion, created = VideoCompletion.objects.get_or_create(
+                user=request.user, video=video
+            )
+            # Sincronizar documento relacionado automáticamente
+            CourseUnifiedNavigation.sync_document_completion_when_video_completed(
+                request.user, video
+            )
+            is_completed = True
+        elif content_type == 'document':
+            document = get_object_or_404(Upload, id=content_id, course=course)
+            document.mark_as_completed(request.user)
+            is_completed = True
+        else:
+            return JsonResponse({'error': 'Invalid content type'}, status=400)
+        
+        # Invalidar solo el caché específico (optimización máxima)
+        from .optimizations import CourseCache
+        CourseCache.invalidate_content_completion_cache(
+            request.user.id, course.id, content_id, content_type
+        )
+        
+        # Determinar textos según el tipo de contenido
+        if content_type == 'video':
+            completed_text = "Video Completado"
+            pending_text = "Marcar Video como Completado"
+        else:
+            completed_text = "Documento Completado"
+            pending_text = "Marcar Documento como Completado"
+        
+        return JsonResponse({
+            'success': True,
+            'is_completed': is_completed,
+            'message': 'Contenido marcado como completado exitosamente',
+            'completed_text': completed_text,
+            'pending_text': pending_text,
+            'content_id': content_id,
+            'content_type': content_type,
+            'timestamp': timezone.now().isoformat()
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'error': 'Error interno del servidor',
+            'details': str(e)
+        }, status=500)
+
 
 @login_required
 @staff_member_required

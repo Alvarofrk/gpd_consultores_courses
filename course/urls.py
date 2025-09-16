@@ -32,7 +32,26 @@ urlpatterns = [
     path("course/<slug>/video_tutorials/<video_slug>/edit/", views.handle_video_edit, name="upload_video_edit"),
     path("course/<slug>/video_tutorials/<video_slug>/delete/", views.handle_video_delete, name="upload_video_delete"),
     
-    # Video Navigation URLs
+    # Unified Navigation URLs (Nueva vista unificada)
+    path(
+        "course/<slug>/content/<int:content_id>/<str:content_type>/navigate/",
+        views.course_unified_navigation,
+        name="course_unified_navigation"
+    ),
+    path(
+        "course/<slug>/content/navigate/",
+        views.course_unified_navigation,
+        name="course_unified_navigation_first"
+    ),
+    
+    # AJAX Endpoint for completion marking
+    path(
+        "course/<slug>/content/<int:content_id>/<str:content_type>/complete/",
+        views.mark_content_completed_ajax,
+        name="mark_content_completed_ajax"
+    ),
+    
+    # Video Navigation URLs (Mantener para compatibilidad)
     path(
         "course/<slug>/video_tutorials/<int:video_id>/navigate/",
         views.course_video_navigation,
@@ -44,7 +63,7 @@ urlpatterns = [
         name="course_video_navigation_first"
     ),
     
-    # Document Navigation URLs
+    # Document Navigation URLs (Mantener para compatibilidad)
     path(
         "course/<slug>/documents/<int:document_id>/navigate/",
         views.course_document_navigation,

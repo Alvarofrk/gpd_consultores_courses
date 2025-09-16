@@ -1,0 +1,1375 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}{{ course.title }} - {{ current_content.title }} | {% trans 'Sistema de gestión de aprendizaje' %}{% endblock title %}
+
+{% block content %}
+
+<nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'programs' %}">{% trans 'Programas' %}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'program_detail' course.program.id %}">{{ course.program }}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'course_detail' course.slug %}">{{ course.title }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">
+            {% if current_content.type == 'video' %}{% trans 'Videos' %}{% else %}{% trans 'Documentos' %}{% endif %}
+        </li>
+    </ol>
+</nav>
+
+<div class="container my-5">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header" style="background-color: #1a237e; color: white;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <h4 class="mb-0">
+                                {% if current_content.type == 'video' %}
+                                    <i class="fas fa-play-circle me-2"></i>
+                                {% else %}
+                                    <i class="fas fa-file-{{ current_content.object.get_extension_short }} me-2"></i>
+                                {% endif %}
+                                {{ current_content.title }}
+                            </h4>
+                            <small class="text-light">
+                                {% if current_content.type == 'video' %}
+                                    Video {{ current_index|add:1 }} de {{ total_content }}
+                                {% else %}
+                                    Documento {{ current_index|add:1 }} de {{ total_content }} • {{ current_content.object.get_extension_short|upper }}
+                                {% endif %}
+                            </small>
+                        </div>
+                        {% if current_user.is_staff or current_user.is_lecturer %}
+                            <div class="btn-group">
+                                {% if current_content.type == 'video' %}
+                                    <a href="{% url 'upload_video_edit' course.slug current_content.object.slug %}" 
+                                       class="btn btn-warning btn-sm">
+                                        <i class="fas fa-edit"></i> {% trans "Editar Video" %}
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'upload_file_edit' course.slug current_content.object.id %}" 
+                                       class="btn btn-warning btn-sm">
+                                        <i class="fas fa-edit"></i> {% trans "Editar Documento" %}
+                                    </a>
+                                {% endif %}
+                                <a href="{% url 'course_detail' course.slug %}" 
+                                   class="btn btn-success btn-sm">
+                                    <i class="fas fa-plus"></i> {% trans "Nuevo Contenido" %}
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <!-- Barra de progreso -->
+                    <div class="progress" style="height: 8px; background-color: rgba(255,255,255,0.2);">
+                        <div class="progress-bar bg-light" role="progressbar" 
+                             style="width: {% widthratio current_index|add:1 total_content 100 %}%" 
+                             aria-valuenow="{{ current_index|add:1 }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="{{ total_content }}">
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if current_content.type == 'video' %}
+                        <!-- Contenido de Video -->
+                        <div class="video-container mb-4 rounded overflow-hidden shadow-sm">
+                            {% if current_content.object.vimeo_url %}
+                                <div class="ratio ratio-16x9">
+                                    <iframe src="https://player.vimeo.com/video/{{ current_content.object.get_vimeo_id }}" 
+                                            frameborder="0" 
+                                            allow="autoplay; fullscreen; picture-in-picture" 
+                                            allowfullscreen></iframe>
+                                </div>
+                            {% elif current_content.object.youtube_url %}
+                                <div class="ratio ratio-16x9">
+                                    <iframe src="https://www.youtube.com/embed/{{ current_content.object.get_youtube_id }}" 
+                                            frameborder="0" 
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                            allowfullscreen></iframe>
+                                </div>
+                            {% elif current_content.object.video %}
+                                <div class="ratio ratio-16x9">
+                                    <video controls class="w-100">
+                                        <source src="{{ current_content.object.video.url }}" type="video/mp4">
+                                        {% trans "Tu navegador no soporta el elemento de video." %}
+                                    </video>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-warning">
+                                    {% trans 'No hay video disponible para mostrar.' %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        {% if current_content.object.summary %}
+                            <div class="video-summary mb-4 p-3 bg-light rounded">
+                                <h5 class="text-dark">{% trans "Resumen" %}</h5>
+                                <p class="mb-0">{{ current_content.object.summary }}</p>
+                            </div>
+                        {% endif %}
+
+                        <!-- Documento relacionado al video -->
+                        {% for related_content in unified_content %}
+                            {% if related_content.type == 'document' and related_content.related_video_id == current_content.id %}
+                                <div class="card mb-4 shadow-sm">
+                                    <div class="card-header" style="background-color: #042042; color: white;">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">
+                                                <i class="fas fa-file-{{ related_content.object.get_extension_short }} me-2"></i>
+                                                {% trans "Documentación relacionada" %}
+                                            </h5>
+                                            {% if current_user.is_staff or current_user.is_lecturer %}
+                                                <div class="btn-group">
+                                                    <a href="{% url 'upload_file_edit' course.slug related_content.object.id %}" 
+                                                       class="btn btn-warning btn-sm">
+                                                        <i class="fas fa-edit"></i> {% trans "Editar" %}
+                                                    </a>
+                                                    <a href="{% url 'upload_file_view' course.slug %}" 
+                                                       class="btn btn-success btn-sm">
+                                                        <i class="fas fa-plus"></i> {% trans "Nuevo" %}
+                                                    </a>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h6 class="mb-0">{{ related_content.object.title }}</h6>
+                                            <button class="btn btn-outline-info btn-sm" onclick="toggleDocumentView()">
+                                                <i class="fas fa-eye" id="toggleIcon"></i> 
+                                                <span id="toggleText">{% trans "Ver" %}</span>
+                                            </button>
+                                        </div>
+                                        
+                                        <!-- Visualizador de Documento -->
+                                        <div id="documentViewer" style="display: none;">
+                                            {% if related_content.object.get_extension_short == 'pdf' %}
+                                                <!-- Visualizador de PDF -->
+                                                <div class="pdf-viewer-container" style="border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden;">
+                                                    <iframe src="{{ related_content.object.get_file_url }}" 
+                                                            width="100%" 
+                                                            height="600px" 
+                                                            style="border: none;">
+                                                    </iframe>
+                                                </div>
+                                            {% elif related_content.object.get_extension_short == 'powerpoint' %}
+                                                <!-- Visualizador de PowerPoint -->
+                                                <div class="powerpoint-viewer-container" style="border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden;">
+                                                    <div id="powerpoint-viewer" data-file-url="{{ related_content.object.get_file_url }}"></div>
+                                                </div>
+                                            {% else %}
+                                                <!-- Otros tipos de archivo -->
+                                                <div class="alert alert-info text-center">
+                                                    <i class="fas fa-file-{{ related_content.object.get_extension_short }} fa-3x mb-3"></i>
+                                                    <h5>{% trans "Vista previa no disponible" %}</h5>
+                                                    <p class="mb-0">{% trans "Este tipo de archivo no se puede visualizar directamente en el navegador." %}</p>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+
+                    {% else %}
+                        <!-- Contenido de Documento -->
+                        {% if current_content.object.get_extension_short == 'pdf' %}
+                            <!-- Visualizador de PDF -->
+                            <div class="pdf-viewer">
+                                <iframe src="{{ current_content.object.get_file_url }}" 
+                                        width="100%" 
+                                        height="600px" 
+                                        frameborder="0"></iframe>
+                            </div>
+                        {% elif current_content.object.get_extension_short == 'powerpoint' %}
+                            {% if powerpoint_data.has_videos %}
+                                <!-- PPTX con videos - Mensaje informativo -->
+                                <div class="alert alert-info">
+                                    <h5><i class="fas fa-video"></i> Presentación con Videos</h5>
+                                    <p>{{ powerpoint_data.message }}</p>
+                                    <p><strong>Diapositivas detectadas:</strong> {{ powerpoint_data.slide_count }}</p>
+                                    <hr>
+                                    <a href="{{ current_content.object.get_file_url }}" class="btn btn-primary" download>
+                                        <i class="fas fa-download"></i> Descargar Presentación Completa
+                                    </a>
+                                </div>
+                            {% else %}
+                                <!-- PPTX sin videos - Visualizador propio -->
+                                <div class="powerpoint-viewer">
+                                    <div class="presentation-controls mb-3">
+                                        <button class="btn btn-outline-primary" id="prev-slide" disabled>
+                                            <i class="fas fa-chevron-left"></i> Anterior
+                                        </button>
+                                        <span class="mx-3">
+                                            Diapositiva <span id="current-slide">1</span> de <span id="total-slides">{{ powerpoint_data.slide_count }}</span>
+                                        </span>
+                                        <button class="btn btn-outline-primary" id="next-slide">
+                                            Siguiente <i class="fas fa-chevron-right"></i>
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="presentation-container">
+                                        <div id="slides-container">
+                                            {% for slide_html in powerpoint_data.slides_html %}
+                                                {{ slide_html|safe }}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Miniaturas -->
+                                    <div class="thumbnails-container mt-3">
+                                        <h6>Miniaturas:</h6>
+                                        <div class="thumbnails" id="thumbnails">
+                                            {% for i in powerpoint_data.slide_count|add:"0"|make_list %}
+                                                <div class="thumbnail {% if forloop.first %}active{% endif %}" data-slide="{{ forloop.counter }}">
+                                                    <span class="thumbnail-number">{{ forloop.counter }}</span>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <!-- Otros tipos de archivo -->
+                            <div class="alert alert-warning">
+                                <h5><i class="fas fa-file"></i> Archivo no visualizable</h5>
+                                <p>Este tipo de archivo no se puede visualizar directamente en el navegador.</p>
+                                <a href="{{ current_content.object.get_file_url }}" class="btn btn-primary" download>
+                                    <i class="fas fa-download"></i> Descargar Archivo
+                                </a>
+                            </div>
+                        {% endif %}
+                    {% endif %}
+
+                    <!-- Botón de completado unificado - Versión Visual Mejorada -->
+                    <div class="completion-section mb-4">
+                        <div class="completion-toggle" 
+                             data-content-id="{{ current_content.id }}" 
+                             data-content-type="{{ current_content.type }}"
+                             data-course-slug="{{ course.slug }}"
+                             {% if is_completed %}data-completed="true"{% endif %}>
+                            
+                            <div class="toggle-container">
+                                <input type="checkbox" 
+                                       id="completion-checkbox" 
+                                       class="completion-checkbox"
+                                       {% if is_completed %}checked{% endif %}>
+                                
+                                <label for="completion-checkbox" class="completion-label">
+                                    <div class="completion-icon">
+                                        <i class="fas fa-check"></i>
+                                    </div>
+                                    <span class="completion-text">
+                                        {% if is_completed %}
+                                            {% if current_content.type == 'video' %}
+                                                {% trans "Video Completado" %}
+                                            {% else %}
+                                                {% trans "Documento Completado" %}
+                                            {% endif %}
+                                        {% else %}
+                                            {% if current_content.type == 'video' %}
+                                                {% trans "Marcar Video como Completado" %}
+                                            {% else %}
+                                                {% trans "Marcar Documento como Completado" %}
+                                            {% endif %}
+                                        {% endif %}
+                                    </span>
+                                </label>
+                            </div>
+                            
+                            <div class="completion-progress">
+                                <div class="progress-ring"></div>
+                            </div>
+                            
+                            <div class="completion-status">
+                                <div class="status-indicator">
+                                    <i class="fas fa-clock"></i>
+                                    <span>Procesando...</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Notificación Toast -->
+                        <div class="completion-toast" id="completion-toast">
+                            <div class="toast-content">
+                                <i class="fas fa-check-circle"></i>
+                                <span class="toast-message">¡Contenido completado!</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Contenido del Curso - Vista Unificada -->
+            <div class="card shadow-sm mb-3">
+                <div class="card-header" style="background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>{% trans "Contenido del Curso" %}
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for content in unified_content %}
+                            {% if content.type == 'video' %}
+                                <!-- Video con su documento relacionado -->
+                                <div class="list-group-item {% if content.id == current_content.id and content.type == current_content.type %}active{% endif %}" 
+                                     style="{% if content.id == current_content.id and content.type == current_content.type %}background-color: #1a237e; color: white;{% endif %}">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <a href="{% url 'course_unified_navigation' course.slug content.id content.type %}" 
+                                           class="text-decoration-none flex-grow-1"
+                                           style="{% if content.id == current_content.id and content.type == current_content.type %}color: white;{% endif %}">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-play-circle me-2" style="color: #007bff;"></i>
+                                                <div>
+                                                    <div class="fw-bold">
+                                                        {% if content.is_completed %}
+                                                            <i class="fas fa-check-circle text-success me-1"></i>
+                                                        {% endif %}
+                                                        {{ content.title }}
+                                                    </div>
+                                                    <small class="text-muted">Video {{ content.index|add:1 }}</small>
+                                                </div>
+                                            </div>
+                                        </a>
+                                        <div class="d-flex align-items-center">
+                                            {% if request.user.is_superuser %}
+                                                <form method="post" action="{% url 'update_video_order' content.object.id %}" class="d-flex align-items-center me-2">
+                                                    {% csrf_token %}
+                                                    <input type="number" name="order" value="{{ content.object.order }}" 
+                                                           class="form-control form-control-sm" style="width: 60px;">
+                                                    <button type="submit" class="btn btn-sm" style="background-color: #1a237e; color: white;">
+                                                        <i class="fas fa-save"></i>
+                                                    </button>
+                                                </form>
+                                            {% else %}
+                                                <span class="badge" style="background-color: #1a237e;">{{ content.index|add:1 }}</span>
+                                            {% endif %}
+                                            {% if request.user.is_superuser or request.user.is_lecturer %}
+                                                <div class="btn-group" role="group">
+                                                    <a href="{% url 'upload_video_edit' course.slug content.object.slug %}" 
+                                                       class="btn btn-sm btn-outline-warning"
+                                                       title="{% trans 'Editar Video' %}">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a href="{% url 'upload_video_delete' course.slug content.object.slug %}" 
+                                                       class="btn btn-sm btn-outline-danger"
+                                                       title="{% trans 'Eliminar Video' %}"
+                                                       onclick="return confirm('¿Estás seguro de que quieres eliminar este video? Esta acción no se puede deshacer.')">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </a>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Documento relacionado (si existe) -->
+                                    {% for related_content in unified_content %}
+                                        {% if related_content.type == 'document' and related_content.related_video_id == content.id %}
+                                            <div class="mt-2 ms-4">
+                                                <a href="{% url 'course_unified_navigation' course.slug related_content.id related_content.type %}" 
+                                                   class="text-decoration-none d-flex align-items-center"
+                                                   style="{% if content.id == current_content.id and content.type == current_content.type %}color: rgba(255,255,255,0.8);{% else %}color: #6c757d;{% endif %}">
+                                                    <i class="fas fa-file-{{ related_content.object.get_extension_short }} me-2"></i>
+                                                    <small>{{ related_content.title }}</small>
+                                                    {% if related_content.is_completed %}
+                                                        <i class="fas fa-check-circle text-success ms-1"></i>
+                                                    {% endif %}
+                                                </a>
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            {% elif content.type == 'document' and not content.related_video_id %}
+                                <!-- Documento sin video relacionado -->
+                                <div class="list-group-item {% if content.id == current_content.id and content.type == current_content.type %}active{% endif %}" 
+                                     style="{% if content.id == current_content.id and content.type == current_content.type %}background-color: #1a237e; color: white;{% endif %}">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <a href="{% url 'course_unified_navigation' course.slug content.id content.type %}" 
+                                           class="text-decoration-none flex-grow-1"
+                                           style="{% if content.id == current_content.id and content.type == current_content.type %}color: white;{% endif %}">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-file-{{ content.object.get_extension_short }} me-2" style="color: #28a745;"></i>
+                                                <div>
+                                                    <div class="fw-bold">
+                                                        {% if content.is_completed %}
+                                                            <i class="fas fa-check-circle text-success me-1"></i>
+                                                        {% endif %}
+                                                        {{ content.title }}
+                                                    </div>
+                                                    <small class="text-muted">Documento {{ content.index|add:1 }}</small>
+                                                </div>
+                                            </div>
+                                        </a>
+                                        <div class="d-flex align-items-center">
+                                            <span class="badge" style="background-color: #1a237e;">{{ content.index|add:1 }}</span>
+                                            {% if request.user.is_superuser or request.user.is_lecturer %}
+                                                <div class="btn-group" role="group">
+                                                    <a href="{% url 'upload_file_edit' course.slug content.object.id %}" 
+                                                       class="btn btn-sm btn-outline-warning"
+                                                       title="{% trans 'Editar Documento' %}">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a href="{% url 'upload_file_delete' course.slug content.object.id %}" 
+                                                       class="btn btn-sm btn-outline-danger"
+                                                       title="{% trans 'Eliminar Documento' %}"
+                                                       onclick="return confirm('¿Estás seguro de que quieres eliminar este documento? Esta acción no se puede deshacer.')">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </a>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Botones de administración -->
+            {% if request.user.is_superuser or request.user.is_lecturer %}
+            <div class="card shadow-sm">
+                <div class="card-header" style="background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">
+                    <h6 class="mb-0">{% trans "Administrar Contenido" %}</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'upload_video' course.slug %}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-video me-1"></i>{% trans "Nuevo Video" %}
+                        </a>
+                        <a href="{% url 'upload_file_view' course.slug %}" class="btn btn-success btn-sm">
+                            <i class="fas fa-file-alt me-1"></i>{% trans "Nuevo Documento" %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-center gap-3 flex-wrap">
+                {% if previous_content %}
+                    <a href="{% url 'course_unified_navigation' course.slug previous_content.id previous_content.type %}" 
+                       class="btn" style="background-color: #1a237e; color: white; min-width: 150px;">
+                        <i class="fas fa-arrow-left"></i> {% trans "Anterior" %}
+                    </a>
+                {% else %}
+                    <button class="btn btn-secondary" disabled style="min-width: 150px;">
+                        <i class="fas fa-arrow-left"></i> {% trans "Anterior" %}
+                    </button>
+                {% endif %}
+
+                {% if is_last_content %}
+                    <a class="btn btn-warning" href="{% url 'quiz_index' course.slug %}" style="min-width: 150px;">
+                        <i class="fas fa-list"></i> {% trans 'Tomar examen' %}
+                    </a>
+                {% endif %}
+
+                {% if next_content %}
+                    {% if can_proceed or current_user.is_staff or current_user.is_lecturer %}
+                        <a href="{% url 'course_unified_navigation' course.slug next_content.id next_content.type %}" 
+                           class="btn" style="background-color: #1a237e; color: white; min-width: 150px;">
+                            {% trans "Siguiente" %} <i class="fas fa-arrow-right"></i>
+                        </a>
+                    {% else %}
+                        <button class="btn btn-secondary" disabled title="{% trans 'Debes completar este contenido para continuar' %}" style="min-width: 150px;">
+                            {% trans "Siguiente" %} <i class="fas fa-arrow-right"></i>
+                        </button>
+                    {% endif %}
+                {% else %}
+                    <button class="btn btn-secondary" disabled style="min-width: 150px;">
+                        {% trans "Siguiente" %} <i class="fas fa-arrow-right"></i>
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estilos CSS para el checkbox visual mejorado -->
+<style>
+/* ===== CHECKBOX VISUAL MEJORADO ===== */
+.completion-section {
+    position: relative;
+    margin: 20px 0;
+}
+
+.completion-toggle {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.completion-checkbox {
+    display: none;
+}
+
+.completion-label {
+    display: flex;
+    align-items: center;
+    padding: 16px 24px;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border: 2px solid #dee2e6;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    font-weight: 600;
+    font-size: 16px;
+    color: #495057;
+}
+
+.completion-label:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    border-color: #007bff;
+}
+
+.completion-checkbox:checked + .completion-label {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    border-color: #28a745;
+    color: white;
+    transform: scale(1.02);
+    box-shadow: 0 12px 35px rgba(40, 167, 69, 0.4);
+}
+
+.completion-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 16px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.completion-checkbox:checked + .completion-label .completion-icon {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(360deg) scale(1.1);
+}
+
+.completion-icon i {
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.completion-checkbox:checked + .completion-label .completion-icon i {
+    transform: scale(1.2);
+}
+
+.completion-text {
+    flex: 1;
+    transition: all 0.3s ease;
+}
+
+/* ===== ANIMACIONES DE CARGA ===== */
+.completion-progress {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 50px;
+    height: 50px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.progress-ring {
+    width: 100%;
+    height: 100%;
+    border: 3px solid transparent;
+    border-top: 3px solid #28a745;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.completion-toggle.loading .progress-ring {
+    opacity: 1;
+}
+
+.completion-toggle.loading .completion-label {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ===== INDICADOR DE ESTADO ===== */
+.completion-status {
+    position: absolute;
+    top: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    background: rgba(0, 123, 255, 0.9);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+}
+
+.status-indicator i {
+    margin-right: 8px;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.completion-toggle.loading .completion-status {
+    opacity: 1;
+}
+
+/* ===== ANIMACIÓN DE CELEBRACIÓN ===== */
+.completion-toggle.completed .completion-label {
+    animation: celebration 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes celebration {
+    0% { transform: scale(1.02); }
+    25% { transform: scale(1.1) rotate(1deg); }
+    50% { transform: scale(1.05) rotate(-1deg); }
+    75% { transform: scale(1.08) rotate(0.5deg); }
+    100% { transform: scale(1.02) rotate(0deg); }
+}
+
+/* ===== TOAST DE NOTIFICACIÓN ===== */
+.completion-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 16px 24px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(40, 167, 69, 0.4);
+    transform: translateX(400px);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1000;
+    max-width: 350px;
+}
+
+.completion-toast.show {
+    transform: translateX(0);
+}
+
+.toast-content {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+}
+
+.toast-content i {
+    font-size: 20px;
+    margin-right: 12px;
+    animation: bounce 0.6s ease;
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-10px); }
+    60% { transform: translateY(-5px); }
+}
+
+.toast-message {
+    font-size: 16px;
+}
+
+/* ===== EFECTOS ADICIONALES ===== */
+.completion-toggle::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    transition: left 0.6s ease;
+}
+
+.completion-toggle.completed::before {
+    left: 100%;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .completion-label {
+        padding: 14px 20px;
+        font-size: 15px;
+    }
+    
+    .completion-icon {
+        width: 28px;
+        height: 28px;
+        margin-right: 12px;
+    }
+    
+    .completion-toast {
+        right: 10px;
+        left: 10px;
+        max-width: none;
+        transform: translateY(-100px);
+    }
+    
+    .completion-toast.show {
+        transform: translateY(0);
+    }
+}
+
+/* ===== ESTADOS ESPECIALES ===== */
+.completion-toggle.error .completion-label {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    border-color: #dc3545;
+    animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.completion-toggle.success .completion-label {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    border-color: #28a745;
+    animation: successPulse 0.6s ease;
+}
+
+@keyframes successPulse {
+    0% { transform: scale(1.02); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1.02); }
+}
+
+    /* ===== MEJORAS EN LA BARRA LATERAL ===== */
+    .list-group-item .completion-icon {
+        width: 20px;
+        height: 20px;
+        margin-right: 8px;
+        background: rgba(40, 167, 69, 0.1);
+        color: #28a745;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+    }
+
+    .list-group-item.active .completion-icon {
+        background: rgba(255, 255, 255, 0.3);
+        color: white;
+    }
+
+    /* ===== BOTONES DE ADMINISTRACIÓN ===== */
+    .btn-group .btn {
+        transition: all 0.2s ease;
+    }
+
+    .btn-group .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-outline-warning:hover {
+        background-color: #ffc107;
+        border-color: #ffc107;
+        color: #000;
+    }
+
+    .btn-outline-danger:hover {
+        background-color: #dc3545;
+        border-color: #dc3545;
+        color: #fff;
+    }
+
+    /* ===== CONFIRMACIÓN DE ELIMINACIÓN ===== */
+    .delete-confirmation {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        z-index: 1050;
+        max-width: 400px;
+        width: 90%;
+        display: none;
+    }
+
+    .delete-confirmation.show {
+        display: block;
+        animation: fadeInScale 0.3s ease;
+    }
+
+    .delete-confirmation-header {
+        background: linear-gradient(135deg, #dc3545, #c82333);
+        color: white;
+        padding: 20px;
+        border-radius: 12px 12px 0 0;
+        text-align: center;
+    }
+
+    .delete-confirmation-body {
+        padding: 30px 20px;
+        text-align: center;
+    }
+
+    .delete-confirmation-footer {
+        padding: 20px;
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+    }
+
+    @keyframes fadeInScale {
+        0% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.8);
+        }
+        100% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+    }
+
+    .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1040;
+        display: none;
+    }
+
+    .overlay.show {
+        display: block;
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+/* ===== Estilos CSS para el visualizador de PowerPoint ===== */
+.powerpoint-viewer {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.presentation-controls {
+    text-align: center;
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.presentation-container {
+    background: white;
+    border-radius: 8px;
+    padding: 30px;
+    min-height: 400px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.slide {
+    text-align: center;
+}
+
+.slide-content {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.slide-number {
+    color: #666;
+    margin-bottom: 20px;
+    font-size: 1.2em;
+}
+
+.slide-text {
+    font-size: 1.1em;
+    line-height: 1.6;
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.slide-text h2 {
+    font-size: 1.8em;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.slide-text h3 {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #444;
+    margin-bottom: 15px;
+}
+
+.slide-text h4 {
+    font-size: 1.3em;
+    font-weight: bold;
+    color: #555;
+    margin-bottom: 12px;
+}
+
+.slide-text p {
+    font-size: 1.1em;
+    line-height: 1.6;
+    margin-bottom: 10px;
+}
+
+.slide-text strong {
+    font-weight: bold;
+    color: #000;
+}
+
+.slide-text em {
+    font-style: italic;
+}
+
+.slide-text u {
+    text-decoration: underline;
+}
+
+.slide-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.slide-table-cell {
+    padding: 12px;
+    border: 1px solid #ddd;
+    text-align: left;
+    vertical-align: top;
+}
+
+.slide-table tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.slide-shape {
+    margin: 10px 0;
+    padding: 15px;
+    border-radius: 8px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+}
+
+.slide-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin: 10px 0;
+}
+
+.thumbnails-container {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.thumbnails {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.thumbnail {
+    width: 60px;
+    height: 40px;
+    background: #e9ecef;
+    border: 2px solid #dee2e6;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.thumbnail:hover {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.thumbnail.active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.thumbnail-number {
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.pdf-viewer iframe {
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+</style>
+
+<!-- JavaScript para el visualizador de documentos -->
+<script>
+    function toggleDocumentView() {
+        const viewer = document.getElementById('documentViewer');
+        const toggleIcon = document.getElementById('toggleIcon');
+        const toggleText = document.getElementById('toggleText');
+        
+        if (viewer.style.display === 'none') {
+            viewer.style.display = 'block';
+            toggleIcon.className = 'fas fa-eye-slash';
+            toggleText.textContent = '{% trans "Ocultar" %}';
+        } else {
+            viewer.style.display = 'none';
+            toggleIcon.className = 'fas fa-eye';
+            toggleText.textContent = '{% trans "Ver" %}';
+        }
+    }
+</script>
+
+<!-- JavaScript optimizado para el checkbox de completado -->
+<script>
+class CompletionManager {
+    constructor() {
+        this.init();
+        this.setupKeyboardShortcuts();
+    }
+    
+    init() {
+        const toggle = document.querySelector('.completion-toggle');
+        if (toggle) {
+            toggle.addEventListener('click', this.handleToggle.bind(this));
+        }
+    }
+    
+    setupKeyboardShortcuts() {
+        // Atajos de teclado
+        document.addEventListener('keydown', (event) => {
+            // Enter o Espacio para marcar completado
+            if ((event.key === 'Enter' || event.key === ' ') && 
+                event.target.tagName !== 'INPUT' && 
+                event.target.tagName !== 'TEXTAREA') {
+                event.preventDefault();
+                this.handleToggle();
+            }
+        });
+    }
+    
+    async handleToggle(event) {
+        const toggle = document.querySelector('.completion-toggle');
+        const checkbox = toggle.querySelector('.completion-checkbox');
+        const contentId = toggle.dataset.contentId;
+        const contentType = toggle.dataset.contentType;
+        const courseSlug = toggle.dataset.courseSlug;
+        
+        // Prevenir múltiples clics
+        if (toggle.classList.contains('loading')) {
+            return;
+        }
+        
+        // Mostrar estado de carga
+        this.showLoadingState(toggle);
+        
+        try {
+            const response = await fetch(`/course/${courseSlug}/content/${contentId}/${contentType}/complete/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': this.getCookie('csrftoken'),
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    mark_completed: !checkbox.checked
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.success) {
+                this.updateUI(toggle, data);
+                this.showSuccessNotification(data.message);
+                this.updateSidebarIndicators(data);
+            } else {
+                throw new Error(data.error || 'Error al actualizar el estado');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showErrorState(toggle);
+            this.showErrorNotification('Error al marcar como completado');
+        } finally {
+            this.hideLoadingState(toggle);
+        }
+    }
+    
+    showLoadingState(toggle) {
+        toggle.classList.add('loading');
+        toggle.classList.remove('error', 'success', 'completed');
+    }
+    
+    hideLoadingState(toggle) {
+        toggle.classList.remove('loading');
+    }
+    
+    updateUI(toggle, data) {
+        const checkbox = toggle.querySelector('.completion-checkbox');
+        const text = toggle.querySelector('.completion-text');
+        
+        checkbox.checked = data.is_completed;
+        
+        if (data.is_completed) {
+            toggle.classList.add('completed', 'success');
+            text.textContent = data.completed_text;
+            
+            // Actualizar atributo de datos
+            toggle.dataset.completed = 'true';
+        } else {
+            toggle.classList.remove('completed', 'success');
+            text.textContent = data.pending_text;
+            
+            // Actualizar atributo de datos
+            toggle.dataset.completed = 'false';
+        }
+    }
+    
+    updateSidebarIndicators(data) {
+        // Actualizar iconos de completado en la barra lateral
+        const sidebarItems = document.querySelectorAll('.list-group-item');
+        sidebarItems.forEach(item => {
+            const link = item.querySelector('a[href*="' + data.content_id + '"]');
+            if (link) {
+                const icon = item.querySelector('.completion-icon');
+                if (icon) {
+                    if (data.is_completed) {
+                        icon.innerHTML = '<i class="fas fa-check-circle"></i>';
+                        icon.style.background = 'rgba(40, 167, 69, 0.2)';
+                        icon.style.color = '#28a745';
+                    } else {
+                        icon.innerHTML = '';
+                        icon.style.background = 'rgba(108, 117, 125, 0.1)';
+                        icon.style.color = '#6c757d';
+                    }
+                }
+            }
+        });
+    }
+    
+    showSuccessNotification(message) {
+        const toast = document.getElementById('completion-toast');
+        const messageElement = toast.querySelector('.toast-message');
+        
+        messageElement.textContent = message;
+        toast.classList.add('show');
+        
+        // Auto-ocultar después de 3 segundos
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+    
+    showErrorNotification(message) {
+        // Crear toast de error
+        const errorToast = document.createElement('div');
+        errorToast.className = 'completion-toast error-toast';
+        errorToast.innerHTML = `
+            <div class="toast-content">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span class="toast-message">${message}</span>
+            </div>
+        `;
+        
+        // Estilos para toast de error
+        errorToast.style.background = 'linear-gradient(135deg, #dc3545, #c82333)';
+        errorToast.style.boxShadow = '0 8px 32px rgba(220, 53, 69, 0.4)';
+        
+        document.body.appendChild(errorToast);
+        
+        // Mostrar toast
+        setTimeout(() => {
+            errorToast.classList.add('show');
+        }, 100);
+        
+        // Auto-ocultar después de 4 segundos
+        setTimeout(() => {
+            errorToast.classList.remove('show');
+            setTimeout(() => {
+                errorToast.remove();
+            }, 400);
+        }, 4000);
+    }
+    
+    showErrorState(toggle) {
+        toggle.classList.add('error');
+        setTimeout(() => {
+            toggle.classList.remove('error');
+        }, 2000);
+    }
+    
+    getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+}
+
+    // Inicializar cuando el DOM esté listo
+    document.addEventListener('DOMContentLoaded', () => {
+        new CompletionManager();
+        // new DeleteConfirmationManager(); // Deshabilitado temporalmente para usar confirmación nativa
+        
+        // Agregar efectos de partículas al completar (opcional)
+        const toggle = document.querySelector('.completion-toggle');
+        if (toggle) {
+            toggle.addEventListener('animationend', (event) => {
+                if (event.animationName === 'celebration') {
+                    this.createParticleEffect(toggle);
+                }
+            });
+        }
+    });
+
+    // ===== GESTOR DE CONFIRMACIÓN DE ELIMINACIÓN =====
+    class DeleteConfirmationManager {
+        constructor() {
+            this.init();
+        }
+        
+        init() {
+            // Interceptar todos los enlaces de eliminación
+            document.addEventListener('click', (event) => {
+                const deleteLink = event.target.closest('a[href*="delete"]');
+                if (deleteLink) {
+                    event.preventDefault();
+                    this.showConfirmation(deleteLink);
+                }
+            });
+        }
+        
+        showConfirmation(deleteLink) {
+            const href = deleteLink.getAttribute('href');
+            const isVideo = href.includes('video_tutorials');
+            const contentType = isVideo ? 'video' : 'documento';
+            
+            // Obtener el nombre del contenido de manera más robusta
+            let contentName = 'contenido';
+            try {
+                const listItem = deleteLink.closest('.list-group-item');
+                if (listItem) {
+                    const titleElement = listItem.querySelector('.fw-bold');
+                    if (titleElement) {
+                        contentName = titleElement.textContent.trim();
+                    }
+                }
+            } catch (e) {
+                console.log('No se pudo obtener el nombre del contenido');
+            }
+            
+            // Usar confirmación nativa del navegador
+            const confirmed = confirm(`¿Estás seguro de que quieres eliminar este ${contentType}?\n\n"${contentName}"\n\nEsta acción no se puede deshacer.`);
+            
+            if (confirmed) {
+                // Redirigir al enlace de eliminación
+                window.location.href = href;
+            }
+        }
+    }
+
+// Función para crear efecto de partículas (opcional)
+function createParticleEffect(element) {
+    const rect = element.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    for (let i = 0; i < 6; i++) {
+        const particle = document.createElement('div');
+        particle.style.position = 'fixed';
+        particle.style.left = centerX + 'px';
+        particle.style.top = centerY + 'px';
+        particle.style.width = '6px';
+        particle.style.height = '6px';
+        particle.style.background = '#28a745';
+        particle.style.borderRadius = '50%';
+        particle.style.pointerEvents = 'none';
+        particle.style.zIndex = '1000';
+        
+        document.body.appendChild(particle);
+        
+        // Animación de partícula
+        const angle = (i / 6) * Math.PI * 2;
+        const velocity = 50 + Math.random() * 50;
+        const vx = Math.cos(angle) * velocity;
+        const vy = Math.sin(angle) * velocity;
+        
+        particle.animate([
+            { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+            { transform: `translate(${vx}px, ${vy}px) scale(0)`, opacity: 0 }
+        ], {
+            duration: 1000,
+            easing: 'cubic-bezier(0.4, 0, 0.2, 1)'
+        }).onfinish = () => {
+            particle.remove();
+        };
+    }
+}
+</script>
+
+<!-- JavaScript para el visualizador de PowerPoint -->
+{% if powerpoint_data and not powerpoint_data.has_videos %}
+<script src="{% static 'js/powerpoint-viewer.js' %}"></script>
+{% endif %}
+
+{% endblock content %}
