@@ -6,6 +6,11 @@
 
 {% block content %}
 
+<script>
+// Configuración de URLs para AJAX
+const AJAX_BASE_URL = '{% url "mark_content_completed_ajax" slug="SLUG_PLACEHOLDER" content_id=0 content_type="TYPE_PLACEHOLDER" %}';
+</script>
+
 <nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
@@ -571,6 +576,47 @@
     transform: scale(1.2);
 }
 
+/* ===== ESTADO INCOMPLETO ===== */
+.completion-toggle:not(.completed) .completion-label {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-color: #dee2e6;
+    color: #6c757d;
+}
+
+.completion-toggle:not(.completed) .completion-label:hover {
+    background: linear-gradient(135deg, #e9ecef, #dee2e6);
+    border-color: #6c757d;
+    color: #495057;
+}
+
+.completion-toggle:not(.completed) .completion-icon {
+    background: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+}
+
+.completion-toggle:not(.completed) .completion-icon i {
+    color: #6c757d;
+}
+
+/* ===== ESTADO DE ERROR ===== */
+.completion-toggle.error .completion-label {
+    background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+    border-color: #dc3545;
+    color: #721c24;
+    animation: shake 0.5s ease-in-out;
+}
+
+.completion-toggle.error .completion-icon {
+    background: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
 .completion-text {
     flex: 1;
     transition: all 0.3s ease;
@@ -1118,7 +1164,8 @@ class CompletionManager {
         this.showLoadingState(toggle);
         
         try {
-            const response = await fetch(`/course/${courseSlug}/content/${contentId}/${contentType}/complete/`, {
+            const url = AJAX_BASE_URL.replace('SLUG_PLACEHOLDER', courseSlug).replace('0', contentId).replace('TYPE_PLACEHOLDER', contentType);
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': this.getCookie('csrftoken'),
@@ -1141,7 +1188,11 @@ class CompletionManager {
         } catch (error) {
             console.error('Error:', error);
             this.showErrorState(toggle);
-            this.showErrorNotification('Error al marcar como completado');
+            const checkbox = toggle.querySelector('.completion-checkbox');
+            const errorMessage = checkbox.checked ? 
+                'Error al marcar como completado' : 
+                'Error al marcar como incompleto';
+            this.showErrorNotification(errorMessage);
         } finally {
             this.hideLoadingState(toggle);
         }
@@ -1178,7 +1229,7 @@ class CompletionManager {
     }
     
     updateSidebarIndicators(data) {
-        // Actualizar iconos de completado en la barra lateral
+        // Actualizar iconos de completado/incompleto en la barra lateral
         const sidebarItems = document.querySelectorAll('.list-group-item');
         sidebarItems.forEach(item => {
             const link = item.querySelector('a[href*="' + data.content_id + '"]');
@@ -1186,13 +1237,17 @@ class CompletionManager {
                 const icon = item.querySelector('.completion-icon');
                 if (icon) {
                     if (data.is_completed) {
+                        // Estado completado - icono verde con check
                         icon.innerHTML = '<i class="fas fa-check-circle"></i>';
                         icon.style.background = 'rgba(40, 167, 69, 0.2)';
                         icon.style.color = '#28a745';
+                        icon.title = 'Completado';
                     } else {
-                        icon.innerHTML = '';
+                        // Estado incompleto - icono gris con círculo vacío
+                        icon.innerHTML = '<i class="far fa-circle"></i>';
                         icon.style.background = 'rgba(108, 117, 125, 0.1)';
                         icon.style.color = '#6c757d';
+                        icon.title = 'Incompleto';
                     }
                 }
             }

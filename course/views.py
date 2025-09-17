@@ -1205,8 +1205,8 @@ def user_course_list(request):
 @login_required
 def mark_content_completed_ajax(request, slug, content_id, content_type):
     """
-    Endpoint AJAX optimizado para marcar contenido como completado
-    Sin recargas de página, respuesta inmediata
+    Endpoint AJAX optimizado para marcar/desmarcar contenido como completado
+    Sin recargas de página, respuesta inmediata, maneja ambos estados
     """
     from django.http import JsonResponse
     from django.views.decorators.csrf import csrf_exempt
@@ -1219,8 +1219,12 @@ def mark_content_completed_ajax(request, slug, content_id, content_type):
     try:
         course = get_object_or_404(Course, slug=slug)
         
-        # Validación rápida de acceso
-        if not request.user.is_staff and not request.user.is_lecturer:
+        # Obtener el estado deseado del request
+        data = json.loads(request.body)
+        mark_completed = data.get('mark_completed', True)
+        
+        # Validación rápida de acceso (solo para marcar como completado)
+        if mark_completed and not request.user.is_staff and not request.user.is_lecturer:
             # Verificar acceso secuencial (optimizado)
             from .optimizations import CourseUnifiedNavigation
             unified_content = CourseUnifiedNavigation.get_unified_course_content(course, request.user)
@@ -1236,22 +1240,39 @@ def mark_content_completed_ajax(request, slug, content_id, content_type):
             if not can_access:
                 return JsonResponse({'error': 'Access denied - complete previous content first'}, status=403)
         
-        # Marcar como completado (operación atómica)
+        # Operación atómica de marcado/desmarcado
         is_completed = False
         if content_type == 'video':
             video = get_object_or_404(UploadVideo, id=content_id, course=course)
-            completion, created = VideoCompletion.objects.get_or_create(
-                user=request.user, video=video
-            )
-            # Sincronizar documento relacionado automáticamente
-            CourseUnifiedNavigation.sync_document_completion_when_video_completed(
-                request.user, video
-            )
-            is_completed = True
+            if mark_completed:
+                # Marcar como completado
+                completion, created = VideoCompletion.objects.get_or_create(
+                    user=request.user, video=video
+                )
+                # Sincronizar documento relacionado automáticamente
+                CourseUnifiedNavigation.sync_document_completion_when_video_completed(
+                    request.user, video
+                )
+                is_completed = True
+            else:
+                # Marcar como incompleto
+                video.mark_as_incomplete(request.user)
+                # Sincronizar documento relacionado automáticamente
+                from .optimizations import CourseUnifiedNavigation
+                CourseUnifiedNavigation.sync_document_incompletion_when_video_incompleted(
+                    request.user, video
+                )
+                is_completed = False
         elif content_type == 'document':
             document = get_object_or_404(Upload, id=content_id, course=course)
-            document.mark_as_completed(request.user)
-            is_completed = True
+            if mark_completed:
+                # Marcar como completado
+                document.mark_as_completed(request.user)
+                is_completed = True
+            else:
+                # Marcar como incompleto
+                document.mark_as_incomplete(request.user)
+                is_completed = False
         else:
             return JsonResponse({'error': 'Invalid content type'}, status=400)
         
@@ -1261,18 +1282,30 @@ def mark_content_completed_ajax(request, slug, content_id, content_type):
             request.user.id, course.id, content_id, content_type
         )
         
-        # Determinar textos según el tipo de contenido
+        # Determinar textos según el tipo de contenido y estado
         if content_type == 'video':
-            completed_text = "Video Completado"
-            pending_text = "Marcar Video como Completado"
+            if is_completed:
+                completed_text = "Video Completado"
+                pending_text = "Marcar Video como Incompleto"
+                action_message = "Video marcado como completado exitosamente"
+            else:
+                completed_text = "Video Incompleto"
+                pending_text = "Marcar Video como Completado"
+                action_message = "Video marcado como incompleto exitosamente"
         else:
-            completed_text = "Documento Completado"
-            pending_text = "Marcar Documento como Completado"
+            if is_completed:
+                completed_text = "Documento Completado"
+                pending_text = "Marcar Documento como Incompleto"
+                action_message = "Documento marcado como completado exitosamente"
+            else:
+                completed_text = "Documento Incompleto"
+                pending_text = "Marcar Documento como Completado"
+                action_message = "Documento marcado como incompleto exitosamente"
         
         return JsonResponse({
             'success': True,
             'is_completed': is_completed,
-            'message': 'Contenido marcado como completado exitosamente',
+            'message': action_message,
             'completed_text': completed_text,
             'pending_text': pending_text,
             'content_id': content_id,

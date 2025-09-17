@@ -417,6 +417,13 @@ class Upload(models.Model):
             user=user,
             document=self
         )
+    
+    def mark_as_incomplete(self, user):
+        """Marca el documento como incompleto por el usuario"""
+        DocumentCompletion.objects.filter(
+            user=user,
+            document=self
+        ).delete()
 
     def has_embedded_videos(self):
         """
@@ -728,6 +735,13 @@ class UploadVideo(models.Model):
 
     def is_completed_by(self, user):
         return self.completed_by.filter(id=user.id).exists()
+    
+    def mark_as_incomplete(self, user):
+        """Marca el video como incompleto por el usuario"""
+        VideoCompletion.objects.filter(
+            user=user,
+            video=self
+        ).delete()
 
     def save(self, *args, **kwargs):
         if not self.slug:

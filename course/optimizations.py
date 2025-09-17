@@ -384,6 +384,46 @@ class CourseUnifiedNavigation:
         return False
     
     @staticmethod
+    def sync_document_incompletion_when_video_incompleted(user, video):
+        """
+        Desmarca automáticamente el documento relacionado cuando se desmarca un video
+        Mantiene la sincronización inversa entre videos y documentos por índice
+        """
+        from .models import DocumentCompletion
+        
+        # Obtener todos los videos del curso ordenados
+        course_videos = UploadVideo.objects.filter(course=video.course).order_by('order', 'timestamp')
+        videos_list = list(course_videos)
+        
+        # Encontrar el índice del video incompletado
+        try:
+            video_index = videos_list.index(video)
+        except ValueError:
+            return False  # Video no encontrado
+        
+        # Obtener todos los documentos del curso ordenados
+        course_documents = Upload.objects.filter(course=video.course).order_by('upload_time')
+        documents_list = list(course_documents)
+        
+        # Verificar si hay un documento en el mismo índice
+        if video_index < len(documents_list):
+            related_document = documents_list[video_index]
+            
+            # Verificar si el documento está completado
+            if DocumentCompletion.objects.filter(
+                user=user, 
+                document=related_document
+            ).exists():
+                # Desmarcar el documento como completado
+                DocumentCompletion.objects.filter(
+                    user=user,
+                    document=related_document
+                ).delete()
+                return True
+        
+        return False
+    
+    @staticmethod
     def get_unified_course_content(course, user):
         """
         Obtiene todo el contenido del curso (videos + documentos) en orden unificado
