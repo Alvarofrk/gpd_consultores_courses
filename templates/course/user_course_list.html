@@ -243,7 +243,7 @@
                         </a>
                     </div>
                 {% elif course_data.course_status == 'material_in_progress' %}
-                    <a href="{{ course_data.course.get_absolute_url }}" 
+                    <a href="{% url 'course_unified_navigation_first' course_data.course.slug %}" 
                        class="btn btn-warning w-100">
                         <i class="fas fa-play me-2"></i>{% trans 'Continuar Material' %}
                     </a>

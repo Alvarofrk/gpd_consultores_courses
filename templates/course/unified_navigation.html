@@ -477,16 +477,20 @@ const AJAX_BASE_URL = '{% url "mark_content_completed_ajax" slug="SLUG_PLACEHOLD
                 {% endif %}
 
                 {% if next_content %}
-                    {% if can_proceed or current_user.is_staff or current_user.is_lecturer %}
-                        <a href="{% url 'course_unified_navigation' course.slug next_content.id next_content.type %}" 
-                           class="btn" style="background-color: #1a237e; color: white; min-width: 150px;">
-                            {% trans "Siguiente" %} <i class="fas fa-arrow-right"></i>
-                        </a>
-                    {% else %}
-                        <button class="btn btn-secondary" disabled title="{% trans 'Debes completar este contenido para continuar' %}" style="min-width: 150px;">
-                            {% trans "Siguiente" %} <i class="fas fa-arrow-right"></i>
-                        </button>
-                    {% endif %}
+                    <!-- Enlace habilitado (se muestra cuando can_proceed es true) -->
+                    <a href="{% url 'course_unified_navigation' course.slug next_content.id next_content.type %}" 
+                       class="btn next-button-enabled" 
+                       style="background-color: #1a237e; color: white; min-width: 150px; {% if not can_proceed and not current_user.is_staff and not current_user.is_lecturer %}display: none;{% endif %}">
+                        {% trans "Siguiente" %} <i class="fas fa-arrow-right"></i>
+                    </a>
+                    
+                    <!-- Botón deshabilitado (se muestra cuando can_proceed es false) -->
+                    <button class="btn btn-secondary next-button-disabled" 
+                            disabled 
+                            title="{% trans 'Debes completar este contenido para continuar' %}" 
+                            style="min-width: 150px; {% if can_proceed or current_user.is_staff or current_user.is_lecturer %}display: none;{% endif %}">
+                        {% trans "Siguiente" %} <i class="fas fa-arrow-right"></i>
+                    </button>
                 {% else %}
                     <button class="btn btn-secondary" disabled style="min-width: 150px;">
                         {% trans "Siguiente" %} <i class="fas fa-arrow-right"></i>
@@ -1182,6 +1186,8 @@ class CompletionManager {
                 this.updateUI(toggle, data);
                 this.showSuccessNotification(data.message);
                 this.updateSidebarIndicators(data);
+                this.updateNavigationButtons(data);
+                this.updateMyCoursesProgress(data);
             } else {
                 throw new Error(data.error || 'Error al actualizar el estado');
             }
@@ -1252,6 +1258,111 @@ class CompletionManager {
                 }
             }
         });
+    }
+    
+    updateNavigationButtons(data) {
+        // Actualizar el botón "Siguiente" basado en el estado de completado
+        const nextButtonEnabled = document.querySelector('.next-button-enabled');
+        const nextButtonDisabled = document.querySelector('.next-button-disabled');
+        
+        if (data.is_completed) {
+            // Si está completado, mostrar el enlace habilitado y ocultar el deshabilitado
+            if (nextButtonEnabled) {
+                nextButtonEnabled.style.display = 'inline-block';
+            }
+            if (nextButtonDisabled) {
+                nextButtonDisabled.style.display = 'none';
+            }
+        } else {
+            // Si no está completado, mostrar el botón deshabilitado y ocultar el habilitado
+            if (nextButtonEnabled) {
+                nextButtonEnabled.style.display = 'none';
+            }
+            if (nextButtonDisabled) {
+                nextButtonDisabled.style.display = 'inline-block';
+            }
+        }
+    }
+    
+    updateMyCoursesProgress(data) {
+        // Mostrar notificación de que el progreso se ha actualizado
+        if (data.is_completed) {
+            this.showProgressUpdateNotification('Progreso del curso actualizado');
+            
+            // Actualizar progreso en tiempo real si estamos en la página de "Mis Cursos"
+            this.updateProgressInRealTime();
+        }
+    }
+    
+    async updateProgressInRealTime() {
+        // Verificar si estamos en la página de "Mis Cursos"
+        if (window.location.pathname.includes('/my_courses/')) {
+            try {
+                // Hacer una llamada AJAX para obtener el progreso actualizado
+                const response = await fetch(window.location.href, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Cache-Control': 'no-cache'
+                    }
+                });
+                
+                if (response.ok) {
+                    const html = await response.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    
+                    // Buscar elementos de progreso en el HTML actualizado
+                    const progressBars = doc.querySelectorAll('.progress-bar');
+                    const progressTexts = doc.querySelectorAll('.progress-text');
+                    
+                    // Actualizar elementos en la página actual
+                    progressBars.forEach((newBar, index) => {
+                        const currentBar = document.querySelectorAll('.progress-bar')[index];
+                        if (currentBar && newBar) {
+                            currentBar.style.width = newBar.style.width;
+                            currentBar.setAttribute('aria-valuenow', newBar.getAttribute('aria-valuenow'));
+                        }
+                    });
+                    
+                    progressTexts.forEach((newText, index) => {
+                        const currentText = document.querySelectorAll('.progress-text')[index];
+                        if (currentText && newText) {
+                            currentText.textContent = newText.textContent;
+                        }
+                    });
+                    
+                    console.log('Progreso actualizado en tiempo real');
+                }
+            } catch (error) {
+                console.log('No se pudo actualizar el progreso en tiempo real:', error);
+            }
+        }
+    }
+    
+    showProgressUpdateNotification(message) {
+        // Crear notificación adicional para actualización de progreso
+        const progressToast = document.createElement('div');
+        progressToast.className = 'completion-toast progress-toast';
+        progressToast.innerHTML = `
+            <div class="toast-content">
+                <i class="fas fa-chart-line"></i>
+                <span class="toast-message">${message}</span>
+            </div>
+        `;
+        
+        // Estilos para toast de progreso
+        progressToast.style.background = 'linear-gradient(135deg, #17a2b8, #138496)';
+        progressToast.style.boxShadow = '0 8px 32px rgba(23, 162, 184, 0.4)';
+        
+        document.body.appendChild(progressToast);
+        
+        // Mostrar y ocultar
+        setTimeout(() => progressToast.classList.add('show'), 100);
+        setTimeout(() => {
+            progressToast.classList.remove('show');
+            setTimeout(() => document.body.removeChild(progressToast), 400);
+        }, 2000);
     }
     
     showSuccessNotification(message) {

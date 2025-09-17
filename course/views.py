@@ -290,6 +290,46 @@ def course_unified_navigation(request, slug, content_id=None, content_type=None)
 
 
 @login_required
+def course_unified_navigation_first(request, slug):
+    """
+    Vista para redirigir al primer contenido del curso o al último no completado
+    Implementa redirección inteligente para "Continuar Material"
+    """
+    from .optimizations import CourseUnifiedNavigation
+    
+    course = get_object_or_404(Course, slug=slug)
+    
+    # Obtener todo el contenido del curso ordenado
+    unified_content = CourseUnifiedNavigation.get_unified_course_content(course, request.user)
+    
+    # Si no hay contenido, mostrar mensaje de error
+    if not unified_content:
+        messages.error(request, "Este curso no tiene contenido disponible (videos o documentos).")
+        return redirect('course_single', slug=slug)
+    
+    # Encontrar el último contenido no completado
+    last_incomplete_content = None
+    for content in unified_content:
+        if not content['is_completed']:
+            last_incomplete_content = content
+            break  # Tomar el primer no completado (que es el que debe continuar)
+    
+    # Si no hay contenido incompleto, redirigir al último contenido
+    if not last_incomplete_content:
+        last_content = unified_content[-1]  # Último contenido
+        return redirect('course_unified_navigation', 
+                       slug=slug, 
+                       content_id=last_content['id'], 
+                       content_type=last_content['type'])
+    
+    # Redirigir al contenido que debe continuar
+    return redirect('course_unified_navigation', 
+                   slug=slug, 
+                   content_id=last_incomplete_content['id'], 
+                   content_type=last_incomplete_content['type'])
+
+
+@login_required
 def course_video_navigation(request, slug, video_id=None):
     from .optimizations import CourseOptimizations, CourseCache
     
@@ -1212,6 +1252,10 @@ def mark_content_completed_ajax(request, slug, content_id, content_type):
     from django.views.decorators.csrf import csrf_exempt
     from django.views.decorators.http import require_http_methods
     import json
+    from django.shortcuts import get_object_or_404
+    from .models import Course, UploadVideo, Upload, VideoCompletion
+    from .optimizations import CourseUnifiedNavigation, CourseCache
+    from django.utils import timezone
     
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -1223,22 +1267,12 @@ def mark_content_completed_ajax(request, slug, content_id, content_type):
         data = json.loads(request.body)
         mark_completed = data.get('mark_completed', True)
         
-        # Validación rápida de acceso (solo para marcar como completado)
-        if mark_completed and not request.user.is_staff and not request.user.is_lecturer:
-            # Verificar acceso secuencial (optimizado)
-            from .optimizations import CourseUnifiedNavigation
-            unified_content = CourseUnifiedNavigation.get_unified_course_content(course, request.user)
-            current_content = CourseUnifiedNavigation.get_current_content(unified_content, content_id, content_type)
-            
-            if not current_content:
-                return JsonResponse({'error': 'Content not found'}, status=404)
-            
-            can_access, redirect_content = CourseUnifiedNavigation.validate_content_access(
-                request.user, current_content, unified_content
-            )
-            
-            if not can_access:
-                return JsonResponse({'error': 'Access denied - complete previous content first'}, status=403)
+        # Validación básica de acceso (simplificada para AJAX)
+        if not request.user.is_staff and not request.user.is_lecturer:
+            # Verificar que el usuario tiene acceso al curso
+            from result.models import TakenCourse
+            if not TakenCourse.objects.filter(student__student=request.user, course=course).exists():
+                return JsonResponse({'error': 'Access denied - not enrolled in course'}, status=403)
         
         # Operación atómica de marcado/desmarcado
         is_completed = False
@@ -1258,7 +1292,6 @@ def mark_content_completed_ajax(request, slug, content_id, content_type):
                 # Marcar como incompleto
                 video.mark_as_incomplete(request.user)
                 # Sincronizar documento relacionado automáticamente
-                from .optimizations import CourseUnifiedNavigation
                 CourseUnifiedNavigation.sync_document_incompletion_when_video_incompleted(
                     request.user, video
                 )
@@ -1277,10 +1310,12 @@ def mark_content_completed_ajax(request, slug, content_id, content_type):
             return JsonResponse({'error': 'Invalid content type'}, status=400)
         
         # Invalidar solo el caché específico (optimización máxima)
-        from .optimizations import CourseCache
         CourseCache.invalidate_content_completion_cache(
             request.user.id, course.id, content_id, content_type
         )
+        
+        # Invalidar caché de "Mis Cursos" para actualizar el progreso
+        CourseCache.invalidate_user_progress_cache(request.user.id, course.id)
         
         # Determinar textos según el tipo de contenido y estado
         if content_type == 'video':

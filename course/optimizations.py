@@ -579,10 +579,14 @@ class CourseCache:
         Invalida caché de progreso del usuario de forma selectiva
         Si course_id es None, invalida todos los cursos del usuario
         """
+        from django.core.cache import cache
+        
         if course_id:
             # Invalidar solo el curso específico (más eficiente)
             cache.delete(CourseCache.get_user_progress_cache_key(user_id, course_id))
             cache.delete(CourseCache.get_course_content_cache_key(course_id))
+            # También invalidar el caché bulk para forzar recálculo
+            cache.delete(CourseCache.get_bulk_progress_cache_key(user_id))
         else:
             # Invalidar caché bulk de progreso
             cache.delete(CourseCache.get_bulk_progress_cache_key(user_id))
@@ -593,6 +597,8 @@ class CourseCache:
         Invalida solo el caché específico de un contenido
         Optimización máxima para actualizaciones individuales
         """
+        from django.core.cache import cache
+        
         # Invalidar caché específico del contenido
         cache_key = f"content_completion_{user_id}_{course_id}_{content_id}_{content_type}"
         cache.delete(cache_key)

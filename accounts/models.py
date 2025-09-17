@@ -99,6 +99,8 @@ class User(AbstractUser):
 
     @property
     def get_user_role(self):
+        role = _("T")  # Default role
+        
         if self.is_superuser:
             role = _("A")
         elif self.is_student:
