@@ -370,26 +370,9 @@ const AJAX_BASE_URL = '{% url "mark_content_completed_ajax" slug="SLUG_PLACEHOLD
                                             {% endif %}
                                         </div>
                                     </div>
-                                    
-                                    <!-- Documento relacionado (si existe) -->
-                                    {% for related_content in unified_content %}
-                                        {% if related_content.type == 'document' and related_content.related_video_id == content.id %}
-                                            <div class="mt-2 ms-4">
-                                                <a href="{% url 'course_unified_navigation' course.slug related_content.id related_content.type %}" 
-                                                   class="text-decoration-none d-flex align-items-center"
-                                                   style="{% if content.id == current_content.id and content.type == current_content.type %}color: rgba(255,255,255,0.8);{% else %}color: #6c757d;{% endif %}">
-                                                    <i class="fas fa-file-{{ related_content.object.get_extension_short }} me-2"></i>
-                                                    <small>{{ related_content.title }}</small>
-                                                    {% if related_content.is_completed %}
-                                                        <i class="fas fa-check-circle text-success ms-1"></i>
-                                                    {% endif %}
-                                                </a>
-                                            </div>
-                                        {% endif %}
-                                    {% endfor %}
                                 </div>
-                            {% elif content.type == 'document' and not content.related_video_id %}
-                                <!-- Documento sin video relacionado -->
+                            {% elif content.type == 'document' %}
+                                <!-- Documento (con o sin video relacionado) -->
                                 <div class="list-group-item {% if content.id == current_content.id and content.type == current_content.type %}active{% endif %}" 
                                      style="{% if content.id == current_content.id and content.type == current_content.type %}background-color: #1a237e; color: white;{% endif %}">
                                     <div class="d-flex justify-content-between align-items-center">
@@ -404,8 +387,17 @@ const AJAX_BASE_URL = '{% url "mark_content_completed_ajax" slug="SLUG_PLACEHOLD
                                                             <i class="fas fa-check-circle text-success me-1"></i>
                                                         {% endif %}
                                                         {{ content.title }}
+                                                        {% if content.related_video_id %}
+                                                            <small class="text-muted">(relacionado con video)</small>
+                                                        {% endif %}
                                                     </div>
-                                                    <small class="text-muted">Documento {{ content.index|add:1 }}</small>
+                                                    <small class="text-muted">
+                                                        {% if content.related_video_id %}
+                                                            Documento {{ content.index|add:1 }} (relacionado)
+                                                        {% else %}
+                                                            Documento {{ content.index|add:1 }}
+                                                        {% endif %}
+                                                    </small>
                                                 </div>
                                             </div>
                                         </a>

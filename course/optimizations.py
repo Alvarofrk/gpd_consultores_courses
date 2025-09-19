@@ -428,6 +428,7 @@ class CourseUnifiedNavigation:
         """
         Obtiene todo el contenido del curso (videos + documentos) en orden unificado
         Mantiene la sincronización por índice: cada video va seguido de su documento correspondiente
+        CORREGIDO: Evita duplicación de documentos
         """
         videos = CourseOptimizations.get_optimized_videos_with_completion(course, user)
         documents = CourseOptimizations.get_optimized_documents_with_completion(course, user)
@@ -438,6 +439,9 @@ class CourseUnifiedNavigation:
         
         # Crear lista unificada manteniendo la sincronización por índice
         unified_content = []
+        
+        # Crear un set para rastrear documentos ya procesados
+        processed_document_ids = set()
         
         # Procesar videos y sus documentos correspondientes
         for video_index, video in enumerate(videos_list):
@@ -469,22 +473,25 @@ class CourseUnifiedNavigation:
                     'index': video_index,
                     'related_video_id': video.id  # Referencia al video relacionado
                 })
+                # Marcar este documento como procesado
+                processed_document_ids.add(doc.id)
         
-        # Agregar documentos que no tienen video relacionado (después de todos los videos)
-        for doc_index in range(len(videos_list), len(documents_list)):
-            doc = documents_list[doc_index]
-            unified_content.append({
-                'type': 'document',
-                'id': doc.id,
-                'object': doc,
-                'title': doc.title,
-                'is_completed': getattr(doc, 'is_completed', False),
-                'order': 999 + doc_index,  # Documentos sin video van al final
-                'timestamp': doc.upload_time,
-                'slug': None,
-                'index': doc_index,
-                'related_video_id': None  # Sin video relacionado
-            })
+        # Agregar SOLO documentos que no tienen video relacionado (después de todos los videos)
+        for doc_index, doc in enumerate(documents_list):
+            # Solo agregar si no fue procesado como documento relacionado
+            if doc.id not in processed_document_ids:
+                unified_content.append({
+                    'type': 'document',
+                    'id': doc.id,
+                    'object': doc,
+                    'title': doc.title,
+                    'is_completed': getattr(doc, 'is_completed', False),
+                    'order': 999 + doc_index,  # Documentos sin video van al final
+                    'timestamp': doc.upload_time,
+                    'slug': None,
+                    'index': doc_index,
+                    'related_video_id': None  # Sin video relacionado
+                })
         
         # Ordenar por order y timestamp
         unified_content.sort(key=lambda x: (x['order'], x['timestamp']))

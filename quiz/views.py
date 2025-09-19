@@ -105,6 +105,22 @@ def formatear_fecha_larga(fecha):
     
     return f"{dia} de {mes} del {año}"
 
+def ajustar_tamano_nombre(nombre):
+    """
+    Ajusta el tamaño de fuente del nombre según su longitud
+    Rangos: <=25, <=35, <=45, else
+    """
+    longitud = len(nombre.strip())
+    
+    if longitud <= 25:
+        return 24  # Tamaño normal
+    elif longitud <= 35:
+        return 20  # Tamaño mediano
+    elif longitud <= 45:
+        return 16  # Tamaño pequeño
+    else:
+        return 14  # Tamaño muy pequeño
+
 def generar_certificado(request, sitting_id):
     # FUNCIONALIDAD DESHABILITADA PARA PARTICIPANTES
     # Solo administradores pueden descargar certificados
@@ -162,7 +178,9 @@ def generar_certificado(request, sitting_id):
     ancho_pagina, alto_pagina = landscape(A4)
 
     # Aplicar contenido con las posiciones específicas
-    p.setFont("Helvetica-Bold", 24)
+    # Ajustar tamaño de fuente según la longitud del nombre
+    tamano_fuente = ajustar_tamano_nombre(nombre_usuario)
+    p.setFont("Helvetica-Bold", tamano_fuente)
     p.setFillColorRGB(0.85, 0.64, 0.13)  # Color dorado
     p.drawCentredString(posiciones["pos_nombre"][0], posiciones["pos_nombre"][1], nombre_usuario)
 
@@ -1110,7 +1128,9 @@ def generar_pdf_certificado_manual(request, certificate, plantilla_nombre):
     p = canvas.Canvas(buffer, pagesize=landscape(A4))
     ancho_pagina, alto_pagina = landscape(A4)
     # Aplicar contenido con las mismas posiciones y estilos
-    p.setFont("Helvetica-Bold", 24)
+    # Ajustar tamaño de fuente según la longitud del nombre
+    tamano_fuente = ajustar_tamano_nombre(nombre_estudiante)
+    p.setFont("Helvetica-Bold", tamano_fuente)
     p.setFillColorRGB(0.85, 0.64, 0.13)  # Color dorado
     p.drawCentredString(posiciones["pos_nombre"][0], posiciones["pos_nombre"][1], nombre_estudiante)
     # Puntaje
