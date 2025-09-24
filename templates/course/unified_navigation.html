@@ -8,7 +8,7 @@
 
 <script>
 // Configuración de URLs para AJAX
-const AJAX_BASE_URL = '{% url "mark_content_completed_ajax" slug="SLUG_PLACEHOLDER" content_id=0 content_type="TYPE_PLACEHOLDER" %}';
+const AJAX_BASE_URL_TEMPLATE = '{% url "mark_content_completed_ajax" slug="SLUG_PLACEHOLDER" content_id=999999 content_type="TYPE_PLACEHOLDER" %}';
 </script>
 
 <nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
@@ -463,9 +463,20 @@ const AJAX_BASE_URL = '{% url "mark_content_completed_ajax" slug="SLUG_PLACEHOLD
                 {% endif %}
 
                 {% if is_last_content %}
-                    <a class="btn btn-warning" href="{% url 'quiz_index' course.slug %}" style="min-width: 150px;">
+                    <!-- Botón de examen habilitado (se muestra cuando el contenido está completado) -->
+                    <a class="btn btn-warning quiz-button-enabled" 
+                       href="{% url 'quiz_index' course.slug %}" 
+                       style="min-width: 150px; {% if not is_completed and not current_user.is_staff and not current_user.is_lecturer %}display: none;{% endif %}">
                         <i class="fas fa-list"></i> {% trans 'Tomar examen' %}
                     </a>
+                    
+                    <!-- Botón de examen deshabilitado (se muestra cuando el contenido no está completado) -->
+                    <button class="btn btn-secondary quiz-button-disabled" 
+                            disabled 
+                            title="{% trans 'Debes completar este contenido para tomar el examen' %}" 
+                            style="min-width: 150px; {% if is_completed or current_user.is_staff or current_user.is_lecturer %}display: none;{% endif %}">
+                        <i class="fas fa-list"></i> {% trans 'Tomar examen' %}
+                    </button>
                 {% endif %}
 
                 {% if next_content %}
@@ -1095,6 +1106,96 @@ const AJAX_BASE_URL = '{% url "mark_content_completed_ajax" slug="SLUG_PLACEHOLD
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
+
+/* ===== ESTILOS PARA BOTONES DE NAVEGACIÓN ===== */
+.next-button-enabled {
+    transition: all 0.3s ease-in-out !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    background-color: #1a237e !important;
+    border-color: #1a237e !important;
+    color: white !important;
+}
+
+.next-button-disabled {
+    transition: all 0.3s ease-in-out !important;
+    opacity: 0.6 !important;
+    pointer-events: none !important;
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+    color: #fff !important;
+    cursor: not-allowed !important;
+}
+
+.next-button-disabled:hover {
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+    color: #fff !important;
+    transform: none !important;
+}
+
+.next-button-disabled.disabled {
+    position: relative;
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+    color: #fff !important;
+}
+
+.next-button-disabled.disabled::after {
+    content: '🔒';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 16px;
+    opacity: 0.8;
+    pointer-events: none;
+}
+
+/* ===== ESTILOS PARA BOTONES DE EXAMEN ===== */
+.quiz-button-enabled {
+    transition: all 0.3s ease-in-out !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    background-color: #ffc107 !important;
+    border-color: #ffc107 !important;
+    color: #000 !important;
+}
+
+.quiz-button-disabled {
+    transition: all 0.3s ease-in-out !important;
+    opacity: 0.6 !important;
+    pointer-events: none !important;
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+    color: #fff !important;
+    cursor: not-allowed !important;
+}
+
+.quiz-button-disabled:hover {
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+    color: #fff !important;
+    transform: none !important;
+}
+
+.quiz-button-disabled.disabled {
+    position: relative;
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+    color: #fff !important;
+}
+
+.quiz-button-disabled.disabled::after {
+    content: '🔒';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 16px;
+    opacity: 0.8;
+    pointer-events: none;
+}
 </style>
 
 <!-- JavaScript para el visualizador de documentos -->
@@ -1160,7 +1261,7 @@ class CompletionManager {
         this.showLoadingState(toggle);
         
         try {
-            const url = AJAX_BASE_URL.replace('SLUG_PLACEHOLDER', courseSlug).replace('0', contentId).replace('TYPE_PLACEHOLDER', contentType);
+            const url = AJAX_BASE_URL_TEMPLATE.replace('SLUG_PLACEHOLDER', courseSlug).replace('999999', contentId).replace('TYPE_PLACEHOLDER', contentType);
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
@@ -1257,23 +1358,94 @@ class CompletionManager {
         const nextButtonEnabled = document.querySelector('.next-button-enabled');
         const nextButtonDisabled = document.querySelector('.next-button-disabled');
         
+        // Actualizar el botón "Tomar examen" basado en el estado de completado
+        const quizButtonEnabled = document.querySelector('.quiz-button-enabled');
+        const quizButtonDisabled = document.querySelector('.quiz-button-disabled');
+        
+        console.log('Actualizando botones de navegación:', {
+            is_completed: data.is_completed,
+            nextButtonEnabled: !!nextButtonEnabled,
+            nextButtonDisabled: !!nextButtonDisabled,
+            quizButtonEnabled: !!quizButtonEnabled,
+            quizButtonDisabled: !!quizButtonDisabled
+        });
+        
         if (data.is_completed) {
-            // Si está completado, mostrar el enlace habilitado y ocultar el deshabilitado
+            // Si está completado, mostrar los enlaces habilitados y ocultar los deshabilitados
             if (nextButtonEnabled) {
                 nextButtonEnabled.style.display = 'inline-block';
+                nextButtonEnabled.style.opacity = '1';
+                nextButtonEnabled.style.pointerEvents = 'auto';
+                nextButtonEnabled.style.backgroundColor = '#1a237e';
+                nextButtonEnabled.style.borderColor = '#1a237e';
+                nextButtonEnabled.style.color = 'white';
+                nextButtonEnabled.classList.remove('disabled');
+                console.log('Botón siguiente habilitado');
             }
             if (nextButtonDisabled) {
                 nextButtonDisabled.style.display = 'none';
+                console.log('Botón siguiente deshabilitado ocultado');
+            }
+            
+            // Botón de examen habilitado
+            if (quizButtonEnabled) {
+                quizButtonEnabled.style.display = 'inline-block';
+                quizButtonEnabled.style.opacity = '1';
+                quizButtonEnabled.style.pointerEvents = 'auto';
+                quizButtonEnabled.style.backgroundColor = '#ffc107';
+                quizButtonEnabled.style.borderColor = '#ffc107';
+                quizButtonEnabled.style.color = '#000';
+                quizButtonEnabled.classList.remove('disabled');
+                console.log('Botón examen habilitado');
+            }
+            if (quizButtonDisabled) {
+                quizButtonDisabled.style.display = 'none';
+                console.log('Botón examen deshabilitado ocultado');
             }
         } else {
-            // Si no está completado, mostrar el botón deshabilitado y ocultar el habilitado
+            // Si no está completado, mostrar los botones deshabilitados y ocultar los habilitados
             if (nextButtonEnabled) {
                 nextButtonEnabled.style.display = 'none';
+                console.log('Botón siguiente habilitado ocultado');
             }
             if (nextButtonDisabled) {
                 nextButtonDisabled.style.display = 'inline-block';
+                nextButtonDisabled.style.opacity = '0.6';
+                nextButtonDisabled.style.pointerEvents = 'none';
+                nextButtonDisabled.style.backgroundColor = '#6c757d';
+                nextButtonDisabled.style.borderColor = '#6c757d';
+                nextButtonDisabled.style.color = '#fff';
+                nextButtonDisabled.classList.add('disabled');
+                console.log('Botón siguiente deshabilitado mostrado');
+            }
+            
+            // Botón de examen deshabilitado
+            if (quizButtonEnabled) {
+                quizButtonEnabled.style.display = 'none';
+                console.log('Botón examen habilitado ocultado');
+            }
+            if (quizButtonDisabled) {
+                quizButtonDisabled.style.display = 'inline-block';
+                quizButtonDisabled.style.opacity = '0.6';
+                quizButtonDisabled.style.pointerEvents = 'none';
+                quizButtonDisabled.style.backgroundColor = '#6c757d';
+                quizButtonDisabled.style.borderColor = '#6c757d';
+                quizButtonDisabled.style.color = '#fff';
+                quizButtonDisabled.classList.add('disabled');
+                console.log('Botón examen deshabilitado mostrado');
             }
         }
+        
+        // Agregar animación suave
+        this.animateButtonTransition();
+    }
+    
+    animateButtonTransition() {
+        // Agregar animación suave a la transición de botones
+        const buttons = document.querySelectorAll('.next-button-enabled, .next-button-disabled, .quiz-button-enabled, .quiz-button-disabled');
+        buttons.forEach(button => {
+            button.style.transition = 'all 0.3s ease-in-out';
+        });
     }
     
     updateMyCoursesProgress(data) {
@@ -1429,6 +1601,9 @@ class CompletionManager {
         new CompletionManager();
         // new DeleteConfirmationManager(); // Deshabilitado temporalmente para usar confirmación nativa
         
+        // Inicializar estado de botones de navegación
+        initializeNavigationButtons();
+        
         // Agregar efectos de partículas al completar (opcional)
         const toggle = document.querySelector('.completion-toggle');
         if (toggle) {
@@ -1439,6 +1614,74 @@ class CompletionManager {
             });
         }
     });
+    
+    // Función para inicializar el estado correcto de los botones de navegación
+    function initializeNavigationButtons() {
+        const toggle = document.querySelector('.completion-toggle');
+        const checkbox = document.querySelector('.completion-checkbox');
+        
+        if (toggle && checkbox) {
+            const isCompleted = checkbox.checked;
+            const nextButtonEnabled = document.querySelector('.next-button-enabled');
+            const nextButtonDisabled = document.querySelector('.next-button-disabled');
+            const quizButtonEnabled = document.querySelector('.quiz-button-enabled');
+            const quizButtonDisabled = document.querySelector('.quiz-button-disabled');
+            
+            console.log('Inicializando botones de navegación:', {
+                isCompleted: isCompleted,
+                nextButtonEnabled: !!nextButtonEnabled,
+                nextButtonDisabled: !!nextButtonDisabled,
+                quizButtonEnabled: !!quizButtonEnabled,
+                quizButtonDisabled: !!quizButtonDisabled
+            });
+            
+            if (isCompleted) {
+                // Contenido completado - mostrar botones habilitados
+                if (nextButtonEnabled) {
+                    nextButtonEnabled.style.display = 'inline-block';
+                    nextButtonEnabled.style.backgroundColor = '#1a237e';
+                    nextButtonEnabled.style.borderColor = '#1a237e';
+                    nextButtonEnabled.style.color = 'white';
+                }
+                if (nextButtonDisabled) {
+                    nextButtonDisabled.style.display = 'none';
+                }
+                
+                // Botón de examen habilitado
+                if (quizButtonEnabled) {
+                    quizButtonEnabled.style.display = 'inline-block';
+                    quizButtonEnabled.style.backgroundColor = '#ffc107';
+                    quizButtonEnabled.style.borderColor = '#ffc107';
+                    quizButtonEnabled.style.color = '#000';
+                }
+                if (quizButtonDisabled) {
+                    quizButtonDisabled.style.display = 'none';
+                }
+            } else {
+                // Contenido no completado - mostrar botones deshabilitados
+                if (nextButtonEnabled) {
+                    nextButtonEnabled.style.display = 'none';
+                }
+                if (nextButtonDisabled) {
+                    nextButtonDisabled.style.display = 'inline-block';
+                    nextButtonDisabled.style.backgroundColor = '#6c757d';
+                    nextButtonDisabled.style.borderColor = '#6c757d';
+                    nextButtonDisabled.style.color = '#fff';
+                }
+                
+                // Botón de examen deshabilitado
+                if (quizButtonEnabled) {
+                    quizButtonEnabled.style.display = 'none';
+                }
+                if (quizButtonDisabled) {
+                    quizButtonDisabled.style.display = 'inline-block';
+                    quizButtonDisabled.style.backgroundColor = '#6c757d';
+                    quizButtonDisabled.style.borderColor = '#6c757d';
+                    quizButtonDisabled.style.color = '#fff';
+                }
+            }
+        }
+    }
 
     // ===== GESTOR DE CONFIRMACIÓN DE ELIMINACIÓN =====
     class DeleteConfirmationManager {
@@ -1531,3 +1774,4 @@ function createParticleEffect(element) {
 {% endif %}
 
 {% endblock content %}
+

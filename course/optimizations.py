@@ -503,7 +503,7 @@ class CourseUnifiedNavigation:
         """
         Obtiene el contenido actual basado en ID y tipo
         """
-        if content_id and content_type:
+        if content_id is not None and content_type:
             for content in unified_content:
                 if content['id'] == content_id and content['type'] == content_type:
                     return content

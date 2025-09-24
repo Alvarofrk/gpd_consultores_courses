@@ -1263,6 +1263,10 @@ def mark_content_completed_ajax(request, slug, content_id, content_type):
     try:
         course = get_object_or_404(Course, slug=slug)
         
+        # Validar content_id
+        if content_id == 0:
+            return JsonResponse({'error': 'Invalid content ID - cannot be 0'}, status=400)
+        
         # Obtener el estado deseado del request
         data = json.loads(request.body)
         mark_completed = data.get('mark_completed', True)
