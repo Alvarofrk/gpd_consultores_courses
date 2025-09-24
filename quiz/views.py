@@ -80,6 +80,7 @@ POSICIONES_CERTIFICADOS = {
     "C70-RTA":     {"pos_nombre": (490, 401), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (583, 223.5), "pos_fecha_aprobacion2": (464, 258.5), "pos_fecha_vencimiento": (630, 258.5), "pos_usuario": (555, 372), "pos_codigo": (805,335 ), "pos_qr": (750, 370)},
     "C24-TA":      {"pos_nombre": (490, 401), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (585, 221.8), "pos_fecha_aprobacion2": (464, 258.5), "pos_fecha_vencimiento": (625, 258.5), "pos_usuario": (555, 372), "pos_codigo": (788,326 ), "pos_qr": (750, 370)},
     "C22-MD":      {"pos_nombre": (475, 361), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (625, 183.4), "pos_fecha_aprobacion2": (555, 206.3), "pos_fecha_vencimiento": (681, 206.3), "pos_usuario": (565, 327), "pos_codigo": (795,295.5 ), "pos_qr": (750, 350)},
+    "C55-SEN":      {"pos_nombre": (475, 361), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (625, 183.4), "pos_fecha_aprobacion2": (555, 206.3), "pos_fecha_vencimiento": (681, 206.3), "pos_usuario": (565, 327), "pos_codigo": (795,295.5 ), "pos_qr": (750, 350)},
 }
 
 def formatear_fecha_larga(fecha):
