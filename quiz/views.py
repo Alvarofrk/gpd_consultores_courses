@@ -255,12 +255,6 @@ def generar_certificado(request, sitting_id):
     nombre_usuario_sanitizado = nombre_usuario.replace(" ", "_").replace("/", "_").replace("\\", "_").replace(":", "_").replace("*", "_").replace("?", "_").replace("\"", "_").replace("<", "_").replace(">", "_").replace("|", "_")
     nombre_curso_sanitizado = sitting.quiz.course.title.replace(" ", "_").replace("/", "_").replace("\\", "_").replace(":", "_").replace("*", "_").replace("?", "_").replace("\"", "_").replace("<", "_").replace(">", "_").replace("|", "_")
     
-    # Limitar longitud de nombres para evitar nombres de archivo muy largos
-    if len(nombre_usuario_sanitizado) > 50:
-        nombre_usuario_sanitizado = nombre_usuario_sanitizado[:50]
-    if len(nombre_curso_sanitizado) > 50:
-        nombre_curso_sanitizado = nombre_curso_sanitizado[:50]
-    
     # Formato: {código_curso}-{número_certificado}-{nombre_curso}-{nombre_participante}.pdf
     filename = f"{sitting.quiz.course.code}-{sitting.certificate_code}-{nombre_curso_sanitizado}-{nombre_usuario_sanitizado}.pdf"
 
