@@ -679,17 +679,59 @@ class QuizUserProgressView(TemplateView):
 class QuizMarkingList(ListView):
     model = Sitting
     template_name = "quiz/sitting_list.html"
-    paginate_by = 20  # 20 exámenes por página
+    paginate_by = 15  # 15 exámenes por página
 
     def get_queryset(self):
-        from django.db.models import Count, F, Q
+        from django.db.models import Count, F, Q, Case, When, IntegerField, Subquery, OuterRef
+        from django.db import models
         
-        # OPTIMIZACIÓN: Usar select_related para eliminar N+1 queries
-        # MODIFICACIÓN: Solo mostrar exámenes aprobados (completos = aprobados)
-        # Nota: No podemos usar max_score directamente en ORM porque es un @property
+        # OPTIMIZACIÓN CRÍTICA: Calcular todo en SQL para evitar N+1 queries
+        # Subconsulta para contar preguntas por quiz
+        question_count_subquery = Quiz.objects.filter(
+            id=OuterRef('quiz_id')
+        ).annotate(
+            question_count=Count('question')
+        ).values('question_count')
+        
+        # Queryset optimizado que calcula aprobación directamente en SQL
         queryset = Sitting.objects.filter(complete=True).select_related(
             'user', 'quiz', 'quiz__course'
-        ).prefetch_related('quiz__question_set').order_by('-end')
+        ).annotate(
+            # Contar preguntas del quiz
+            question_count=Subquery(question_count_subquery),
+            
+            # Calcular porcentaje correcto en SQL
+            percent_correct=Case(
+                When(question_count=0, then=0),
+                default=F('current_score') * 100.0 / F('question_count'),
+                output_field=models.FloatField()
+            ),
+            
+            # Verificar si está aprobado directamente en SQL
+            is_approved=Case(
+                When(
+                    percent_correct__gte=F('quiz__pass_mark'),
+                    then=1
+                ),
+                default=0,
+                output_field=IntegerField()
+            ),
+            
+            # Contar intentos totales por usuario+quiz
+            total_attempts=Count(
+                'user__sitting',
+                filter=Q(quiz=F('quiz'), complete=True),
+                distinct=True
+            ),
+            
+            # Contar intentos aprobados por usuario+quiz (simplificado)
+            # Nota: En la práctica, esto será 1 para cada registro ya que solo mostramos aprobados
+            approved_attempts=Case(
+                When(is_approved=1, then=1),
+                default=0,
+                output_field=IntegerField()
+            )
+        ).filter(is_approved=1)  # Solo exámenes aprobados
         
         # Filtro por instructor si no es superusuario
         if not self.request.user.is_superuser:
@@ -697,130 +739,113 @@ class QuizMarkingList(ListView):
                 quiz__course__allocated_course__lecturer__pk=self.request.user.id
             )
         
-        # OPTIMIZACIÓN: Anotar campos calculados para evitar consultas en template
-        # CORREGIDO: Contar solo intentos completados del usuario para ese quiz específico
-        queryset = queryset.annotate(
-            # CORREGIDO: Contar intentos totales completados para este usuario y quiz específico
-            # Usar el mismo quiz del sitting actual, no todos los quizzes del usuario
-            total_attempts=Count(
-                'user__sitting',
-                filter=Q(quiz=F('quiz'), complete=True),
-                distinct=True
-            )
-        )
-        
-        # Para approved_attempts, necesitamos calcularlo en Python después de obtener los datos
-        # porque max_score es un @property que no se puede usar en ORM
-        
         # OPTIMIZACIÓN: Usar filtros más eficientes
         quiz_filter = self.request.GET.get("quiz_filter")
         if quiz_filter:
-            # Usar istartswith en lugar de icontains para mejor rendimiento
             queryset = queryset.filter(quiz__title__istartswith=quiz_filter)
         
         user_filter = self.request.GET.get("user_filter")
         if user_filter:
-            # Usar istartswith en lugar de icontains para mejor rendimiento
             queryset = queryset.filter(user__username__istartswith=user_filter)
         
-        return queryset
+        return queryset.order_by('-end')
+
+    def get_unique_approved_sittings(self):
+        """
+        Obtiene solo un examen aprobado por usuario+quiz (unicidad real)
+        Usa un enfoque simple y compatible que evita problemas de Django
+        """
+        # Obtener el queryset base optimizado
+        base_queryset = self.get_queryset()
+        
+        # Aplicar unicidad usando Python (más simple y compatible)
+        # IMPORTANTE: Usar un diccionario para mantener solo el más reciente
+        seen_combinations = {}
+        
+        for sitting in base_queryset:
+            combination = (sitting.user.id, sitting.quiz.id)
+            if combination not in seen_combinations:
+                seen_combinations[combination] = sitting
+            else:
+                # Si ya existe, mantener el más reciente (mayor fecha de finalización)
+                if sitting.end > seen_combinations[combination].end:
+                    seen_combinations[combination] = sitting
+        
+        # Convertir diccionario a lista y ordenar por fecha de finalización descendente
+        unique_sittings = list(seen_combinations.values())
+        unique_sittings.sort(key=lambda x: x.end, reverse=True)
+        
+        return unique_sittings
 
     def get_queryset_with_approved_attempts(self):
         """
-        Obtiene el queryset optimizado, filtra solo exámenes aprobados y calcula approved_attempts
-        CORREGIDO: Solo devuelve UN registro por usuario+quiz (unicidad real)
+        MÉTODO OBSOLETO: Ya no se necesita porque get_queryset() ya está optimizado
+        Mantenido por compatibilidad pero redirige al queryset optimizado
         """
-        queryset = self.get_queryset()
-        
-        # Convertir a lista para poder iterar y filtrar aprobados
-        sittings_list = list(queryset)
-        
-        # Filtrar solo exámenes aprobados y calcular approved_attempts
-        # CORREGIDO: Implementar unicidad real - solo un registro por usuario+quiz
-        approved_sittings = []
-        certificados_unicos = set()
-        
-        for sitting in sittings_list:
-            # Verificar si está aprobado usando la lógica del modelo
-            if sitting.get_percent_correct >= sitting.quiz.pass_mark:
-                # Crear clave única: usuario + quiz
-                clave_unica = f"{sitting.user.id}_{sitting.quiz.id}"
-                
-                # Solo agregar si no hemos visto esta combinación antes
-                if clave_unica not in certificados_unicos:
-                    certificados_unicos.add(clave_unica)
-                    
-                    # CORREGIDO: Obtener todos los intentos del usuario para este quiz específico
-                    user_quiz_attempts = Sitting.objects.filter(
-                        user=sitting.user,
-                        quiz=sitting.quiz,  # Solo este quiz específico
-                        complete=True
-                    ).order_by('start')
-                    
-                    # CORREGIDO: Contar cuántos están aprobados para este quiz específico
-                    approved_count = 0
-                    for attempt in user_quiz_attempts:
-                        if attempt.get_percent_correct >= attempt.quiz.pass_mark:
-                            approved_count += 1
-                    
-                    # CORREGIDO: Recalcular total_attempts para este quiz específico
-                    sitting.total_attempts = user_quiz_attempts.count()
-                    sitting.approved_attempts = approved_count
-                    approved_sittings.append(sitting)
-        
-        return approved_sittings
+        return self.get_queryset()
 
     def get(self, request, *args, **kwargs):
         """
-        Sobrescribir get para usar el queryset con solo exámenes aprobados
+        Método get optimizado - usa lista con unicidad real
         """
-        # Obtener el queryset con solo exámenes aprobados
-        self.object_list = self.get_queryset_with_approved_attempts()
+        # Usar lista con unicidad (un examen por usuario+quiz)
+        unique_sittings = self.get_unique_approved_sittings()
         
-        # Aplicar paginación manualmente
+        # Establecer object_list para que Django ListView funcione correctamente
+        self.object_list = unique_sittings
+        
+        # Aplicar paginación manualmente ya que tenemos una lista
         from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
         
-        paginator = Paginator(self.object_list, self.paginate_by)
-        page = request.GET.get('page')
+        paginator = Paginator(unique_sittings, self.paginate_by)
+        page = request.GET.get('page', 1)
         
         try:
-            object_list = paginator.page(page)
+            page_obj = paginator.page(page)
         except PageNotAnInteger:
-            object_list = paginator.page(1)
+            page_obj = paginator.page(1)
         except EmptyPage:
-            object_list = paginator.page(paginator.num_pages)
+            # Si la página está vacía, ir a la última página válida
+            page_obj = paginator.page(paginator.num_pages) if paginator.num_pages > 0 else paginator.page(1)
+        except Exception as e:
+            page_obj = paginator.page(1)
         
-        context = self.get_context_data(object_list=object_list)
+        # Pasar los objetos de la página al contexto
+        # IMPORTANTE: No llamar a super().get_context_data() porque intentará paginar de nuevo
+        context = {'object_list': list(page_obj), 'page_obj': page_obj, 'is_paginated': page_obj.has_other_pages()}
+        
+        # Agregar estadísticas
+        context.update(self._get_stats_context())
+        
         return self.render_to_response(context)
-
-    def get_context_data(self, **kwargs):
-        from django.core.cache import cache
+    
+    def _get_stats_context(self):
+        """
+        Obtiene el contexto de estadísticas sin llamar a super()
+        """
+        # Usar self.object_list que ya tiene la lista completa
+        unique_sittings = self.object_list
         
-        context = super().get_context_data(**kwargs)
+        # 1. Exámenes aprobados únicos (un examen por usuario+curso)
+        examenes_aprobados_unicos = len(unique_sittings)
         
-        # CORREGIDO: Usar object_list (ya filtrado y único) en lugar de queryset
-        # Eliminar caché que puede causar inconsistencias
-        object_list = kwargs.get('object_list', [])
+        # 2. Participantes inscritos (estudiantes activos)
+        from accounts.models import User
+        participantes_inscritos = User.objects.filter(is_student=True).count()
         
-        # Calcular estadísticas correctas basadas en object_list
-        total_exams = len(object_list) if hasattr(object_list, '__len__') else 0
+        # 3. Cursos con exámenes disponibles
+        from quiz.models import Quiz
+        from course.models import Course
+        cursos_con_examenes = Course.objects.filter(
+            quiz__isnull=False
+        ).distinct().count()
         
-        # Calcular usuarios únicos correctamente
-        usuarios_unicos = set()
-        if hasattr(object_list, '__iter__'):
-            for sitting in object_list:
-                usuarios_unicos.add(sitting.user.id)
-        
-        stats = {
-            'total_exams': total_exams,
-            'total_approved': total_exams,  # Todos son aprobados (ya filtrados)
-            'total_failed': 0,  # No hay fallidos en esta vista
-            'unique_users': len(usuarios_unicos),
+        return {
+            'examenes_aprobados_unicos': examenes_aprobados_unicos,
+            'participantes_inscritos': participantes_inscritos,
+            'cursos_con_examenes': cursos_con_examenes,
             'current_page': self.request.GET.get('page', 1),
         }
-        
-        context.update(stats)
-        return context
 
 
 
