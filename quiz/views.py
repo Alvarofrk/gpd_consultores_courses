@@ -86,6 +86,7 @@ POSICIONES_CERTIFICADOS = {
     "C82-VEC":      {"pos_nombre": (475, 361), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (625, 183.4), "pos_fecha_aprobacion2": (555, 206.3), "pos_fecha_vencimiento": (681, 206.3), "pos_usuario": (565, 327), "pos_codigo": (795,295.5 ), "pos_qr": (750, 350)},
     "C33-AND":      {"pos_nombre": (475, 398), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (580, 209), "pos_fecha_aprobacion2": (463, 247), "pos_fecha_vencimiento": (587, 247), "pos_usuario": (560, 360), "pos_codigo": (805,321.5 ), "pos_qr": (750, 356)},
     "C85-TAT":      {"pos_nombre": (475, 398), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (580, 209), "pos_fecha_aprobacion2": (463, 247), "pos_fecha_vencimiento": (587, 247), "pos_usuario": (560, 360), "pos_codigo": (800,322.2 ), "pos_qr": (750, 356)},
+    "C86-SOE":      {"pos_nombre": (475, 398), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (580, 209), "pos_fecha_aprobacion2": (463, 247), "pos_fecha_vencimiento": (587, 247), "pos_usuario": (560, 360), "pos_codigo": (800,322.2 ), "pos_qr": (750, 356)},
 }
 
 def formatear_fecha_larga(fecha):
