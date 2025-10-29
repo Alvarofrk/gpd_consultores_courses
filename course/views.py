@@ -98,9 +98,18 @@ def program_add(request):
 @login_required
 def program_detail(request, pk):
     program = get_object_or_404(Program, pk=pk)
-    courses = Course.objects.filter(program_id=pk).order_by("-year")
-    credits = courses.aggregate(total_credits=Sum("credit"))
-    paginator = Paginator(courses, 10)
+    courses_qs = Course.objects.filter(program_id=pk).order_by("-year")
+
+    # Filtro de búsqueda por título o código (server-side)
+    q = request.GET.get("q", "").strip()
+    if q:
+        from django.db.models import Q as DJQ
+        courses_qs = courses_qs.filter(
+            DJQ(title__icontains=q) | DJQ(code__icontains=q)
+        )
+
+    credits = courses_qs.aggregate(total_credits=Sum("credit"))
+    paginator = Paginator(courses_qs, 10)
     page = request.GET.get("page")
     courses = paginator.get_page(page)
     return render(
@@ -110,6 +119,7 @@ def program_detail(request, pk):
             "title": program.title,
             "program": program,
             "courses": courses,
+            "q": q,
             "credits": credits,
         },
     )
