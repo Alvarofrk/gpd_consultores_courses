@@ -612,6 +612,57 @@ class ManualCertificate(models.Model):
             self.fecha_vencimiento = self.fecha_aprobacion + timedelta(days=365)
         super().save(*args, **kwargs)
 
+    def delete(self, *args, **kwargs):
+        """
+        Elimina el certificado y ajusta el contador del curso si es necesario.
+        Si este certificado tiene el código más alto del curso, decrementa el contador.
+        """
+        curso = self.curso
+        
+        # Eliminar el certificado primero
+        super().delete(*args, **kwargs)
+        
+        # Verificar si hay otros certificados manuales o automáticos con códigos más altos
+        from django.db.models import Max
+        from quiz.models import Sitting
+        
+        # Obtener el código máximo de certificados manuales restantes
+        # Usar una consulta más compatible que funcione con SQLite, PostgreSQL y MySQL
+        manual_certs = ManualCertificate.objects.filter(
+            curso=curso
+        ).exclude(certificate_code__isnull=True).exclude(certificate_code='')
+        
+        max_manual_code = None
+        for cert in manual_certs:
+            if cert.certificate_code and cert.certificate_code.isdigit():
+                code_int = int(cert.certificate_code)
+                if max_manual_code is None or code_int > max_manual_code:
+                    max_manual_code = code_int
+        
+        # Obtener el código máximo de certificados automáticos (Sitting)
+        sittings = Sitting.objects.filter(
+            quiz__course=curso
+        ).exclude(certificate_code__isnull=True).exclude(certificate_code='')
+        
+        max_sitting_code = None
+        for sitting in sittings:
+            if sitting.certificate_code and sitting.certificate_code.isdigit():
+                code_int = int(sitting.certificate_code)
+                if max_sitting_code is None or code_int > max_sitting_code:
+                    max_sitting_code = code_int
+        
+        # Encontrar el código máximo real
+        max_real_code = 0
+        if max_manual_code is not None:
+            max_real_code = max(max_real_code, max_manual_code)
+        if max_sitting_code is not None:
+            max_real_code = max(max_real_code, max_sitting_code)
+        
+        # Si el contador del curso es mayor que el código máximo real, ajustarlo
+        if curso.last_cert_code > max_real_code:
+            curso.last_cert_code = max_real_code
+            curso.save(update_fields=['last_cert_code'])
+
     @property
     def esta_vencido(self):
         from datetime import date
