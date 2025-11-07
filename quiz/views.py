@@ -147,8 +147,24 @@ def generar_certificado(request, sitting_id):
         sitting = get_object_or_404(Sitting, id=sitting_id, user=request.user)
 
     # Verificar que el examen esté completo y aprobado
-    if not sitting.complete or sitting.get_percent_correct < 80:
-        messages.error(request, "El examen debe estar completo y aprobado para generar el certificado.")
+    # IMPORTANTE: Usar el mismo cálculo que la vista SQL para mantener consistencia
+    # Calcular porcentaje basado en el total de preguntas del quiz (igual que QuizMarkingList)
+    if not sitting.complete:
+        messages.error(request, "El examen debe estar completo para generar el certificado.")
+        return redirect('quiz_start', slug=sitting.quiz.url)
+    
+    # Calcular porcentaje usando el mismo método que la vista SQL
+    total_questions = sitting.quiz.get_max_score
+    if total_questions == 0:
+        messages.error(request, "El examen no tiene preguntas configuradas.")
+        return redirect('quiz_start', slug=sitting.quiz.url)
+    
+    # Usar el mismo cálculo que SQL: current_score * 100.0 / total_questions
+    percent_correct = (sitting.current_score * 100.0) / total_questions
+    
+    # Validar con el pass_mark configurado en el examen
+    if percent_correct < sitting.quiz.pass_mark:
+        messages.error(request, "El examen debe estar aprobado para generar el certificado.")
         return redirect('quiz_start', slug=sitting.quiz.url)
 
     # Obtener datos del certificado
