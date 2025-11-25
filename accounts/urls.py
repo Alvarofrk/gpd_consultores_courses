@@ -29,6 +29,7 @@ from .views import (
     lecturer_list_pdf,
     render_student_pdf_list,
     manage_student_courses,
+    TermsAcceptanceView,
 )
 
 # from .forms import EmailValidationOnForgotPassword
@@ -57,6 +58,7 @@ urlpatterns = [
     path("parents/add/", ParentAdd.as_view(), name="add_parent"),
     path("ajax/validate-username/", validate_username, name="validate_username"),
     path("register/", register, name="register"),
+    path("accept-terms/", TermsAcceptanceView.as_view(), name="accept_policies"),
     # paths to pdf
     path(
         "create_lecturers_pdf_list/", lecturer_list_pdf, name="lecturer_list_pdf"

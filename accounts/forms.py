@@ -572,3 +572,16 @@ class ParentAddForm(UserCreationForm):
         )
         parent.save()
         return user
+
+
+class PoliciesAcceptanceForm(forms.Form):
+    accept_terms = forms.BooleanField(
+        label="He leído y acepto los Términos y Condiciones",
+        error_messages={"required": "Debes aceptar los Términos y Condiciones."},
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+    )
+    accept_privacy = forms.BooleanField(
+        label="He leído y acepto la Política de Privacidad",
+        error_messages={"required": "Debes aceptar la Política de Privacidad."},
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+    )

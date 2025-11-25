@@ -5,6 +5,7 @@ from django.urls import reverse
 from django.contrib.auth.models import AbstractUser, UserManager
 
 from django.conf import settings
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.db.models import Q
 from PIL import Image
@@ -79,6 +80,8 @@ class User(AbstractUser):
     phone = models.CharField(max_length=60, blank=True, null=True)
     address = models.CharField(max_length=60, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
+    accepted_terms_at = models.DateTimeField(blank=True, null=True)
+    accepted_privacy_at = models.DateTimeField(blank=True, null=True)
 
     username_validator = ASCIIUsernameValidator()
 
@@ -120,6 +123,27 @@ class User(AbstractUser):
 
     def delete(self, *args, **kwargs):
         super().delete(*args, **kwargs)
+
+    @property
+    def has_accepted_terms(self):
+        return bool(self.accepted_terms_at)
+
+    @property
+    def has_accepted_privacy(self):
+        return bool(self.accepted_privacy_at)
+
+    def mark_policies_accepted(self, save=True):
+        now = timezone.now()
+        updates = []
+        if not self.has_accepted_terms:
+            self.accepted_terms_at = now
+            updates.append('accepted_terms_at')
+        if not self.has_accepted_privacy:
+            self.accepted_privacy_at = now
+            updates.append('accepted_privacy_at')
+        if save and updates:
+            self.save(update_fields=updates)
+        return bool(updates)
 
 
 class StudentManager(models.Manager):

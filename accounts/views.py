@@ -1,12 +1,13 @@
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.forms import PasswordChangeForm
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import get_template, render_to_string
 from django.utils.decorators import method_decorator
-from django.views.generic import CreateView
+from django.views.generic import CreateView, FormView
 from django_filters.views import FilterView
 from xhtml2pdf import pisa
 from reportlab.lib.pagesizes import landscape, letter
@@ -19,11 +20,13 @@ import os
 from reportlab.lib.units import inch
 from reportlab.platypus import Image
 from django.conf import settings
+from django.urls import reverse_lazy
 
 from accounts.decorators import admin_required
 from accounts.filters import LecturerFilter, StudentFilter
 from accounts.forms import (
     ParentAddForm,
+    PoliciesAcceptanceForm,
     ProfileUpdateForm,
     ProgramUpdateForm,
     StaffAddForm,
@@ -75,6 +78,38 @@ def register(request):
     else:
         form = StudentAddForm()
     return render(request, "registration/register.html", {"form": form})
+
+
+class TermsAcceptanceView(LoginRequiredMixin, FormView):
+    template_name = "accounts/terms_acceptance.html"
+    form_class = PoliciesAcceptanceForm
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.has_accepted_terms and request.user.has_accepted_privacy:
+            return redirect(self.get_redirect_target())
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_redirect_target(self):
+        next_url = self.request.POST.get("next") or self.request.GET.get("next")
+        if next_url:
+            return next_url
+        return getattr(settings, "LOGIN_REDIRECT_URL", None) or reverse_lazy("programs")
+
+    def get_success_url(self):
+        return self.get_redirect_target()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["next_url"] = (
+            self.request.POST.get("next") or self.request.GET.get("next") or ""
+        )
+        return context
+
+    def form_valid(self, form):
+        user = self.request.user
+        user.mark_policies_accepted()
+        messages.success(self.request, "Gracias por aceptar los términos de uso.")
+        return redirect(self.get_success_url())
 
 
 # ########################################################

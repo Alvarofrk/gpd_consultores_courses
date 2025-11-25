@@ -1,0 +1,115 @@
+{% extends "layouts/public_base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Aceptar Términos y Políticas" %} | GPD CONSULTORES{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-xl-8 col-lg-9">
+        <div class="card border-0 shadow">
+            <div class="card-body p-4 p-md-5">
+                <div class="text-center mb-4">
+                    <h2 class="fw-bold mb-2">{% trans "Antes de continuar" %}</h2>
+                    <p class="text-muted mb-0">
+                        {% trans "Por favor, revisa y acepta nuestros Términos y Condiciones y la Política de Privacidad para acceder a la plataforma." %}
+                    </p>
+                </div>
+
+                <ul class="nav nav-pills nav-fill rounded bg-light p-1 mb-4" id="policyTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="terms-tab" data-bs-toggle="tab" data-bs-target="#terms-panel" type="button" role="tab">
+                            {% trans "Términos y Condiciones" %}
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="privacy-tab" data-bs-toggle="tab" data-bs-target="#privacy-panel" type="button" role="tab">
+                            {% trans "Política de Privacidad" %}
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="policyTabsContent">
+                    <div class="tab-pane fade show active" id="terms-panel" role="tabpanel" aria-labelledby="terms-tab">
+                        <h5 class="fw-bold mb-2">{% trans "Introducción" %}</h5>
+                        <p>Bienvenido(a) a la plataforma educativa de GPD CONSULTORES. El uso de nuestros servicios implica la aceptación de estos términos, de las políticas complementarias y de cualquier actualización futura.</p>
+
+                        <h5 class="fw-bold mt-4 mb-2">{% trans "Sobre el servicio" %}</h5>
+                        <p>Ofrecemos cursos y programas e-learning. Cada usuario debe proporcionar datos reales (nombre, DNI y correo), mantener en reserva sus credenciales y utilizar responsablemente el material académico.</p>
+
+                        <h5 class="fw-bold mt-4 mb-2">{% trans "Propiedad intelectual" %}</h5>
+                        <p>Todos los videos, manuales, evaluaciones y certificados son propiedad exclusiva de GPD CONSULTORES. Está prohibida su copia, distribución o venta sin autorización escrita.</p>
+
+                        <h5 class="fw-bold mt-4 mb-2">{% trans "Evaluación y certificación" %}</h5>
+                        <ul class="mb-3">
+                            <li>La nota mínima para aprobar es 14 (setenta por ciento).</li>
+                            <li>Los certificados se habilitan únicamente cuando el sistema confirma la aprobación.</li>
+                            <li>En algunos cursos externos, el acceso se realiza mediante enlaces administrados por GPD CONSULTORES.</li>
+                        </ul>
+
+                        <h5 class="fw-bold mt-4 mb-2">{% trans "Módulo de verificación pública" %}</h5>
+                        <p>Para garantizar la autenticidad de las certificaciones, se dispone de un buscador público por DNI que muestra el nombre del participante, el curso y el estado “Aprobado”.</p>
+
+                        <h5 class="fw-bold mt-4 mb-2">{% trans "Modificaciones" %}</h5>
+                        <p>Nos reservamos el derecho de actualizar los términos cuando sea necesario. Los cambios entran en vigencia desde su publicación.</p>
+                    </div>
+
+                    <div class="tab-pane fade" id="privacy-panel" role="tabpanel" aria-labelledby="privacy-tab">
+                        <h5 class="fw-bold mb-2">{% trans "Cumplimiento normativo" %}</h5>
+                        <p>Cumplimos con la Ley N.° 29733 de Protección de Datos Personales. Los datos recopilados (nombres, DNI, correo, teléfono y calificaciones) se almacenan con medidas de seguridad acorde a la legislación vigente.</p>
+
+                        <h5 class="fw-bold mt-4 mb-2">{% trans "Finalidad del tratamiento" %}</h5>
+                        <ul class="mb-3">
+                            <li>Gestionar matrículas y seguimiento académico.</li>
+                            <li>Emitir certificados digitales y enlaces externos cuando corresponda.</li>
+                            <li>Permitir la verificación pública por DNI de los certificados aprobados.</li>
+                        </ul>
+
+                        <h5 class="fw-bold mt-4 mb-2">{% trans "Consentimiento para la validación pública" %}</h5>
+                        <p>Al aceptar esta política, autorizas a que tu nombre completo, el curso y el estado “Aprobado” se muestren en el módulo público de verificación, exclusivamente con fines verificativos.</p>
+
+                        <h5 class="fw-bold mt-4 mb-2">{% trans "Almacenamiento de certificados" %}</h5>
+                        <p>Algunos certificados pueden hospedarse en servicios en la nube con acceso restringido. Solo los usuarios aprobados y la administración contarán con el enlace correspondiente.</p>
+
+                        <h5 class="fw-bold mt-4 mb-2">{% trans "Derechos ARCO" %}</h5>
+                        <p>Puedes ejercer tus derechos de Acceso, Rectificación, Cancelación y Oposición enviando una solicitud al correo institucional de soporte indicado en la plataforma.</p>
+                    </div>
+                </div>
+
+                <form method="post" class="mt-4">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ next_url }}">
+
+                    <div class="form-check mb-3">
+                        {{ form.accept_terms }}
+                        <label class="form-check-label ms-2" for="{{ form.accept_terms.id_for_label }}">
+                            {{ form.accept_terms.label }}
+                        </label>
+                        {% if form.accept_terms.errors %}
+                            <div class="text-danger small mt-1">{{ form.accept_terms.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-check mb-4">
+                        {{ form.accept_privacy }}
+                        <label class="form-check-label ms-2" for="{{ form.accept_privacy.id_for_label }}">
+                            {{ form.accept_privacy.label }}
+                        </label>
+                        {% if form.accept_privacy.errors %}
+                            <div class="text-danger small mt-1">{{ form.accept_privacy.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                        <i class="fas fa-check-circle me-2"></i>{% trans "Aceptar y continuar" %}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
