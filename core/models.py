@@ -3,7 +3,7 @@ from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 import math
 
 
@@ -177,11 +177,19 @@ class Cotizacion(models.Model):
         """Calcula el total con IGV (18%)"""
         return self.monto_total * Decimal('1.18')
 
+    def _round_currency(self, value):
+        """Redondea a dos decimales usando el criterio estándar (ROUND_HALF_UP)"""
+        if value is None:
+            value = Decimal('0')
+        if not isinstance(value, Decimal):
+            value = Decimal(value)
+        return value.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
     @property
     def total_con_igv_redondeado(self):
-        """Calcula el total con IGV redondeado hacia arriba sin decimales"""
+        """Calcula el total con IGV redondeado a dos decimales"""
         total_calculado = self.monto_total * Decimal('1.18')
-        return math.ceil(total_calculado)
+        return self._round_currency(total_calculado)
 
     @property
     def detraccion(self):
@@ -192,10 +200,10 @@ class Cotizacion(models.Model):
 
     @property
     def detraccion_redondeada(self):
-        """Calcula la detracción redondeada hacia arriba sin decimales"""
+        """Calcula la detracción redondeada a dos decimales"""
         if self.total_con_igv >= Decimal('700.00'):
             detraccion_calculada = self.total_con_igv * Decimal('0.12')
-            return math.ceil(detraccion_calculada)
+            return self._round_currency(detraccion_calculada)
         return Decimal('0.00')
 
     @property
@@ -206,7 +214,7 @@ class Cotizacion(models.Model):
     @property
     def total_con_detraccion_redondeado(self):
         """Calcula el total final con IGV y detracción redondeada"""
-        return self.total_con_igv + self.detraccion_redondeada
+        return self._round_currency(self.total_con_igv + self.detraccion_redondeada)
 
     @property
     def porcentaje_cancelado(self):
