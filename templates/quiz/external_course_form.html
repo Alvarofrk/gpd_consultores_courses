@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}
+    {% if object %}
+        {% trans "Editar Inscripción en Curso Externo" %}
+    {% else %}
+        {% trans "Nueva Inscripción en Curso Externo" %}
+    {% endif %}
+    | {% trans 'Sistema de gestión de aprendizaje' %}
+{% endblock %}
+
+{% block content %}
+<nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'external_course_list' %}">{% trans 'Cursos Externos' %}</a></li>
+        <li class="breadcrumb-item active">
+            {% if object %}
+                {% trans 'Editar Inscripción' %}
+            {% else %}
+                {% trans 'Nueva Inscripción' %}
+            {% endif %}
+        </li>
+    </ol>
+</nav>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow">
+                <div class="card-header" style="background: linear-gradient(135deg, #1a237e 0%, #3f51b5 100%);">
+                    <h4 class="mb-0 text-white">
+                        <i class="fas fa-{% if object %}edit{% else %}plus{% endif %} me-2"></i>
+                        {% if object %}
+                            {% trans 'Editar Inscripción en Curso Externo' %}
+                        {% else %}
+                            {% trans 'Nueva Inscripción en Curso Externo' %}
+                        {% endif %}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.user.id_for_label }}" class="form-label">
+                                        {{ form.user.label }} <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.user }}
+                                    {% if form.user.help_text %}
+                                        <small class="form-text text-muted">{{ form.user.help_text }}</small>
+                                    {% endif %}
+                                    {% if form.user.errors %}
+                                        <div class="text-danger">{{ form.user.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.course.id_for_label }}" class="form-label">
+                                        {{ form.course.label }} <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.course }}
+                                    {% if form.course.help_text %}
+                                        <small class="form-text text-muted">{{ form.course.help_text }}</small>
+                                    {% endif %}
+                                    {% if form.course.errors %}
+                                        <div class="text-danger">{{ form.course.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.dni.id_for_label }}" class="form-label">
+                                        {{ form.dni.label }}
+                                    </label>
+                                    {{ form.dni }}
+                                    {% if form.dni.help_text %}
+                                        <small class="form-text text-muted">{{ form.dni.help_text }}</small>
+                                    {% endif %}
+                                    {% if form.dni.errors %}
+                                        <div class="text-danger">{{ form.dni.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-12">
+                                {% if object %}
+                                    <div class="mb-3">
+                                        <label class="form-label">{% trans 'Nota actual (escala 0-20)' %}</label>
+                                        {% if object.score is not None %}
+                                            <p class="form-control-plaintext fw-bold text-success">
+                                                {{ object.score|floatformat:2 }} / 20
+                                            </p>
+                                            {% if object.is_approved %}
+                                                <span class="badge bg-success">{% trans 'Aprobado (≥ 14)' %}</span>
+                                            {% else %}
+                                                <span class="badge bg-warning text-dark">{% trans 'Reprobado (< 14)' %}</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <div class="alert alert-secondary mb-0">
+                                                <i class="fas fa-hourglass-half me-2"></i>
+                                                {% trans 'Pendiente: la nota se asignará automáticamente cuando el participante complete el examen.' %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% else %}
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        {% trans 'La nota se actualizará automáticamente según el resultado del examen asociado al curso externo (mínimo aprobatorio equivalente a 14).' %}
+                                    </div>
+                                {% endif %}
+                                
+                                {% if object and object.is_approved and not object.certificate_url %}
+                                    <div class="alert alert-warning mt-3">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        <strong>{% trans 'Certificado Pendiente' %}</strong><br>
+                                        {% trans 'El participante ha aprobado pero aún no se ha subido el certificado. Por favor, ingrese la URL de Google Drive del certificado.' %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="{{ form.certificate_url.id_for_label }}" class="form-label">
+                                        {{ form.certificate_url.label }}
+                                    </label>
+                                    {{ form.certificate_url }}
+                                    {% if form.certificate_url.help_text %}
+                                        <small class="form-text text-muted">{{ form.certificate_url.help_text }}</small>
+                                    {% endif %}
+                                    {% if form.certificate_url.errors %}
+                                        <div class="text-danger">{{ form.certificate_url.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        {{ form.activo }}
+                                        <label class="form-check-label" for="{{ form.activo.id_for_label }}">
+                                            {{ form.activo.label }}
+                                        </label>
+                                    </div>
+                                    {% if form.activo.errors %}
+                                        <div class="text-danger">{{ form.activo.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                            <a href="{% url 'external_course_list' %}" class="btn btn-secondary me-md-2">
+                                <i class="fas fa-arrow-left me-1"></i>{% trans 'Cancelar' %}
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>
+                                {% if object %}
+                                    {% trans 'Actualizar' %}
+                                {% else %}
+                                    {% trans 'Crear' %}
+                                {% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+

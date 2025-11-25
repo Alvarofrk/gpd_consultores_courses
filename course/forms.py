@@ -34,6 +34,7 @@ class CourseAddForm(forms.ModelForm):
         self.fields["semester"].widget.attrs.update({"class": "form-control"})
         self.fields["is_elective"].widget.attrs.update({"class": "form-check-input"})
         self.fields["is_active"].widget.attrs.update({"class": "form-check-input"})
+        self.fields["is_external"].widget.attrs.update({"class": "form-check-input"})
 
         # Configurar las opciones para los campos de selección
         self.fields["level"].choices = settings.LEVEL_CHOICES
@@ -52,6 +53,7 @@ class CourseAddForm(forms.ModelForm):
         # Agregar mensajes de ayuda
         self.fields["summary"].help_text = _("Máximo 200 caracteres")
         self.fields["code"].help_text = _("Código único del curso")
+        self.fields["is_external"].help_text = _("Activa esta opción si el certificado se gestionará externamente (Google Drive).")
 
     def clean(self):
         cleaned_data = super().clean()

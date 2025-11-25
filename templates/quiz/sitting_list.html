@@ -160,7 +160,7 @@
 				</td>
 				<td>{{ sitting.quiz.course.title }}</td>
 				<td>{{ sitting.quiz.title }}</td>
-				<td>{{ sitting.end|date:"d/m/Y H:i" }}</td>
+				<td>{{ sitting.approval_effective_date|date:"d/m/Y H:i" }}</td>
 				<td>
 					<span class="badge {% if sitting.total_attempts == 1 %}bg-success{% elif sitting.total_attempts <= 3 %}bg-warning{% else %}bg-danger{% endif %}" 
 						  title="Total: {{ sitting.total_attempts }} | Aprobados: {{ sitting.approved_attempts }}">
@@ -185,9 +185,33 @@
 							<i class="fas fa-eye"></i>
 						</a>
 						{% if sitting.get_percent_correct >= sitting.quiz.pass_mark %}
-							<a href="{% url 'generar_certificado' sitting.id %}" class="btn btn-sm btn-success" title="{% trans 'Descargar certificado' %}">
-								<i class="fas fa-download"></i>
-							</a>
+							{% if sitting.quiz.course.is_external %}
+								{% for sitting_id, enrollment in external_enrollments.items %}
+									{% if sitting_id == sitting.id %}
+										{% if enrollment and enrollment.certificate_url %}
+											<a href="{{ enrollment.certificate_url }}" target="_blank" 
+											   class="btn btn-sm btn-info" 
+											   title="{% trans 'Ver certificado en Google Drive' %}">
+												<i class="fas fa-external-link-alt"></i>
+											</a>
+										{% elif enrollment and enrollment.is_approved %}
+											<span class="btn btn-sm btn-warning" 
+												  title="{% trans 'Certificado pendiente de carga' %}">
+												<i class="fas fa-clock"></i>
+											</span>
+										{% else %}
+											<span class="btn btn-sm btn-secondary" 
+												  title="{% trans 'Curso externo - Certificado no disponible' %}">
+												<i class="fas fa-ban"></i>
+											</span>
+										{% endif %}
+									{% endif %}
+								{% endfor %}
+							{% else %}
+								<a href="{% url 'generar_certificado' sitting.id %}" class="btn btn-sm btn-success" title="{% trans 'Descargar certificado' %}">
+									<i class="fas fa-download"></i>
+								</a>
+							{% endif %}
 							{% if user.is_superuser %}
 								<a href="{% url 'editar_fecha_aprobacion' pk=sitting.id %}" class="btn btn-sm btn-warning" title="{% trans 'Editar fecha de aprobación (Modo Libre)' %}">
 									<i class="fas fa-edit"></i>

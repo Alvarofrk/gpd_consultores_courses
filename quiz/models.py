@@ -1,6 +1,8 @@
 import json
 import re
+from decimal import Decimal, ROUND_HALF_UP
 
+from django.apps import apps
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.validators import (
@@ -355,6 +357,15 @@ class Sitting(models.Model):
             self.fecha_aprobacion = now()
         self.save()
 
+    @property
+    def approval_effective_date(self):
+        """
+        Devuelve la fecha que debe usarse para mostrar/reportar la aprobación.
+        Prioriza la fecha editada manualmente; si no existe, usa la fecha de finalización,
+        y como último recurso la fecha de inicio.
+        """
+        return self.fecha_aprobacion or self.end or self.start
+
     def update_approval_date_freely(self, new_date, user, reason=None, request=None):
         """
         Actualizar fecha_aprobacion de forma completamente libre
@@ -566,6 +577,125 @@ class EssayQuestion(Question):
 
     def answer_choice_to_string(self, guess):
         return str(guess)
+
+
+class ExternalCourseEnrollment(models.Model):
+    """
+    Modelo para gestionar cursos externos donde el certificado se almacena en Google Drive.
+    El administrador ingresa la URL del certificado y la nota del alumno.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        verbose_name=_("Usuario"),
+        related_name='external_course_enrollments'
+    )
+    course = models.ForeignKey(
+        'course.Course',
+        on_delete=models.CASCADE,
+        verbose_name=_("Curso"),
+        related_name='external_enrollments'
+    )
+    score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        verbose_name=_("Nota"),
+        help_text=_("Nota del alumno (escala de 0 a 20)"),
+        validators=[MinValueValidator(0), MaxValueValidator(20)],
+        null=True,
+        blank=True,
+        default=None
+    )
+    certificate_url = models.URLField(
+        max_length=500,
+        verbose_name=_("URL del Certificado"),
+        help_text=_("Enlace de Google Drive al certificado del alumno"),
+        blank=True,
+        null=True
+    )
+    dni = models.CharField(
+        max_length=20,
+        verbose_name=_("DNI"),
+        help_text=_("Documento Nacional de Identidad del alumno"),
+        blank=True
+    )
+    fecha_registro = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_("Fecha de Registro")
+    )
+    fecha_actualizacion = models.DateTimeField(
+        auto_now=True,
+        verbose_name=_("Fecha de Actualización")
+    )
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='external_courses_created',
+        verbose_name=_("Creado por")
+    )
+    activo = models.BooleanField(
+        default=True,
+        verbose_name=_("Activo")
+    )
+
+    class Meta:
+        verbose_name = _("Inscripción en Curso Externo")
+        verbose_name_plural = _("Inscripciones en Cursos Externos")
+        ordering = ['-fecha_registro']
+        unique_together = ['user', 'course']
+
+    def __str__(self):
+        nota = f"{self.score}" if self.score is not None else "Pendiente"
+        return f"{self.user.get_full_name} - {self.course.title} - Nota: {nota}"
+
+    @property
+    def is_approved(self):
+        """Verifica si el alumno aprobó (nota >= 14)"""
+        if self.score is None:
+            return False
+        return Decimal(self.score) >= Decimal("14.0")
+
+    @property
+    def can_view_certificate(self):
+        """Verifica si el usuario puede ver el certificado (nota >= 14 y URL existe)"""
+        return self.is_approved and bool(self.certificate_url)
+
+    def save(self, *args, **kwargs):
+        # Si no hay DNI, intentar obtenerlo del username (en este sistema, username = DNI)
+        if not self.dni and self.user:
+            self.dni = self.user.username.strip()
+        super().save(*args, **kwargs)
+
+    def refresh_score_from_quiz(self, commit=True):
+        """
+        Actualiza la nota basada en el último examen completado del curso externo.
+        Convierte el porcentaje (0-100) a nota en escala 0-20.
+        """
+        Sitting = apps.get_model('quiz', 'Sitting')
+        latest_sitting = (
+            Sitting.objects.filter(
+                user=self.user,
+                quiz__course=self.course,
+                complete=True
+            )
+            .order_by('-end')
+            .first()
+        )
+
+        if latest_sitting:
+            percent = Decimal(str(latest_sitting.get_percent_correct))
+            score_20 = (percent * Decimal("0.20")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            new_score = score_20
+        else:
+            new_score = None
+
+        if new_score != self.score:
+            self.score = new_score
+            if commit and self.pk:
+                type(self).objects.filter(pk=self.pk).update(score=new_score)
+        return new_score
 
 
 class ManualCertificate(models.Model):

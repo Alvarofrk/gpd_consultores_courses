@@ -40,4 +40,11 @@ urlpatterns = [
     path('certificados-dashboard/beneficiarios/', views.BeneficiariosAjaxView.as_view(), name='beneficiarios_ajax'),
     path('certificados-dashboard/filtros/', views.CertificadosFiltrosAjaxView.as_view(), name='certificados_filtros_ajax'),
     path('estadisticas-por-curso-ajax/', views.CertificadosEstadisticasAjaxView.as_view(), name='estadisticas_por_curso_ajax'),
+    
+    # URLs para Cursos Externos
+    path('external-courses/', views.ExternalCourseListView.as_view(), name='external_course_list'),
+    path('external-courses/new/', views.ExternalCourseCreateView.as_view(), name='external_course_create'),
+    path('external-courses/<int:pk>/edit/', views.ExternalCourseUpdateView.as_view(), name='external_course_update'),
+    path('my-external-courses/', views.MyExternalCoursesView.as_view(), name='my_external_courses'),
+    path('external-courses/validation/', views.ExternalCourseValidationView.as_view(), name='external_course_validation'),
 ]

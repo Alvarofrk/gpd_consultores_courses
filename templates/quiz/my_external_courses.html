@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Mis Cursos Externos" %} | {% trans 'Sistema de gestión de aprendizaje' %}{% endblock %}
+
+{% block content %}
+
+<nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/">{% trans 'Inicio' %}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{% trans 'Mis Cursos Externos' %}</li>
+    </ol>
+</nav>
+
+<!-- Header Principal -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #1a237e 0%, #3f51b5 100%);">
+            <div class="card-body text-white p-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h2 class="mb-2">
+                            <i class="fas fa-graduation-cap me-3"></i>
+                            {% trans 'Mis Cursos Externos' %}
+                        </h2>
+                        <p class="mb-0 opacity-75">
+                            {% trans "Consulta tus certificados de cursos externos" %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dashboard de Estadísticas -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="row g-3">
+            <!-- Tarjeta 1: Total Cursos -->
+            <div class="col-lg-6 col-md-6">
+                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);">
+                    <div class="card-body text-white text-center p-3">
+                        <i class="fas fa-list fa-2x mb-2"></i>
+                        <h4 class="mb-1">{{ total_count }}</h4>
+                        <p class="mb-0 small">{% trans "Total Cursos" %}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tarjeta 2: Aprobados -->
+            <div class="col-lg-6 col-md-6">
+                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+                    <div class="card-body text-white text-center p-3">
+                        <i class="fas fa-check-circle fa-2x mb-2"></i>
+                        <h4 class="mb-1">{{ approved_count }}</h4>
+                        <p class="mb-0 small">{% trans "Cursos Aprobados" %}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Cursos -->
+<div class="card">
+    <div class="card-body">
+        {% if enrollments %}
+            <div class="row g-4">
+                {% for enrollment in enrollments %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm
+                        {% if enrollment.is_approved %}
+                            border-success
+                        {% elif enrollment.score is not None %}
+                            border-danger
+                        {% else %}
+                            border-secondary
+                        {% endif %}
+                    ">
+                        <div class="card-header
+                            {% if enrollment.is_approved %}
+                                bg-success text-white
+                            {% elif enrollment.score is not None %}
+                                bg-danger text-white
+                            {% else %}
+                                bg-secondary text-white
+                            {% endif %}
+                        ">
+                            <h5 class="mb-0">
+                                <i class="fas fa-book me-2"></i>
+                                {{ enrollment.course.title }}
+                            </h5>
+                            <small>{{ enrollment.course.code }}</small>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <strong>{% trans 'Nota:' %}</strong>
+                                {% if enrollment.score is not None %}
+                                    <span class="badge {% if enrollment.is_approved %}bg-success{% else %}bg-warning text-dark{% endif %} fs-6 ms-2">
+                                        {{ enrollment.score|floatformat:2 }} / 20
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary fs-6 ms-2">
+                                        {% trans 'Pendiente' %}
+                                    </span>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="mb-3">
+                                <strong>{% trans 'Estado:' %}</strong>
+                                {% if enrollment.is_approved %}
+                                    <span class="badge bg-success ms-2">{% trans 'Aprobado' %}</span>
+                                {% elif enrollment.score is not None %}
+                                    <span class="badge bg-danger ms-2">{% trans 'No Aprobado' %}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary ms-2">{% trans 'Pendiente' %}</span>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="mb-3">
+                                <strong>{% trans 'Fecha de Registro:' %}</strong><br>
+                                <small class="text-muted">{{ enrollment.fecha_registro|date:"d/m/Y" }}</small>
+                            </div>
+                            
+                            {% if enrollment.is_approved and enrollment.certificate_url %}
+                                <div class="d-grid">
+                                    <a href="{{ enrollment.certificate_url }}" target="_blank" class="btn btn-success">
+                                        <i class="fas fa-certificate me-2"></i>{% trans 'Ver Certificado' %}
+                                    </a>
+                                </div>
+                            {% elif enrollment.is_approved and not enrollment.certificate_url %}
+                                <div class="alert alert-warning mb-0">
+                                    <small>
+                                        <i class="fas fa-exclamation-triangle me-1"></i>
+                                        {% trans 'Certificado pendiente de carga' %}
+                                    </small>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-info mb-0">
+                                    <small>
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        {% trans 'Debes aprobar (nota ≥14) para ver el certificado' %}
+                                    </small>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Paginación -->
+            {% if is_paginated %}
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1">{% trans 'Primera' %}</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">{% trans 'Anterior' %}</a>
+                        </li>
+                    {% endif %}
+                    
+                    <li class="page-item active">
+                        <span class="page-link">
+                            {% trans 'Página' %} {{ page_obj.number }} {% trans 'de' %} {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+                    
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">{% trans 'Siguiente' %}</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">{% trans 'Última' %}</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+                <h4 class="text-muted">{% trans 'No tienes cursos externos registrados' %}</h4>
+                <p class="text-muted">{% trans 'Contacta con el administrador para más información' %}</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+

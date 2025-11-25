@@ -1118,6 +1118,26 @@ def user_course_list(request):
         taken_courses = TakenCourse.objects.filter(student=student).select_related('course')
         courses = [taken_course.course for taken_course in taken_courses]
         
+        # NUEVO: Obtener cursos externos (ExternalCourseEnrollment)
+        from quiz.models import ExternalCourseEnrollment
+        external_enrollments = ExternalCourseEnrollment.objects.filter(
+            user=request.user,
+            activo=True,
+            course__is_external=True
+        ).select_related('course')
+        
+        # Agregar cursos externos a la lista (si no están ya en TakenCourse)
+        external_courses_dict = {enrollment.course.id: enrollment.course for enrollment in external_enrollments}
+        for ext_course_id, ext_course in external_courses_dict.items():
+            if ext_course not in courses:
+                courses.append(ext_course)
+                # Sincronizar: crear TakenCourse si no existe
+                taken_course, created = TakenCourse.objects.get_or_create(
+                    student=student,
+                    course=ext_course
+                )
+                taken_courses = list(taken_courses) + [taken_course]
+        
         # Calcular estadísticas del estudiante
         total_courses = len(courses)
         
@@ -1230,6 +1250,25 @@ def user_course_list(request):
                 'completion_summary': completion_summary,
                 'exam_info': exam_info,
             })
+        
+        # NUEVO: Agregar información de certificado externo al contexto
+        external_enrollments_dict = {enrollment.course.id: enrollment for enrollment in external_enrollments}
+        
+        for course_data in courses_with_progress:
+            if course_data['course'].is_external:
+                enrollment = external_enrollments_dict.get(course_data['course'].id)
+                if enrollment:
+                    course_data['external_enrollment'] = enrollment
+                    course_data['certificate_url'] = enrollment.certificate_url if enrollment.is_approved else None
+                    course_data['certificate_pending'] = enrollment.is_approved and not enrollment.certificate_url
+                else:
+                    course_data['external_enrollment'] = None
+                    course_data['certificate_url'] = None
+                    course_data['certificate_pending'] = False
+            else:
+                course_data['external_enrollment'] = None
+                course_data['certificate_url'] = None
+                course_data['certificate_pending'] = False
         
         # Calcular estadísticas generales
         avg_progress = round(total_progress / total_courses, 1) if total_courses > 0 else 0

@@ -108,6 +108,11 @@
                     <div class="flex-grow-1">
                         <h5 class="card-title mb-1">{{ course_data.course.title }}</h5>
                         <small class="text-light">{{ course_data.course.code }}</small>
+                        {% if course_data.course.is_external %}
+                            <span class="badge bg-warning text-dark ms-2">
+                                <i class="fas fa-external-link-alt me-1"></i>{% trans 'Externo' %}
+                            </span>
+                        {% endif %}
                     </div>
                     <div class="text-end">
                         {% if course_data.course_status == 'course_completed' %}
@@ -237,10 +242,30 @@
             <div class="card-footer bg-transparent border-0">
                 {% if course_data.course_status == 'course_completed' %}
                     <div class="d-grid gap-2">
-                        <a href="{{ course_data.course.get_absolute_url }}" 
-                           class="btn btn-success">
-                            <i class="fas fa-eye me-2"></i>{% trans 'Ver Curso' %}
-                        </a>
+                        {% if course_data.course.is_external %}
+                            {% if course_data.certificate_url %}
+                                <a href="{{ course_data.certificate_url }}" target="_blank" class="btn btn-success">
+                                    <i class="fas fa-certificate me-2"></i>{% trans 'Ver Certificado' %}
+                                </a>
+                            {% elif course_data.certificate_pending %}
+                                <div class="alert alert-warning mb-0">
+                                    <small>
+                                        <i class="fas fa-exclamation-triangle me-1"></i>
+                                        {% trans 'Certificado pendiente de carga' %}
+                                    </small>
+                                </div>
+                            {% else %}
+                                <a href="{{ course_data.course.get_absolute_url }}" 
+                                   class="btn btn-success">
+                                    <i class="fas fa-eye me-2"></i>{% trans 'Ver Curso' %}
+                                </a>
+                            {% endif %}
+                        {% else %}
+                            <a href="{{ course_data.course.get_absolute_url }}" 
+                               class="btn btn-success">
+                                <i class="fas fa-eye me-2"></i>{% trans 'Ver Curso' %}
+                            </a>
+                        {% endif %}
                     </div>
                 {% elif course_data.course_status == 'material_in_progress' %}
                     <a href="{% url 'course_unified_navigation_first' course_data.course.slug %}" 

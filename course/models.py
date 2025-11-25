@@ -80,6 +80,11 @@ class Course(models.Model):
     semester = models.CharField(choices=settings.SEMESTER_CHOICES, max_length=200)
     is_elective = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    is_external = models.BooleanField(
+        default=False,
+        verbose_name=_("Curso Externo"),
+        help_text=_("Indica si este es un curso externo (certificado en Google Drive)")
+    )
 
     last_cert_code = models.IntegerField(default=0)
 
@@ -714,24 +719,106 @@ class UploadVideo(models.Model):
         )
 
     def get_vimeo_id(self):
-        if self.vimeo_url:
-            match = re.search(r'vimeo\.com/(?:video/)?(\d+)', self.vimeo_url)
-            if match:
-                return match.group(1)
+        """Extrae el ID del video de Vimeo desde la URL"""
+        if not self.vimeo_url:
+            return None
+        try:
+            # Patrones para diferentes formatos de URL de Vimeo
+            patterns = [
+                r'vimeo\.com/(?:video/)?(\d+)',  # https://vimeo.com/123456 o https://vimeo.com/video/123456
+                r'player\.vimeo\.com/video/(\d+)',  # https://player.vimeo.com/video/123456
+            ]
+            for pattern in patterns:
+                match = re.search(pattern, self.vimeo_url)
+                if match:
+                    vimeo_id = match.group(1)
+                    # Validar que sea un número
+                    if vimeo_id.isdigit():
+                        return vimeo_id
+        except Exception:
+            pass
         return None
 
     def get_youtube_id(self):
-        if self.youtube_url:
-            # Patrones comunes de URLs de YouTube
+        """Extrae el ID del video de YouTube desde la URL, manejando parámetros adicionales"""
+        if not self.youtube_url:
+            return None
+        try:
+            # Limpiar la URL de espacios y caracteres extra
+            url = self.youtube_url.strip()
+            
+            # Patrones comunes de URLs de YouTube (más flexibles)
             patterns = [
-                r'(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]+)',
-                r'(?:youtube\.com/embed/)([a-zA-Z0-9_-]+)',
+                r'(?:youtube\.com/watch\?v=)([a-zA-Z0-9_-]{11})',  # https://www.youtube.com/watch?v=ABC123XYZ45
+                r'(?:youtu\.be/)([a-zA-Z0-9_-]{11})',  # https://youtu.be/ABC123XYZ45
+                r'(?:youtube\.com/embed/)([a-zA-Z0-9_-]{11})',  # https://www.youtube.com/embed/ABC123XYZ45
+                r'(?:youtube\.com/v/)([a-zA-Z0-9_-]{11})',  # https://www.youtube.com/v/ABC123XYZ45
+                r'(?:youtube\.com/watch\?.*v=)([a-zA-Z0-9_-]{11})',  # Con parámetros adicionales
             ]
             for pattern in patterns:
-                match = re.search(pattern, self.youtube_url)
+                match = re.search(pattern, url)
                 if match:
-                    return match.group(1)
+                    youtube_id = match.group(1)
+                    # Validar que tenga la longitud correcta (11 caracteres) y caracteres válidos
+                    if len(youtube_id) == 11 and all(c.isalnum() or c in ['-', '_'] for c in youtube_id):
+                        return youtube_id
+        except Exception:
+            pass
         return None
+    
+    def get_youtube_embed_url(self):
+        """Genera la URL completa de embed de YouTube con parámetros necesarios"""
+        youtube_id = self.get_youtube_id()
+        if not youtube_id:
+            return None
+        # URL base con parámetros importantes para evitar Error 153
+        # Usar el formato más compatible: /embed/VIDEO_ID
+        base_url = f"https://www.youtube.com/embed/{youtube_id}"
+        # Agregar parámetros para mejor compatibilidad y evitar errores
+        # IMPORTANTE: Estos parámetros ayudan a evitar el Error 153
+        params = [
+            "rel=0",  # No mostrar videos relacionados al final
+            "modestbranding=1",  # Menos branding de YouTube
+            "playsinline=1",  # Reproducir inline en móviles
+            "enablejsapi=1",  # Habilitar API de JavaScript (puede ayudar con algunos errores)
+        ]
+        return f"{base_url}?{'&'.join(params)}"
+
+    def get_video_mime_type(self):
+        """Detecta el tipo MIME del video basado en la extensión del archivo"""
+        if not self.video:
+            return "video/mp4"  # Por defecto
+        
+        try:
+            filename = self.video.name.lower()
+            # Mapeo de extensiones a tipos MIME
+            mime_types = {
+                '.mp4': 'video/mp4',
+                '.mkv': 'video/x-matroska',
+                '.wmv': 'video/x-ms-wmv',
+                '.3gp': 'video/3gpp',
+                '.f4v': 'video/x-f4v',
+                '.avi': 'video/x-msvideo',
+                '.webm': 'video/webm',
+                '.ogg': 'video/ogg',
+                '.mov': 'video/quicktime',
+                '.flv': 'video/x-flv',
+            }
+            
+            # Buscar la extensión en el nombre del archivo
+            for ext, mime_type in mime_types.items():
+                if filename.endswith(ext):
+                    return mime_type
+            
+            # Si no se encuentra, intentar detectar por extensión genérica
+            if '.' in filename:
+                ext = '.' + filename.split('.')[-1]
+                # Tipo genérico para videos desconocidos
+                return f'video/{ext[1:]}' if ext[1:] else 'video/mp4'
+        except Exception:
+            pass
+        
+        return "video/mp4"  # Por defecto si hay algún error
 
     def is_completed_by(self, user):
         return self.completed_by.filter(id=user.id).exists()

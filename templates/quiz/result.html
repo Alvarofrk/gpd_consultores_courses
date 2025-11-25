@@ -121,6 +121,14 @@
           <i class="fas fa-check"></i> {% trans "APROBADO" %}
         </button>
       </div>
+      
+      {% if course.is_external %}
+        <div class="alert alert-info mt-3">
+          <i class="fas fa-info-circle me-2"></i>
+          <strong>{% trans "Curso Externo" %}</strong><br>
+          {% trans "Este es un curso externo. El certificado estará disponible en Google Drive una vez que el administrador lo cargue." %}
+        </div>
+      {% endif %}
     {% else %}
     <div class="text-center mt-4">
       <a href="{% url 'quiz_take' course.id quiz.slug %}" class="btn btn-gpd">

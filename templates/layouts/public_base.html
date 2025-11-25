@@ -1,0 +1,92 @@
+{% load static %}
+{% load i18n %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|default:'es' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>{% block title %}{% trans 'Validación de Certificados' %}{% endblock %}</title>
+
+    <link rel="shortcut icon" href="{% static 'img/pesatañaico.jpg' %}" type="image/jpeg">
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap-5.3.2/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/fontawesome-6.5.1/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/style.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/custom.css' %}">
+
+    <style>
+        body.public-layout {
+            background: #f5f7fb;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .public-header {
+            background: linear-gradient(135deg, #040f2b 0%, #0f306c 100%);
+            padding: 1.25rem 0;
+        }
+        .public-header img {
+            max-height: 64px;
+        }
+        .public-content {
+            flex: 1;
+            padding: 2rem 0;
+        }
+        .public-footer {
+            padding: 1rem 0;
+            background: linear-gradient(135deg, #010712 0%, #050f27 100%);
+            color: rgba(255,255,255,0.75);
+        }
+        .public-layout .btn-primary {
+            background-color: #0f306c;
+            border-color: #0f306c;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .public-layout .btn-primary:hover,
+        .public-layout .btn-primary:focus {
+            background-color: #132f62;
+            border-color: #132f62;
+        }
+        .public-layout .card {
+            border-radius: 1rem;
+        }
+        @media (max-width: 576px) {
+            .public-content {
+                padding: 1.25rem 0;
+            }
+            .public-layout .btn-lg {
+                font-size: 1rem;
+                padding: 0.85rem 1rem;
+            }
+        }
+    </style>
+</head>
+<body class="public-layout">
+    <header class="public-header">
+        <div class="container d-flex flex-column flex-md-row align-items-center justify-content-center">
+            <div class="text-center">
+                <img src="{% static 'img/logoblanco.png' %}" alt="{% trans 'Logo' %}">
+                <p class="text-light opacity-75 mb-0 mt-3 fw-semibold text-uppercase small">
+                    {% trans 'Validación de Certificados' %}
+                </p>
+            </div>
+        </div>
+    </header>
+
+    <main class="public-content">
+        <div class="container">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <footer class="public-footer">
+        <div class="container text-center small">
+            &copy; {% now "Y" %} GPDCONSULTORES - {% trans 'Todos los derechos reservados' %}
+        </div>
+    </footer>
+
+    <script src="{% static 'vendor/bootstrap-5.3.2/js/bootstrap.bundle.min.js' %}"></script>
+</body>
+</html>
+

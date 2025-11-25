@@ -36,7 +36,8 @@
                                 <div class="col-md-6">
                                     <strong>Puntaje:</strong> {{ sitting.get_percent_correct }}%<br>
                                     <strong>Inicio:</strong> {{ sitting.start|date:"d/m/Y H:i" }}<br>
-                                    <strong>Fin:</strong> {{ sitting.end|date:"d/m/Y H:i" }}
+                                    <strong>Fin original:</strong> {{ sitting.end|date:"d/m/Y H:i" }}<br>
+                                    <strong>Fecha de aprobación vigente:</strong> {{ sitting.approval_effective_date|date:"d/m/Y H:i" }}
                                 </div>
                             </div>
                         </div>

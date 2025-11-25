@@ -22,7 +22,7 @@
 <p>{{ sitting.quiz.description }}</p>
 <hr>
 <p><b>{% trans "Usuario" %}:</b> {{ sitting.user }}</p>
-<p><b>{% trans "Completado" %}:</b> {{ sitting.end|date }}</p>
+<p><b>{% trans "Completado" %}:</b> {{ sitting.approval_effective_date|date }}</p>
 <p><b>{% trans "Puntuación" %}:</b> {{ sitting.get_percent_correct }}%</p>
 
 <table class="table table-bordered table-striped">

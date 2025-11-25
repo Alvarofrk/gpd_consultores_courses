@@ -1,0 +1,217 @@
+{% extends "layouts/public_base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Validación de Certificados - Cursos Externos" %} | {% trans 'Sistema de gestión de aprendizaje' %}{% endblock %}
+
+{% block content %}
+
+<!-- Formulario de Búsqueda -->
+<div class="row mb-4">
+    <div class="col-md-8 mx-auto">
+        <div class="card shadow">
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="{{ form.dni.id_for_label }}" class="form-label">
+                            <i class="fas fa-id-card me-2"></i>{{ form.dni.label }}
+                        </label>
+                        {{ form.dni }}
+                        {% if form.dni.errors %}
+                            <div class="text-danger mt-2">{{ form.dni.errors }}</div>
+                        {% endif %}
+                        <small class="form-text text-muted">
+                            {% trans 'Ingrese su número de DNI para buscar certificados aprobados' %}
+                        </small>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-search me-2"></i>{% trans 'Buscar Certificados' %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Resultados -->
+{% if searched %}
+    <!-- Cursos Externos -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0">
+                            <i class="fas fa-external-link-alt me-2"></i>
+                            {% trans 'Cursos Externos' %}
+                        </h5>
+                        <small>DNI: <strong>{{ dni_searched }}</strong></small>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if has_external_results %}
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped align-middle">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>{% trans 'Alumno' %}</th>
+                                        <th>{% trans 'Curso' %}</th>
+                                        <th>{% trans 'Estado' %}</th>
+                                        <th>{% trans 'Nota' %}</th>
+                                        <th>{% trans 'Certificado' %}</th>
+                                        <th>{% trans 'Fecha' %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for enrollment in external_enrollments %}
+                                    <tr>
+                                        <td><strong>{{ enrollment.user.get_full_name }}</strong></td>
+                                        <td>
+                                            <strong>{{ enrollment.course.title }}</strong><br>
+                                            <small class="text-muted">{{ enrollment.course.code }}</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-success">{% trans 'Aprobado' %}</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-success fs-6">
+                                                {{ enrollment.score|floatformat:2 }} / 20
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if enrollment.certificate_url %}
+                                                <a href="{{ enrollment.certificate_url }}" target="_blank" class="btn btn-sm btn-success">
+                                                    <i class="fas fa-external-link-alt me-1"></i>{% trans 'Ver en Drive' %}
+                                                </a>
+                                            {% else %}
+                                                <span class="badge bg-warning text-dark">
+                                                    <i class="fas fa-clock me-1"></i>{% trans 'Pendiente' %}
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">
+                                                {{ enrollment.fecha_registro|date:"d/m/Y H:i" }}
+                                            </small>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            {% trans 'No se encontraron certificados externos aprobados para este DNI.' %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cursos Internos -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0">
+                            <i class="fas fa-graduation-cap me-2"></i>
+                            {% trans 'Cursos Internos' %}
+                        </h5>
+                        <small>DNI: <strong>{{ dni_searched }}</strong></small>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if has_internal_results %}
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped align-middle">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>{% trans 'Alumno' %}</th>
+                                        <th>{% trans 'Curso' %}</th>
+                                        <th>{% trans 'Estado' %}</th>
+                                        <th>{% trans 'Nota' %}</th>
+                                        <th>{% trans 'Certificado' %}</th>
+                                        <th>{% trans 'Fecha' %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for result in internal_results %}
+                                    <tr>
+                                        <td><strong>{{ result.user.get_full_name }}</strong></td>
+                                        <td>
+                                            <strong>{{ result.course.title }}</strong><br>
+                                            <small class="text-muted">{{ result.course_code }}</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-success">{% trans 'Aprobado' %}</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-success fs-6">
+                                                {{ result.grade|floatformat:2 }} / 20
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check me-1"></i>{% trans 'Aprobado' %}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">
+                                                {{ result.date|date:"d/m/Y H:i" }}
+                                            </small>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            {% trans 'No se encontraron certificados internos aprobados para este DNI.' %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% elif form.is_bound and not searched %}
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>{% trans 'No se encontraron resultados' %}</strong><br>
+                {% trans 'No hay certificados aprobados (nota ≥14) asociados al DNI ingresado.' %}
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Información Adicional -->
+<div class="row mt-4">
+    <div class="col-md-8 mx-auto">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <h6 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    {% trans 'Información Importante' %}
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>{% trans 'Solo se muestran certificados de cursos externos con nota igual o superior a 14' %}</li>
+                    <li>{% trans 'Si no encuentras tu certificado, verifica que hayas ingresado correctamente tu DNI' %}</li>
+                    <li>{% trans 'Para más información, contacta con el administrador del sistema' %}</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+

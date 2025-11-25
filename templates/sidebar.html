@@ -27,6 +27,7 @@
         {% url 'quiz_progress' as qpr %} {% url 'quiz_marking' as qce %} {% url 'user_course_list' as ucl %}
         {% url 'admin_panel' as admin_p %}
         {% url 'cotizaciones_list' as cot %}
+        {% url 'external_course_list' as ext_courses %} {% url 'my_external_courses' as my_ext_courses %}
 
         <ul>
             {% if request.user.is_superuser %}
@@ -73,6 +74,23 @@
                 <a href="{% url 'certificados_dashboard' %}"><i class="fas fa-chart-pie"></i>{% trans 'Dashboard de Certificados' %}</a>
             </li>
             {% endif %}
+            
+            {% if request.user.is_superuser %}
+            <li class="{% if request.path == '/quiz/external-courses/' %}active{% endif %}">
+                <a href="{% url 'external_course_list' %}"><i class="fas fa-external-link-alt"></i>{% trans 'Cursos Externos' %}</a>
+            </li>
+            {% endif %}
+            
+            {% if request.user.is_student %}
+            <li class="{% if request.path == '/quiz/my-external-courses/' %}active{% endif %}">
+                <a href="{% url 'my_external_courses' %}"><i class="fas fa-graduation-cap"></i>{% trans 'Mis Cursos Externos' %}</a>
+            </li>
+            {% endif %}
+            
+            <!-- Validación pública de certificados -->
+            <li class="{% if request.path == '/quiz/external-courses/validation/' %}active{% endif %}">
+                <a href="{% url 'external_course_validation' %}"><i class="fas fa-search"></i>{% trans 'Validar Certificados' %}</a>
+            </li>
 
             <!-- Ocultar "Registro de progreso de exámenes" para administradores e instructores -->
             {% if request.user.is_student %}

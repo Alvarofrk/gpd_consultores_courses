@@ -7,6 +7,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import landscape,A4
 from django.http import FileResponse, Http404, HttpResponse 
 from django.db.models import Max, Count, Q
+from decimal import Decimal
 from django.utils.translation import gettext as _ 
 from django.conf import settings
 from django.contrib import messages
@@ -41,6 +42,7 @@ from .forms import (
     QuestionForm,
     QuizAddForm,
     ManualCertificateForm,
+    ExternalCourseEnrollmentForm,
 )
 from .models import (
     Course,
@@ -51,6 +53,7 @@ from .models import (
     Quiz,
     Sitting,
     ManualCertificate,
+    ExternalCourseEnrollment,
 )
 from django.views.decorators.csrf import csrf_exempt
 import qrcode
@@ -145,6 +148,37 @@ def generar_certificado(request, sitting_id):
     else:
         # Participantes solo pueden descargar sus propios certificados
         sitting = get_object_or_404(Sitting, id=sitting_id, user=request.user)
+
+    # Si es curso externo, redirigir a Google Drive
+    if sitting.quiz.course.is_external:
+        try:
+            enrollment = ExternalCourseEnrollment.objects.get(
+                user=sitting.user,
+                course=sitting.quiz.course,
+                activo=True
+            )
+            if enrollment.is_approved and enrollment.certificate_url:
+                return redirect(enrollment.certificate_url)
+            elif enrollment.is_approved and not enrollment.certificate_url:
+                messages.warning(
+                    request, 
+                    "Certificado pendiente de carga por el administrador. "
+                    "El certificado estará disponible una vez que se suba la URL de Google Drive."
+                )
+                return redirect('quiz_marking')
+            else:
+                messages.error(
+                    request, 
+                    "Debe aprobar el examen (nota ≥14) para ver el certificado."
+                )
+                return redirect('quiz_marking')
+        except ExternalCourseEnrollment.DoesNotExist:
+            messages.warning(
+                request, 
+                "Inscripción en curso externo no encontrada. "
+                "Contacte al administrador."
+            )
+            return redirect('quiz_marking')
 
     # Verificar que el examen esté completo y aprobado
     # IMPORTANTE: Usar el mismo cálculo que la vista SQL para mantener consistencia
@@ -743,7 +777,10 @@ class QuizMarkingList(ListView):
             # Contar intentos totales por usuario+quiz
             total_attempts=Count(
                 'user__sitting',
-                filter=Q(quiz=F('quiz'), complete=True),
+                filter=Q(
+                    user__sitting__quiz=F('quiz'),
+                    user__sitting__complete=True
+                ),
                 distinct=True
             ),
             
@@ -791,12 +828,14 @@ class QuizMarkingList(ListView):
                 seen_combinations[combination] = sitting
             else:
                 # Si ya existe, mantener el más reciente (mayor fecha de finalización)
-                if sitting.end > seen_combinations[combination].end:
+                current_date = sitting.approval_effective_date
+                stored_date = seen_combinations[combination].approval_effective_date
+                if current_date > stored_date:
                     seen_combinations[combination] = sitting
         
         # Convertir diccionario a lista y ordenar por fecha de finalización descendente
         unique_sittings = list(seen_combinations.values())
-        unique_sittings.sort(key=lambda x: x.end, reverse=True)
+        unique_sittings.sort(key=lambda x: x.approval_effective_date, reverse=True)
         
         return unique_sittings
 
@@ -833,9 +872,34 @@ class QuizMarkingList(ListView):
         except Exception as e:
             page_obj = paginator.page(1)
         
+        # Obtener información de cursos externos
+        external_enrollments = {}
+        for sitting in unique_sittings:
+            if sitting.quiz.course.is_external:
+                try:
+                    enrollment = ExternalCourseEnrollment.objects.get(
+                        user=sitting.user,
+                        course=sitting.quiz.course,
+                        activo=True
+                    )
+                    external_enrollments[sitting.id] = enrollment
+                except ExternalCourseEnrollment.DoesNotExist:
+                    external_enrollments[sitting.id] = None
+        
+        # Filtrar external_enrollments solo para los sittings de la página actual
+        page_external_enrollments = {
+            sitting.id: external_enrollments.get(sitting.id) 
+            for sitting in page_obj
+        }
+        
         # Pasar los objetos de la página al contexto
         # IMPORTANTE: No llamar a super().get_context_data() porque intentará paginar de nuevo
-        context = {'object_list': list(page_obj), 'page_obj': page_obj, 'is_paginated': page_obj.has_other_pages()}
+        context = {
+            'object_list': list(page_obj), 
+            'page_obj': page_obj, 
+            'is_paginated': page_obj.has_other_pages(),
+            'external_enrollments': page_external_enrollments,  # NUEVO
+        }
         
         # Agregar estadísticas
         context.update(self._get_stats_context())
@@ -1010,6 +1074,32 @@ class QuizTake(FormView):
 
     def final_result_user(self):
         self.sitting.mark_quiz_complete()
+        
+        # Actualizar ExternalCourseEnrollment si es curso externo
+        if self.course.is_external:
+            # Obtener DNI del username del usuario (en este sistema, username = DNI)
+            user_dni = self.request.user.username.strip()
+            
+            enrollment, created = ExternalCourseEnrollment.objects.get_or_create(
+                user=self.request.user,
+                course=self.course,
+                defaults={
+                    'activo': True,
+                    'dni': user_dni  # Guardar DNI automáticamente desde username
+                }
+            )
+            
+            # Si ya existía pero no tenía DNI, actualizarlo
+            if not created and not enrollment.dni:
+                enrollment.dni = user_dni
+                enrollment.save(update_fields=['dni'])
+            
+            # Actualizar nota automáticamente desde el quiz
+            enrollment.refresh_score_from_quiz(commit=True)
+            
+            # Sincronizar con TakenCourse si no existe
+            self._sync_external_course_enrollment(self.request.user, self.course)
+        
         results = {
             "course": self.course,
             "quiz": self.quiz,
@@ -1025,6 +1115,21 @@ class QuizTake(FormView):
             results["incorrect_questions"] = self.sitting.get_incorrect_questions
 
         return render(self.request, self.result_template_name, results)
+    
+    def _sync_external_course_enrollment(self, user, course):
+        """Sincroniza ExternalCourseEnrollment con TakenCourse"""
+        if not user.is_student:
+            return
+        from result.models import TakenCourse
+        from accounts.models import Student
+        try:
+            student = Student.objects.get(student=user)
+            TakenCourse.objects.get_or_create(
+                student=student,
+                course=course
+            )
+        except Student.DoesNotExist:
+            pass
 
 @csrf_exempt
 def verificar_certificado(request, codigo):
@@ -1575,7 +1680,7 @@ class CertificadosDashboardView(TemplateView):
         cursos_detalle = []
         for curso in cursos_con_certificados:
             certificados_curso = [s for s in sittings_aprobados if s.quiz.course == curso]
-            ultimo_certificado = max(certificados_curso, key=lambda x: x.end) if certificados_curso else None
+            ultimo_certificado = max(certificados_curso, key=lambda x: x.approval_effective_date) if certificados_curso else None
             
             # Obtener el instructor del curso
             instructor_curso = None
@@ -1591,7 +1696,7 @@ class CertificadosDashboardView(TemplateView):
                 'title': curso.title,
                 'instructor': instructor_curso,
                 'total_certificados': len(certificados_curso),
-                'ultimo_certificado': ultimo_certificado.end if ultimo_certificado else None
+                'ultimo_certificado': ultimo_certificado.approval_effective_date if ultimo_certificado else None
             })
         
         # Ordenar por total de certificados
@@ -1702,11 +1807,13 @@ class BeneficiariosAjaxView(View):
                 beneficiarios_data[user_id]['total_certificados'] += 1
                 
                 # Actualizar último certificado
-                if sitting.end:
-                    fecha_sitting = sitting.end.strftime('%d/%m/%Y')
-                    if not beneficiarios_data[user_id]['ultimo_certificado'] or sitting.end > beneficiarios_data[user_id]['fecha_comparacion']:
+                effective_date = sitting.approval_effective_date
+                if effective_date:
+                    fecha_sitting = effective_date.strftime('%d/%m/%Y')
+                    if (not beneficiarios_data[user_id]['ultimo_certificado'] or 
+                            effective_date > beneficiarios_data[user_id]['fecha_comparacion']):
                         beneficiarios_data[user_id]['ultimo_certificado'] = fecha_sitting
-                        beneficiarios_data[user_id]['fecha_comparacion'] = sitting.end
+                        beneficiarios_data[user_id]['fecha_comparacion'] = effective_date
             
             # Procesar certificados manuales (incluyendo no participantes)
             for cert in certificados_manuales:
@@ -1996,9 +2103,11 @@ class CertificadosFiltrosAjaxView(View):
                 fecha_desde = datetime.strptime(filtros['fechaDesde'], '%Y-%m-%d').date()
                 fecha_hasta = datetime.strptime(filtros['fechaHasta'], '%Y-%m-%d').date()
                 
-                # Filtrar automáticos por fecha de finalización
-                sittings_aprobados = [s for s in sittings_aprobados 
-                                   if s.end and fecha_desde <= datetime_to_date(s.end) <= fecha_hasta]
+                # Filtrar automáticos por fecha de aprobación efectiva
+                sittings_aprobados = [
+                    s for s in sittings_aprobados 
+                    if s.approval_effective_date and fecha_desde <= datetime_to_date(s.approval_effective_date) <= fecha_hasta
+                ]
                 
                 # Filtrar manuales por fecha de generación
                 certificados_manuales = certificados_manuales.filter(
@@ -2083,8 +2192,9 @@ class CertificadosFiltrosAjaxView(View):
             # Certificados automáticos del mes
             automaticos = 0
             for sitting in sittings_aprobados:
-                if sitting.end:
-                    sitting_date = sitting.end.date() if hasattr(sitting.end, 'date') else sitting.end
+                effective_date = sitting.approval_effective_date
+                if effective_date:
+                    sitting_date = effective_date.date() if hasattr(effective_date, 'date') else effective_date
                     if inicio_mes <= sitting_date <= fin_mes:
                         automaticos += 1
             
@@ -2104,3 +2214,265 @@ class CertificadosFiltrosAjaxView(View):
             })
         
         return list(reversed(datos))
+
+
+# ============================================
+# VISTAS PARA CURSOS EXTERNOS
+# ============================================
+
+@method_decorator([login_required, admin_required], name="dispatch")
+class ExternalCourseListView(ListView):
+    """Vista de listado para administradores - Gestión de cursos externos"""
+    model = ExternalCourseEnrollment
+    template_name = "quiz/external_course_list.html"
+    context_object_name = "enrollments"
+    paginate_by = 20
+
+    def get_queryset(self):
+        # Solo mostrar inscripciones de cursos externos
+        queryset = ExternalCourseEnrollment.objects.select_related(
+            'user', 'course', 'creado_por'
+        ).filter(course__is_external=True)
+        
+        # Filtros
+        user_filter = self.request.GET.get("user_filter")
+        if user_filter:
+            queryset = queryset.filter(
+                Q(user__username__icontains=user_filter) |
+                Q(user__first_name__icontains=user_filter) |
+                Q(user__last_name__icontains=user_filter)
+            )
+        
+        course_filter = self.request.GET.get("course_filter")
+        if course_filter:
+            queryset = queryset.filter(
+                Q(course__title__icontains=course_filter) |
+                Q(course__code__icontains=course_filter)
+            )
+        
+        status_filter = self.request.GET.get("status_filter")
+        if status_filter == "approved":
+            queryset = queryset.filter(score__gte=14.0)
+        elif status_filter == "not_approved":
+            queryset = queryset.filter(score__lt=14.0)
+        elif status_filter == "pending_certificate":
+            queryset = queryset.filter(score__gte=14.0, certificate_url__isnull=True)
+        
+        return queryset.order_by('-fecha_registro')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Solo contar cursos externos
+        external_enrollments = ExternalCourseEnrollment.objects.filter(course__is_external=True)
+        context['total_enrollments'] = external_enrollments.count()
+        context['approved_count'] = external_enrollments.filter(score__gte=14.0).count()
+        context['not_approved_count'] = external_enrollments.filter(score__lt=14.0).count()
+        context['pending_certificates_count'] = external_enrollments.filter(
+            score__gte=14.0, 
+            certificate_url__isnull=True
+        ).count()
+        return context
+
+
+@method_decorator([login_required, admin_required], name="dispatch")
+class ExternalCourseCreateView(CreateView):
+    """Vista para crear nueva inscripción en curso externo"""
+    model = ExternalCourseEnrollment
+    form_class = ExternalCourseEnrollmentForm
+    template_name = "quiz/external_course_form.html"
+    success_url = None  # Se define en get_success_url
+
+    def form_valid(self, form):
+        form.instance.creado_por = self.request.user
+
+        course = form.cleaned_data.get('course')
+        if course and not course.is_external:
+            form.add_error('course', "El curso seleccionado no está marcado como externo.")
+            return self.form_invalid(form)
+
+        response = super().form_valid(form)
+
+        # Sincronizar con TakenCourse
+        sync_external_course_enrollment(self.object.user, self.object.course)
+
+        updated_score = self.object.refresh_score_from_quiz()
+        if updated_score is None:
+            messages.info(
+                self.request,
+                "Inscripción creada. La nota se actualizará automáticamente cuando el participante complete el examen."
+            )
+        else:
+            messages.info(
+                self.request,
+                f"Inscripción creada con nota registrada: {updated_score}/20."
+            )
+
+        return response
+
+    def get_success_url(self):
+        messages.success(self.request, "Inscripción en curso externo creada exitosamente.")
+        return reverse('external_course_list')
+
+
+@method_decorator([login_required, admin_required], name="dispatch")
+class ExternalCourseUpdateView(UpdateView):
+    """Vista para editar inscripción en curso externo"""
+    model = ExternalCourseEnrollment
+    form_class = ExternalCourseEnrollmentForm
+    template_name = "quiz/external_course_form.html"
+    success_url = None  # Se define en get_success_url
+
+    def form_valid(self, form):
+        course = form.cleaned_data.get('course')
+        if course and not course.is_external:
+            form.add_error('course', "El curso seleccionado no está marcado como externo.")
+            return self.form_invalid(form)
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        updated_score = self.object.refresh_score_from_quiz()
+        if updated_score is None:
+            messages.info(
+                self.request,
+                "Inscripción actualizada. Si el participante completa el examen, la nota se reflejará automáticamente."
+            )
+        else:
+            messages.info(
+                self.request,
+                f"Inscripción actualizada. Nota actual: {updated_score}/20."
+            )
+        messages.success(self.request, "Inscripción en curso externo actualizada exitosamente.")
+        return reverse('external_course_list')
+
+
+@method_decorator([login_required], name="dispatch")
+class MyExternalCoursesView(ListView):
+    """Vista para estudiantes - Ver sus cursos externos"""
+    model = ExternalCourseEnrollment
+    template_name = "quiz/my_external_courses.html"
+    context_object_name = "enrollments"
+    paginate_by = 15
+
+    def get_queryset(self):
+        return ExternalCourseEnrollment.objects.filter(
+            user=self.request.user,
+            activo=True,
+            course__is_external=True
+        ).select_related('course').order_by('-fecha_registro')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        enrollments = self.get_queryset()
+        context['approved_count'] = enrollments.filter(score__gte=14.0).count()
+        context['total_count'] = enrollments.count()
+        return context
+
+
+def sync_external_course_enrollment(user, course):
+    """
+    Sincroniza ExternalCourseEnrollment con TakenCourse para cursos externos.
+    Asegura que ambos registros existan cuando se trabaja con cursos externos.
+    """
+    if not course.is_external:
+        return None
+    
+    from result.models import TakenCourse
+    from accounts.models import Student
+    
+    # Crear/obtener ExternalCourseEnrollment
+    enrollment, created = ExternalCourseEnrollment.objects.get_or_create(
+        user=user,
+        course=course,
+        defaults={'activo': True}
+    )
+    
+    # Crear/obtener TakenCourse si el usuario es estudiante
+    if user.is_student:
+        try:
+            student = Student.objects.get(student=user)
+            taken_course, created_tc = TakenCourse.objects.get_or_create(
+                student=student,
+                course=course
+            )
+        except Student.DoesNotExist:
+            pass
+    
+    return enrollment
+
+
+class ExternalCourseValidationView(FormView):
+    """Vista pública para validar certificados de cursos externos por DNI"""
+    template_name = "quiz/external_course_validation.html"
+    form_class = None  # Usaremos un formulario simple
+    
+    def get_form_class(self):
+        from django import forms
+        class DNIValidationForm(forms.Form):
+            dni = forms.CharField(
+                max_length=20,
+                label="DNI",
+                widget=forms.TextInput(attrs={
+                    'class': 'form-control',
+                    'placeholder': 'Ingrese su DNI',
+                    'autofocus': True
+                })
+            )
+        return DNIValidationForm
+
+    def form_valid(self, form):
+        dni = form.cleaned_data['dni'].strip()
+        
+        # ------------------------------
+        # Cursos externos
+        # ------------------------------
+        external_enrollments = ExternalCourseEnrollment.objects.filter(
+            Q(dni=dni) | Q(user__username=dni),
+            score__gte=14.0,
+            activo=True,
+            course__is_external=True
+        ).select_related('user', 'course').order_by('-fecha_registro')
+        
+        # ------------------------------
+        # Cursos internos
+        # ------------------------------
+        sittings = Sitting.objects.filter(
+            user__username=dni,
+            complete=True,
+            course__is_external=False
+        ).select_related('user', 'quiz', 'course').order_by('-end', '-start')
+        
+        internal_results = []
+        for sitting in sittings:
+            percent = Decimal(str(sitting.get_percent_correct))
+            pass_mark = Decimal(str(sitting.quiz.pass_mark))
+            if percent >= pass_mark:
+                grade_20 = (percent * Decimal('20')) / Decimal('100')
+                internal_results.append({
+                    'sitting': sitting,
+                    'user': sitting.user,
+                    'course': sitting.course,
+                    'course_code': sitting.course.code,
+                    'grade': grade_20,
+                    'pass_mark': pass_mark,
+                    'status': 'approved',
+                    'date': sitting.fecha_aprobacion or sitting.end or sitting.start,
+                })
+        
+        context = self.get_context_data()
+        context['external_enrollments'] = external_enrollments
+        context['internal_results'] = internal_results
+        context['dni_searched'] = dni
+        context['has_external_results'] = external_enrollments.exists()
+        context['has_internal_results'] = len(internal_results) > 0
+        context['searched'] = True
+        
+        return render(self.request, self.template_name, context)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['has_external_results'] = False
+        context['has_internal_results'] = False
+        context['external_enrollments'] = ExternalCourseEnrollment.objects.none()
+        context['internal_results'] = []
+        context['searched'] = False
+        return context

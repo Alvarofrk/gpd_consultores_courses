@@ -51,30 +51,47 @@
                 </div>
                 <div class="card-body">
                     <div class="video-container mb-4 rounded overflow-hidden shadow-sm">
-                        {% if current_video.vimeo_url %}
+                        {% if current_video.vimeo_url and current_video.get_vimeo_id %}
                             <div class="ratio ratio-16x9">
                                 <iframe src="https://player.vimeo.com/video/{{ current_video.get_vimeo_id }}" 
                                         frameborder="0" 
                                         allow="autoplay; fullscreen; picture-in-picture" 
                                         allowfullscreen></iframe>
                             </div>
-                        {% elif current_video.youtube_url %}
-                            <div class="ratio ratio-16x9">
-                                <iframe src="https://www.youtube.com/embed/{{ current_video.get_youtube_id }}" 
+                        {% elif current_video.youtube_url and current_video.get_youtube_id %}
+                            <div class="ratio ratio-16x9 position-relative">
+                                <iframe id="youtube-iframe-{{ current_video.id }}" 
+                                        src="{{ current_video.get_youtube_embed_url }}" 
                                         frameborder="0" 
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                                        allowfullscreen></iframe>
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                                        allowfullscreen
+                                        loading="lazy"
+                                        referrerpolicy="strict-origin-when-cross-origin"
+                                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe>
+                                <div id="youtube-fallback-{{ current_video.id }}" class="d-none position-absolute w-100 h-100 d-flex align-items-center justify-content-center" style="background: rgba(0,0,0,0.8); z-index: 10;">
+                                    <div class="text-center text-white p-4">
+                                        <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                                        <p class="mb-2">{% trans 'Error al cargar el video. El video puede tener restricciones de privacidad.' %}</p>
+                                        <a href="{{ current_video.youtube_url }}" target="_blank" class="btn btn-primary">
+                                            <i class="fas fa-external-link-alt me-2"></i>{% trans 'Ver video en YouTube' %}
+                                        </a>
+                                    </div>
+                                </div>
                             </div>
                         {% elif current_video.video %}
                             <div class="ratio ratio-16x9">
-                                <video controls class="w-100">
-                                    <source src="{{ current_video.video.url }}" type="video/mp4">
+                                <video controls class="w-100" preload="metadata" playsinline>
+                                    <source src="{{ current_video.video.url }}" type="{{ current_video.get_video_mime_type }}">
+                                    <source src="{{ current_video.video.url }}">
                                     {% trans "Tu navegador no soporta el elemento de video." %}
                                 </video>
                             </div>
                         {% else %}
                             <div class="alert alert-warning">
                                 {% trans 'No hay video disponible para mostrar.' %}
+                                {% if current_video.vimeo_url or current_video.youtube_url %}
+                                    <br><small>{% trans 'La URL del video no es válida o no se pudo extraer el ID.' %}</small>
+                                {% endif %}
                             </div>
                         {% endif %}
                     </div>

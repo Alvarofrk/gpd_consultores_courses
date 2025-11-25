@@ -3,7 +3,7 @@ from django.forms.widgets import RadioSelect, Textarea
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.utils.translation import gettext_lazy as _
 from django.forms.models import inlineformset_factory
-from .models import Question, Quiz, MCQuestion, Choice, ManualCertificate, Sitting
+from .models import Question, Quiz, MCQuestion, Choice, ManualCertificate, Sitting, ExternalCourseEnrollment
 import os
 from django.conf import settings
 from django.core.validators import ValidationError
@@ -214,3 +214,59 @@ class SittingDateUpdateForm(forms.ModelForm):
             except ValueError:
                 raise ValidationError("Formato de fecha inválido")
         return fecha
+
+
+class ExternalCourseEnrollmentForm(forms.ModelForm):
+    """Formulario para crear/editar inscripciones en cursos externos"""
+
+    class Meta:
+        model = ExternalCourseEnrollment
+        fields = ['user', 'course', 'certificate_url', 'dni', 'activo']
+        widgets = {
+            'user': forms.Select(attrs={'class': 'form-control'}),
+            'course': forms.Select(attrs={'class': 'form-control', 'id': 'id_course'}),
+            'certificate_url': forms.URLInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'https://drive.google.com/...'
+            }),
+            'dni': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'DNI del alumno'
+            }),
+            'activo': forms.CheckboxInput(attrs={'class': 'form-check-input'})
+        }
+        labels = {
+            'user': 'Usuario',
+            'course': 'Curso externo',
+            'certificate_url': 'URL del Certificado (Google Drive)',
+            'dni': 'DNI',
+            'activo': 'Activo'
+        }
+        help_texts = {
+            'certificate_url': 'Enlace completo de Google Drive al certificado del alumno (visible tras aprobación).',
+            'dni': 'Documento Nacional de Identidad del alumno (para validación pública).'
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from course.models import Course
+
+        queryset = Course.objects.filter(is_external=True, is_active=True)
+        self.fields['course'].queryset = queryset
+        self.fields['course'].required = True
+
+        if not queryset.exists():
+            self.fields['course'].help_text = 'No hay cursos externos disponibles. Marca un curso como externo al crearlo.'
+
+    def clean_course(self):
+        course = self.cleaned_data.get('course')
+        if course and not course.is_external:
+            raise ValidationError("El curso seleccionado no está marcado como externo.")
+        return course
+
+    def clean_certificate_url(self):
+        url = self.cleaned_data.get('certificate_url')
+        if url and 'drive.google.com' not in url.lower():
+            # Permitir URLs de Google Drive (no es estricto, solo advertencia)
+            pass
+        return url
