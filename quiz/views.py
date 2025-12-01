@@ -94,7 +94,7 @@ POSICIONES_CERTIFICADOS = {
     "C25-BPA":      {"pos_nombre": (475, 398), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (580, 209), "pos_fecha_aprobacion2": (463, 247), "pos_fecha_vencimiento": (587, 247), "pos_usuario": (560, 360), "pos_codigo": (800,322.2 ), "pos_qr": (750, 356)},
     "C88-VEZ":      {"pos_nombre": (475, 398), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (580, 209), "pos_fecha_aprobacion2": (463, 247), "pos_fecha_vencimiento": (587, 247), "pos_usuario": (560, 360), "pos_codigo": (800,322.2 ), "pos_qr": (750, 356)},
     "C52-MDC":      {"pos_nombre": (475, 365), "pos_puntaje": (0, 0), "pos_fecha_aprobacion": (624, 182), "pos_fecha_aprobacion2": (561, 207), "pos_fecha_vencimiento": (693, 207), "pos_usuario": (560.5, 325), "pos_codigo": (795.5,310.5 ), "pos_qr": (750, 356)},
-}
+} 
 
 def formatear_fecha_larga(fecha):
     """Formatea una fecha en formato '30 de Julio del 2025'"""
