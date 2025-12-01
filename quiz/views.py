@@ -319,7 +319,10 @@ def generar_certificado(request, sitting_id):
     filename = f"{sitting.quiz.course.code}-{sitting.certificate_code}-{nombre_curso_sanitizado}-{nombre_usuario_sanitizado}.pdf"
 
     # Devolver el PDF combinado como respuesta
-    return FileResponse(resultado, as_attachment=True, filename=filename)
+    # Convertir BytesIO a bytes para evitar warning de StreamingHttpResponse en modo asíncrono
+    response = HttpResponse(resultado.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
     
 def anexo_form(request, sitting_id):
     if request.method == 'POST':
@@ -407,7 +410,10 @@ def generar_anexo4(request, sitting_id, fecha_ingreso, ocupacion, area_trabajo, 
     resultado_anexo.seek(0)
 
     # Devolver el PDF del anexo como respuesta
-    return FileResponse(resultado_anexo, as_attachment=True, filename='anexo4.pdf')
+    # Convertir BytesIO a bytes para evitar warning de StreamingHttpResponse en modo asíncrono
+    response = HttpResponse(resultado_anexo.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="anexo4.pdf"'
+    return response
 
 
 
@@ -1342,11 +1348,10 @@ def generar_pdf_certificado_manual(request, certificate, codigo_curso):
     nombre_sanitizado = certificate.nombre_completo.replace(" ", "_")
     nombre_curso_sanitizado = certificate.curso.title.replace(" ", "_")
     filename = f"{certificate.curso.code}-{certificate.certificate_code}-{nombre_curso_sanitizado}-{nombre_sanitizado}.pdf"
-    return FileResponse(
-        resultado, 
-        as_attachment=True, 
-        filename=filename
-    )
+    # Convertir BytesIO a bytes para evitar warning de StreamingHttpResponse en modo asíncrono
+    response = HttpResponse(resultado.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
 
 class ManualCertificateUpdateView(UpdateView):
     model = ManualCertificate
