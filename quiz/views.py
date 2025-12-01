@@ -1255,13 +1255,11 @@ def descargar_certificado_manual(request, cert_id):
     """Vista para descargar certificado manual"""
     certificate = get_object_or_404(ManualCertificate, id=cert_id)
     # Usar la plantilla por defecto del curso o la plantilla template
-    plantilla = f"{certificate.curso.code}.pdf"
-    plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', plantilla)
-    if not os.path.exists(plantilla_path):
-        plantilla = 'certificado_template.pdf'
-    return generar_pdf_certificado_manual(request, certificate, plantilla)
+    # Pasar directamente el código del curso (igual que en certificados automáticos)
+    codigo = certificate.curso.code
+    return generar_pdf_certificado_manual(request, certificate, codigo)
 
-def generar_pdf_certificado_manual(request, certificate, plantilla_nombre):
+def generar_pdf_certificado_manual(request, certificate, codigo_curso):
     """Función para generar PDF de certificado manual"""
     # Datos del certificado
     nombre_estudiante = certificate.nombre_completo
@@ -1275,8 +1273,8 @@ def generar_pdf_certificado_manual(request, certificate, plantilla_nombre):
     # El certificate_code almacena solo el número correlativo (ej: "001", "002")
     # El código completo mostrado en PDF es: <código_curso>-<correlativo> (ej: "C01-001")
     certificate_code = f"{certificate.curso.code}-{certificate.certificate_code}"
-    # Usar las posiciones del curso o las por defecto
-    codigo = certificate.curso.code
+    # Usar las posiciones del curso o las por defecto (igual que en certificados automáticos)
+    codigo = codigo_curso
     posiciones = POSICIONES_CERTIFICADOS.get(codigo, {
         "pos_nombre": (305, 305),
         "pos_puntaje": (479, 198),
@@ -1327,8 +1325,8 @@ def generar_pdf_certificado_manual(request, certificate, plantilla_nombre):
     p.showPage()
     p.save()
     buffer.seek(0)
-    # Cargar plantilla seleccionada
-    plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', plantilla_nombre)
+    # Cargar la plantilla del certificado (igual que en certificados automáticos)
+    plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', f'{codigo}.pdf')
     if not os.path.exists(plantilla_path):
         plantilla_path = os.path.join(settings.BASE_DIR, 'static', 'pdfs', 'certificado_template.pdf')
     # Crear PDF final
